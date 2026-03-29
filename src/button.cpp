@@ -130,7 +130,7 @@ struct Button::Impl {
 
         RECT buttonRect = draw->rcItem;
 
-        HBRUSH parentBrush = CreateSolidBrush(owner->theme_.background);
+        HBRUSH parentBrush = CreateSolidBrush(owner->surfaceColor_);
         FillRect(draw->hDC, &buttonRect, parentBrush);
         DeleteObject(parentBrush);
 
@@ -274,6 +274,7 @@ bool Button::Create(HWND parent, int controlId, const std::wstring& text, const 
     parentHwnd_ = parent;
     controlId_ = controlId;
     theme_ = theme;
+    surfaceColor_ = theme.background;
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
@@ -355,6 +356,13 @@ void Button::SetCornerRadius(int radius) {
     cornerRadius_ = radius < 0 ? 0 : radius;
     if (buttonHwnd_) {
         impl_->UpdateWindowRegion();
+        InvalidateRect(buttonHwnd_, nullptr, TRUE);
+    }
+}
+
+void Button::SetSurfaceColor(COLORREF color) {
+    surfaceColor_ = color;
+    if (buttonHwnd_) {
         InvalidateRect(buttonHwnd_, nullptr, TRUE);
     }
 }

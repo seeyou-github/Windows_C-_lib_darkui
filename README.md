@@ -646,6 +646,8 @@ theme.text = RGB(232, 236, 241);
 
 darkui::Button button;
 button.Create(hwnd, 3001, L"Run", theme);
+button.SetCornerRadius(14);
+button.SetSurfaceColor(theme.panel);
 ```
 
 ### Runtime API
@@ -653,8 +655,12 @@ button.Create(hwnd, 3001, L"Run", theme);
 ```cpp
 button.SetText(L"Processing...");
 button.SetTheme(theme);
+button.SetCornerRadius(18);
+button.SetSurfaceColor(theme.panel);
 std::wstring text = button.GetText();
 ```
+
+`SetSurfaceColor(COLORREF color)` is useful when a rounded button sits on a card or panel whose color differs from `theme.background`. It fills the corner area outside the rounded body with the host surface color, preventing visible seams around the button.
 
 ### Click Handling
 
@@ -672,11 +678,20 @@ case WM_COMMAND:
 ### Theme Fields Used By Button
 
 - `button`: normal background color
+- `buttonHover`: hover background color
 - `buttonHot`: pressed background color
+- `buttonDisabled`: disabled background color
+- `buttonDisabledText`: disabled text color
 - `border`: border color
 - `text`: button text color
 - `textPadding`: inner horizontal padding
 - `uiFont`: button font
+- `background`: default host surface color used by `Create()`
+
+### Notes
+
+- Rounded buttons painted on custom cards should usually call `SetSurfaceColor(cardColor)`.
+- If you do not call `SetSurfaceColor()`, the button defaults to `theme.background` as its host surface fallback.
 
 ### Button Demo
 

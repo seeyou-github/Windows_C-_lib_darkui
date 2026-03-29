@@ -210,6 +210,8 @@ public:
     const Theme& theme() const { return theme_; }
     // Returns the current corner radius in pixels.
     int corner_radius() const { return cornerRadius_; }
+    // Returns the background color used to fill the area outside the rounded button body.
+    COLORREF surface_color() const { return surfaceColor_; }
 
     // Replaces the current theme and repaints the control.
     // Parameter:
@@ -229,6 +231,19 @@ public:
     // Notes:
     // - This changes both drawing and the button window region.
     void SetCornerRadius(int radius);
+    // Sets the host surface color behind the rounded button body.
+    // Purpose:
+    // - Fills the rectangular area outside the rounded shape before the button body is painted.
+    // - Prevents visible color seams when the button is placed on a panel/card whose color differs from `theme.background`.
+    // Typical usage:
+    // - Leave the default value when the button sits directly on the main window background.
+    // - Set it to the surrounding card or panel color when the button is placed on a custom surface.
+    // Parameters:
+    // - color: Host/background color expected behind the rounded button corners.
+    // Notes:
+    // - This only affects the corner fallback area outside the rounded body.
+    // - It does not change the main button fill color. Use SetTheme() for that.
+    void SetSurfaceColor(COLORREF color);
 
 private:
     struct Impl;
@@ -242,6 +257,8 @@ private:
     int controlId_ = 0;
     // Corner radius in pixels.
     int cornerRadius_ = 8;
+    // Host/background color behind the rounded button corners.
+    COLORREF surfaceColor_ = RGB(34, 36, 40);
     // Theme currently used by the control.
     Theme theme_{};
 };

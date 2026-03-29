@@ -346,12 +346,18 @@ void ApplyTheme(AppState* state, int themeIndex) {
     state->themeGraphite.SetTheme(state->theme);
     state->themeObsidian.SetTheme(state->theme);
     state->themeNocturne.SetTheme(state->theme);
+    state->themeGraphite.SetSurfaceColor(state->theme.background);
+    state->themeObsidian.SetSurfaceColor(state->theme.background);
+    state->themeNocturne.SetSurfaceColor(state->theme.background);
 
     state->overview.profile.SetTheme(state->theme);
     state->overview.surface.SetTheme(state->theme);
     state->overview.primary.SetTheme(state->theme);
     state->overview.secondary.SetTheme(state->theme);
     state->overview.disabled.SetTheme(state->theme);
+    state->overview.primary.SetSurfaceColor(state->theme.panel);
+    state->overview.secondary.SetSurfaceColor(state->theme.panel);
+    state->overview.disabled.SetSurfaceColor(state->theme.panel);
     state->overview.storage.SetTheme(state->theme);
     state->overview.index.SetTheme(state->theme);
 
@@ -364,6 +370,8 @@ void ApplyTheme(AppState* state, int themeIndex) {
     state->data.filter.SetTheme(state->theme);
     state->data.refresh.SetTheme(state->theme);
     state->data.archive.SetTheme(state->theme);
+    state->data.refresh.SetSurfaceColor(state->theme.panel);
+    state->data.archive.SetSurfaceColor(state->theme.panel);
     state->data.table.SetTheme(state->theme);
 
     InvalidateRect(state->overviewPage, nullptr, TRUE);
@@ -641,6 +649,9 @@ bool CreateOverviewControls(AppState* app) {
     app->overview.primary.SetCornerRadius(14);
     app->overview.secondary.SetCornerRadius(14);
     app->overview.disabled.SetCornerRadius(14);
+    app->overview.primary.SetSurfaceColor(app->theme.panel);
+    app->overview.secondary.SetSurfaceColor(app->theme.panel);
+    app->overview.disabled.SetSurfaceColor(app->theme.panel);
     EnableWindow(app->overview.disabled.hwnd(), FALSE);
 
     app->overview.profile.SetItems({
@@ -702,6 +713,8 @@ bool CreateDataPanel(AppState* app) {
 
     app->data.refresh.SetCornerRadius(14);
     app->data.archive.SetCornerRadius(14);
+    app->data.refresh.SetSurfaceColor(app->theme.panel);
+    app->data.archive.SetSurfaceColor(app->theme.panel);
 
     app->data.filter.SetItems({
         {L"All assets", 0, true},
