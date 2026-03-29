@@ -19,7 +19,9 @@ constexpr int kToolbarButtonSideInset = 14;
 constexpr int kToolbarButtonGap = 6;
 constexpr int kToolbarPopupMinWidth = 180;
 constexpr int kToolbarPopupArrowInset = 18;
-
+constexpr int kToolbarPopupOuterPadding = 4;
+constexpr int kToolbarPopupIndicatorHeight = 14;
+constexpr UINT_PTR kToolbarPopupScrollTimerId = 0x6124;
 ATOM EnsureToolbarClassRegistered(HINSTANCE instance);
 ATOM EnsureToolbarPopupClassRegistered(HINSTANCE instance);
 LRESULT CALLBACK ToolbarWindowProcThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
@@ -58,6 +60,11 @@ struct Toolbar::Impl {
     std::vector<int> overflowIndices;
     RECT overflowRect{0, 0, 0, 0};
     std::vector<PopupEntry> popupEntries;
+    int popupHoverIndex = -1;
+    bool popupScrollable = false;
+    bool popupCanScrollUp = false;
+    bool popupCanScrollDown = false;
+    int popupAutoScrollDirection = 0;
     // Tracks which toolbar trigger currently owns the custom popup so a repeated
     // click on the same trigger can close the popup instead of reopening it.
     int popupSourceIndex = -1;
@@ -361,11 +368,86 @@ struct Toolbar::Impl {
         return owner->popupHost_ && IsWindowVisible(owner->popupHost_);
     }
 
+    int PopupEntryHeight(int index) const {
+        if (index < 0 || index >= static_cast<int>(popupEntries.size())) {
+            return owner->theme_.itemHeight;
+        }
+        return popupEntries[index].separator ? 8 : owner->theme_.itemHeight;
+    }
+
+    int PopupListHeight() const {
+        if (!owner->popupList_) {
+            return 0;
+        }
+        RECT rect{};
+        GetClientRect(owner->popupList_, &rect);
+        return std::max(0, static_cast<int>(rect.bottom - rect.top));
+    }
+
+    void UpdatePopupScrollState() {
+        popupCanScrollUp = false;
+        popupCanScrollDown = false;
+        if (!owner->popupList_ || popupEntries.empty()) {
+            popupScrollable = false;
+            return;
+        }
+
+        const int visibleHeight = PopupListHeight();
+        const int topIndex = static_cast<int>(SendMessageW(owner->popupList_, LB_GETTOPINDEX, 0, 0));
+        int consumed = 0;
+        int index = std::max(0, topIndex);
+        while (index < static_cast<int>(popupEntries.size()) && consumed + PopupEntryHeight(index) <= visibleHeight) {
+            consumed += PopupEntryHeight(index);
+            ++index;
+        }
+
+        popupCanScrollUp = topIndex > 0;
+        popupCanScrollDown = index < static_cast<int>(popupEntries.size());
+    }
+
+    void StopPopupAutoScroll() {
+        popupAutoScrollDirection = 0;
+        if (owner->popupHost_) {
+            KillTimer(owner->popupHost_, kToolbarPopupScrollTimerId);
+        }
+    }
+
+    void StartPopupAutoScroll(int direction) {
+        if (!popupScrollable || direction == 0 || !owner->popupHost_) {
+            StopPopupAutoScroll();
+            return;
+        }
+        if (popupAutoScrollDirection != direction) {
+            popupAutoScrollDirection = direction;
+            SetTimer(owner->popupHost_, kToolbarPopupScrollTimerId, 120, nullptr);
+        }
+    }
+
+    void ScrollPopupByItems(int delta) {
+        if (!owner->popupList_ || delta == 0) {
+            return;
+        }
+        const int count = static_cast<int>(popupEntries.size());
+        if (count <= 0) {
+            return;
+        }
+        int topIndex = static_cast<int>(SendMessageW(owner->popupList_, LB_GETTOPINDEX, 0, 0));
+        topIndex = std::clamp(topIndex + delta, 0, std::max(0, count - 1));
+        SendMessageW(owner->popupList_, LB_SETTOPINDEX, static_cast<WPARAM>(topIndex), 0);
+        UpdatePopupScrollState();
+        RedrawWindow(owner->popupHost_, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+    }
+
     void HidePopup() {
         if (owner->popupHost_) {
             ShowWindow(owner->popupHost_, SW_HIDE);
         }
+        StopPopupAutoScroll();
         popupEntries.clear();
+        popupHoverIndex = -1;
+        popupScrollable = false;
+        popupCanScrollUp = false;
+        popupCanScrollDown = false;
         popupSourceIndex = -1;
         popupFromOverflow = false;
         popupEntriesFromSubmenu = false;
@@ -426,13 +508,23 @@ struct Toolbar::Impl {
         const int count = GetMenuItemCount(menu);
         for (int i = 0; i < count; ++i) {
             MENUITEMINFOW info{};
-            wchar_t buffer[256]{};
             info.cbSize = sizeof(info);
             info.fMask = MIIM_FTYPE | MIIM_STATE | MIIM_ID | MIIM_STRING;
-            info.dwTypeData = buffer;
-            info.cch = static_cast<UINT>(std::size(buffer));
+            info.dwTypeData = nullptr;
+            info.cch = 0;
             if (!GetMenuItemInfoW(menu, i, TRUE, &info)) {
                 continue;
+            }
+            std::wstring text;
+            if ((info.fType & MFT_SEPARATOR) == 0) {
+                text.resize(static_cast<size_t>(info.cch) + 1, L'\0');
+                info.dwTypeData = text.data();
+                info.cch = static_cast<UINT>(text.size());
+                if (GetMenuItemInfoW(menu, i, TRUE, &info)) {
+                    text.resize(wcsnlen(text.c_str(), text.size()));
+                } else {
+                    text.clear();
+                }
             }
             PopupEntry entry{};
             entry.separator = (info.fType & MFT_SEPARATOR) != 0;
@@ -440,7 +532,7 @@ struct Toolbar::Impl {
             entry.disabled = (info.fState & (MFS_DISABLED | MFS_GRAYED)) != 0;
             entry.commandId = static_cast<int>(info.wID);
             entry.popupMenu = nullptr;
-            entry.text = entry.separator ? L"" : buffer;
+            entry.text = entry.separator ? L"" : text;
             entries.push_back(entry);
         }
         return entries;
@@ -485,11 +577,16 @@ struct Toolbar::Impl {
             return;
         }
         popupEntries = entries;
+        popupHoverIndex = -1;
         popupEntriesFromSubmenu = fromSubmenu;
+
+        SendMessageW(owner->popupList_, WM_SETREDRAW, FALSE, 0);
         SendMessageW(owner->popupList_, LB_RESETCONTENT, 0, 0);
         for (const auto& entry : popupEntries) {
-            SendMessageW(owner->popupList_, LB_ADDSTRING, 0, reinterpret_cast<LPARAM>(entry.text.c_str()));
+            const wchar_t* label = entry.separator ? L"" : entry.text.c_str();
+            SendMessageW(owner->popupList_, LB_ADDSTRING, 0, reinterpret_cast<LPARAM>(label));
         }
+        SendMessageW(owner->popupList_, WM_SETREDRAW, TRUE, 0);
 
         HDC dc = GetDC(owner->toolbarHwnd_);
         HFONT drawFont = font ? font : reinterpret_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
@@ -515,18 +612,68 @@ struct Toolbar::Impl {
         }
         ReleaseDC(owner->toolbarHwnd_, dc);
 
-        int height = 2;
-        for (const auto& entry : popupEntries) {
-            height += entry.separator ? 8 : owner->theme_.itemHeight;
-        }
+        const int measuredItemHeight = std::max(1, static_cast<int>(SendMessageW(owner->popupList_, LB_GETITEMHEIGHT, 0, 0)));
+        int contentHeight = measuredItemHeight * static_cast<int>(popupEntries.size());
+        int clientHeight = contentHeight + kToolbarPopupOuterPadding;
 
+        RECT parentRect{};
+        RECT workArea{};
+        GetWindowRect(owner->parentHwnd_, &parentRect);
+        SystemParametersInfoW(SPI_GETWORKAREA, 0, &workArea, 0);
+
+        RECT bounds = parentRect;
+        bounds.left = std::max(bounds.left, workArea.left);
+        bounds.top = std::max(bounds.top, workArea.top);
+        bounds.right = std::min(bounds.right, workArea.right);
+        bounds.bottom = std::min(bounds.bottom, workArea.bottom);
+
+        const int belowAvailable = std::max(0, static_cast<int>(bounds.bottom - (anchorRectScreen.bottom + 4)));
+        const int aboveAvailable = std::max(0, static_cast<int>((anchorRectScreen.top - 4) - bounds.top));
+        const int fallbackMaxHeight = std::max(owner->theme_.itemHeight + kToolbarPopupOuterPadding,
+                                               static_cast<int>((bounds.bottom - bounds.top) - 12));
+        const int availableHeight = std::max(owner->theme_.itemHeight + kToolbarPopupOuterPadding,
+                                             std::max(belowAvailable, aboveAvailable));
+        const int maxHeight = std::min(fallbackMaxHeight, availableHeight);
+        popupScrollable = clientHeight > maxHeight;
+        if (popupScrollable) {
+            clientHeight = maxHeight;
+        }
+        RECT popupWindowRect{0, 0, width, clientHeight};
+        AdjustWindowRectEx(&popupWindowRect, WS_POPUP | WS_CLIPSIBLINGS | WS_BORDER, FALSE, 0);
+        const int windowWidth = popupWindowRect.right - popupWindowRect.left;
+        const int windowHeight = popupWindowRect.bottom - popupWindowRect.top;
         // The popup host is a true popup window, not a child window, so it can extend
         // beyond the toolbar client area like a standard menu while staying custom drawn.
-        const int x = anchorRectScreen.left;
-        const int y = anchorRectScreen.bottom + 4;
-        SetWindowPos(owner->popupHost_, HWND_TOPMOST, x, y, width, height, SWP_SHOWWINDOW);
-        MoveWindow(owner->popupList_, 1, 1, std::max(1, width - 2), std::max(1, height - 2), TRUE);
-        SendMessageW(owner->popupList_, LB_SETCURSEL, 0, 0);
+        int x = anchorRectScreen.left;
+        int y = anchorRectScreen.bottom + 4;
+        if (x + windowWidth > bounds.right) {
+            x = std::max(bounds.left, bounds.right - windowWidth);
+        }
+        const bool preferBelow = !popupScrollable
+            ? (windowHeight <= belowAvailable || belowAvailable >= aboveAvailable)
+            : (belowAvailable >= aboveAvailable);
+        if (!preferBelow) {
+            y = anchorRectScreen.top - 4 - windowHeight;
+        }
+        if (y < bounds.top) {
+            y = bounds.top;
+        }
+        if (y + windowHeight > bounds.bottom) {
+            y = std::max(bounds.top, bounds.bottom - windowHeight);
+        }
+        SetWindowPos(owner->popupHost_, HWND_TOPMOST, x, y, windowWidth, windowHeight, SWP_SHOWWINDOW);
+        const int indicatorTop = popupScrollable ? kToolbarPopupIndicatorHeight : 1;
+        const int indicatorBottom = popupScrollable ? kToolbarPopupIndicatorHeight : 1;
+        MoveWindow(owner->popupList_,
+                   1,
+                   indicatorTop,
+                   std::max(1, width - 2),
+                   std::max(1, clientHeight - indicatorTop - indicatorBottom),
+                   TRUE);
+        SendMessageW(owner->popupList_, LB_SETCURSEL, static_cast<WPARAM>(-1), 0);
+        SendMessageW(owner->popupList_, LB_SETTOPINDEX, 0, 0);
+        UpdatePopupScrollState();
+        StopPopupAutoScroll();
         SetFocus(owner->popupList_);
         RedrawWindow(owner->popupHost_, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
     }
@@ -748,7 +895,8 @@ struct Toolbar::Impl {
         }
 
         HBRUSH fill = entry.checked ? brushPopupItemChecked : brushPopupItem;
-        if ((draw->itemState & ODS_SELECTED) != 0) {
+        const bool isHot = static_cast<int>(draw->itemID) == popupHoverIndex;
+        if ((draw->itemState & ODS_SELECTED) != 0 || isHot) {
             fill = brushPopupItemHot;
         }
         FillRect(draw->hDC, &rc, fill ? fill : brushPopupPanel);
@@ -760,7 +908,7 @@ struct Toolbar::Impl {
         if (entry.checked) {
             RECT markRect = rc;
             markRect.right = markRect.left + 12;
-            DrawTextW(draw->hDC, L"✓", -1, &markRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+            DrawTextW(draw->hDC, L"\u2713", -1, &markRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
             rc.left = markRect.right + 6;
         }
         RECT textRect = rc;
@@ -892,7 +1040,11 @@ struct Toolbar::Impl {
             if (wParam == VK_SPACE || wParam == VK_RETURN) {
                 const int index = self->hotIndex >= 0 ? self->hotIndex : 0;
                 if (index >= 0 && index < static_cast<int>(self->items.size()) && !self->items[index].separator && !self->items[index].disabled) {
-                    self->NotifyClick(index);
+                    if (self->items[index].dropDown) {
+                        self->ShowItemDropDown(index);
+                    } else {
+                        self->NotifyClick(index);
+                    }
                     return 0;
                 }
             }
@@ -919,6 +1071,32 @@ struct Toolbar::Impl {
             RECT rect{};
             GetClientRect(window, &rect);
             FillRect(dc, &rect, self->brushPopupPanel);
+            if (self->popupScrollable) {
+                RECT topRect{1, 1, rect.right - 1, 1 + kToolbarPopupIndicatorHeight};
+                RECT bottomRect{1, rect.bottom - 1 - kToolbarPopupIndicatorHeight, rect.right - 1, rect.bottom - 1};
+                FillRect(dc, &topRect, self->brushPopupPanel);
+                FillRect(dc, &bottomRect, self->brushPopupPanel);
+
+                const COLORREF arrowColor = self->owner->theme_.mutedText;
+                HGDIOBJ oldPen = SelectObject(dc, GetStockObject(NULL_PEN));
+                HBRUSH arrowBrush = CreateSolidBrush(arrowColor);
+                HGDIOBJ oldBrushArrow = SelectObject(dc, arrowBrush);
+                if (self->popupCanScrollUp) {
+                    const int centerX = (topRect.left + topRect.right) / 2;
+                    const int centerY = (topRect.top + topRect.bottom) / 2 + 1;
+                    POINT pts[3]{{centerX - 5, centerY + 2}, {centerX + 5, centerY + 2}, {centerX, centerY - 3}};
+                    Polygon(dc, pts, 3);
+                }
+                if (self->popupCanScrollDown) {
+                    const int centerX = (bottomRect.left + bottomRect.right) / 2;
+                    const int centerY = (bottomRect.top + bottomRect.bottom) / 2 - 1;
+                    POINT pts[3]{{centerX - 5, centerY - 2}, {centerX + 5, centerY - 2}, {centerX, centerY + 3}};
+                    Polygon(dc, pts, 3);
+                }
+                SelectObject(dc, oldBrushArrow);
+                SelectObject(dc, oldPen);
+                DeleteObject(arrowBrush);
+            }
             HPEN oldPen = self->penPopupBorder ? reinterpret_cast<HPEN>(SelectObject(dc, self->penPopupBorder)) : nullptr;
             HGDIOBJ oldBrush = SelectObject(dc, GetStockObject(NULL_BRUSH));
             Rectangle(dc, rect.left, rect.top, rect.right, rect.bottom);
@@ -948,6 +1126,14 @@ struct Toolbar::Impl {
             }
             break;
         }
+        case WM_CTLCOLORLISTBOX:
+            if (reinterpret_cast<HWND>(lParam) == self->owner->popupList_) {
+                HDC dc = reinterpret_cast<HDC>(wParam);
+                SetBkColor(dc, self->owner->theme_.panel);
+                SetTextColor(dc, self->owner->theme_.text);
+                return reinterpret_cast<LRESULT>(self->brushPopupPanel ? self->brushPopupPanel : GetStockObject(BLACK_BRUSH));
+            }
+            break;
         case WM_COMMAND:
             if (LOWORD(wParam) == kToolbarPopupListId && HIWORD(wParam) == LBN_DBLCLK) {
                 self->ApplyPopupSelection();
@@ -958,6 +1144,17 @@ struct Toolbar::Impl {
             if (LOWORD(wParam) == WA_INACTIVE) {
                 self->SuppressToggleFromCursorIfNeeded();
                 self->HidePopup();
+                return 0;
+            }
+            break;
+        case WM_MOUSEWHEEL:
+            self->ScrollPopupByItems(GET_WHEEL_DELTA_WPARAM(wParam) > 0 ? -1 : 1);
+            return 0;
+        case WM_TIMER:
+            if (wParam == kToolbarPopupScrollTimerId) {
+                if (self->popupAutoScrollDirection != 0) {
+                    self->ScrollPopupByItems(self->popupAutoScrollDirection);
+                }
                 return 0;
             }
             break;
@@ -975,14 +1172,57 @@ struct Toolbar::Impl {
         }
 
         switch (message) {
+        case WM_MOUSEMOVE: {
+            TRACKMOUSEEVENT track{};
+            track.cbSize = sizeof(track);
+            track.dwFlags = TME_LEAVE;
+            track.hwndTrack = window;
+            TrackMouseEvent(&track);
+
+            RECT client{};
+            GetClientRect(window, &client);
+            const int y = GET_Y_LPARAM(lParam);
+            if (self->popupScrollable) {
+                if (y <= kToolbarPopupIndicatorHeight) {
+                    self->StartPopupAutoScroll(-1);
+                } else if (y >= client.bottom - kToolbarPopupIndicatorHeight) {
+                    self->StartPopupAutoScroll(1);
+                } else {
+                    self->StopPopupAutoScroll();
+                }
+            }
+
+            const LRESULT hit = SendMessageW(window, LB_ITEMFROMPOINT, 0, lParam);
+            int hoverIndex = -1;
+            if (HIWORD(hit) == 0) {
+                const int index = static_cast<int>(LOWORD(hit));
+                if (index >= 0 && index < static_cast<int>(self->popupEntries.size()) &&
+                    !self->popupEntries[index].separator && !self->popupEntries[index].disabled) {
+                    hoverIndex = index;
+                }
+            }
+            if (self->popupHoverIndex != hoverIndex) {
+                self->popupHoverIndex = hoverIndex;
+                InvalidateRect(window, nullptr, FALSE);
+            }
+            return DefSubclassProc(window, message, wParam, lParam);
+        }
         case WM_LBUTTONUP: {
             const LRESULT result = DefSubclassProc(window, message, wParam, lParam);
             const LRESULT hit = SendMessageW(window, LB_ITEMFROMPOINT, 0, lParam);
             if (HIWORD(hit) == 0) {
+                SendMessageW(window, LB_SETCURSEL, static_cast<WPARAM>(LOWORD(hit)), 0);
                 self->ApplyPopupSelection();
             }
             return result;
         }
+        case WM_MOUSELEAVE:
+            self->StopPopupAutoScroll();
+            if (self->popupHoverIndex != -1) {
+                self->popupHoverIndex = -1;
+                InvalidateRect(window, nullptr, FALSE);
+            }
+            return 0;
         case WM_KEYDOWN:
             if (wParam == VK_RETURN || wParam == VK_SPACE || wParam == VK_RIGHT) {
                 self->ApplyPopupSelection();
@@ -992,8 +1232,20 @@ struct Toolbar::Impl {
                 self->HidePopup();
                 return 0;
             }
+            if (wParam == VK_UP) {
+                self->ScrollPopupByItems(-1);
+                return 0;
+            }
+            if (wParam == VK_DOWN) {
+                self->ScrollPopupByItems(1);
+                return 0;
+            }
             break;
+        case WM_MOUSEWHEEL:
+            self->ScrollPopupByItems(GET_WHEEL_DELTA_WPARAM(wParam) > 0 ? -1 : 1);
+            return 0;
         case WM_NCDESTROY:
+            self->StopPopupAutoScroll();
             RemoveWindowSubclass(window, PopupListSubclassProc, subclassId);
             break;
         default:
@@ -1214,6 +1466,7 @@ void Toolbar::SetTheme(const Theme& theme) {
 }
 
 void Toolbar::SetItems(const std::vector<ToolbarItem>& items) {
+    impl_->HidePopup();
     impl_->items = items;
     impl_->layoutDirty = true;
     if (toolbarHwnd_) {
@@ -1230,6 +1483,7 @@ void Toolbar::AddItem(const ToolbarItem& item) {
 }
 
 void Toolbar::ClearItems() {
+    impl_->HidePopup();
     impl_->items.clear();
     impl_->itemRects.clear();
     impl_->itemVisible.clear();

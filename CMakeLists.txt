@@ -106,6 +106,14 @@ target_link_libraries(darkui_toolbar_demo PRIVATE
     darkui_combobox
 )
 
+add_executable(darkui_toolbar_menubar_demo WIN32
+    demo/demo_toolbar_menubar.cpp
+)
+
+target_link_libraries(darkui_toolbar_menubar_demo PRIVATE
+    darkui_combobox
+)
+
 add_executable(darkui_edit_demo WIN32
     demo/demo_edit.cpp
 )
@@ -124,5 +132,6 @@ if (MINGW)
     target_link_options(darkui_tab_demo PRIVATE -municode)
     target_link_options(darkui_showcase_demo PRIVATE -municode)
     target_link_options(darkui_toolbar_demo PRIVATE -municode)
+    target_link_options(darkui_toolbar_menubar_demo PRIVATE -municode)
     target_link_options(darkui_edit_demo PRIVATE -municode)
 endif()

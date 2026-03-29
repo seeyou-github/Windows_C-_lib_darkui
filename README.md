@@ -1209,6 +1209,7 @@ case WM_COMMAND:
 - `ToolbarItem::iconOnly = true` draws a compact square icon button without text.
 - Even for `iconOnly` items, keep `text` populated so overflow popups can show a readable label.
 - `ToolbarItem::dropDown = true` draws a drop-down arrow and opens `popupMenu`.
+- `ToolbarItem::dropDown = true` also responds to keyboard `Enter` and `Space`.
 - Left-aligned and right-aligned groups are laid out independently, so secondary actions can stay pinned to the far edge.
 - When width is insufficient, hidden items move into an overflow `...` button.
 
@@ -1218,6 +1219,8 @@ case WM_COMMAND:
 - Overflow preserves drop-down structure: a drop-down item remains a submenu entry inside overflow rather than flattening all child commands into one list.
 - Clicking the same drop-down trigger or the same overflow `...` trigger again closes the popup.
 - The currently open drop-down trigger stays visually active while its popup is visible.
+- `SetItems()` and `ClearItems()` both close any visible popup first, so runtime toolbar rebuilds do not leave stale menu UI behind.
+- The same `Toolbar` can be used as a menu-bar style control by combining text-first `dropDown` items with application-owned `HMENU` objects.
 
 ### Current Scope
 
@@ -1249,6 +1252,20 @@ Output:
 
 ```text
 build\darkui_toolbar_demo.exe
+```
+
+### Toolbar Menu-Bar Demo
+
+The menu-bar demo uses `darkui::Toolbar` as a text-first application menu with `File / Edit / View / Window / Help` style drop-downs plus right-aligned actions.
+
+```powershell
+.\build_demo_toolbar_menubar.bat
+```
+
+Output:
+
+```text
+build\darkui_toolbar_menubar_demo.exe
 ```
 
 ## Edit Control

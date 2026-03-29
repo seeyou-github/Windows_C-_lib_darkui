@@ -25,6 +25,7 @@ struct ToolbarItem {
     // - Keep ownership of the menu in application code.
     // - Toolbar reads menu items to build a custom dark popup instead of showing the
     //   native light themed menu directly.
+    // - The same menu handle can also be reused for a menu-bar style toolbar item.
     HMENU popupMenu = nullptr;
     // Optional application-owned payload value.
     std::uintptr_t userData = 0;
@@ -44,6 +45,7 @@ struct ToolbarItem {
     // Draws a drop-down arrow and opens `popupMenu` on click when true.
     // If width becomes insufficient, the item is preserved inside overflow as a
     // submenu entry rather than being flattened into plain commands.
+    // Keyboard Enter/Space opens the custom popup as well.
     bool dropDown = false;
 };
 
@@ -102,7 +104,9 @@ public:
     // Useful for incremental setup during initialization.
     void AddItem(const ToolbarItem& item);
     // Removes all toolbar items.
-    // Any visible drop-down or overflow popup is closed first.
+    // Notes:
+    // - Any visible drop-down or overflow popup is closed first.
+    // - Useful when rebuilding a menu-bar style toolbar from scratch.
     void ClearItems();
     // Replaces one item in place.
     // Parameters:
