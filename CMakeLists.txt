@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_library(darkui_combobox STATIC
     src/button.cpp
     src/combobox.cpp
+    src/edit.cpp
     src/progress.cpp
     src/scrollbar.cpp
     src/slider.cpp
@@ -105,6 +106,14 @@ target_link_libraries(darkui_toolbar_demo PRIVATE
     darkui_combobox
 )
 
+add_executable(darkui_edit_demo WIN32
+    demo/demo_edit.cpp
+)
+
+target_link_libraries(darkui_edit_demo PRIVATE
+    darkui_combobox
+)
+
 if (MINGW)
     target_link_options(darkui_combobox_demo PRIVATE -municode)
     target_link_options(darkui_table_demo PRIVATE -municode)
@@ -115,4 +124,5 @@ if (MINGW)
     target_link_options(darkui_tab_demo PRIVATE -municode)
     target_link_options(darkui_showcase_demo PRIVATE -municode)
     target_link_options(darkui_toolbar_demo PRIVATE -municode)
+    target_link_options(darkui_edit_demo PRIVATE -municode)
 endif()

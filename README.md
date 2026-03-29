@@ -1250,3 +1250,89 @@ Output:
 ```text
 build\darkui_toolbar_demo.exe
 ```
+
+## Edit Control
+
+`darkui::Edit` is a custom dark input box for Win32. It uses a lightweight dark host window plus an inner borderless native `EDIT`, so normal caret, selection, keyboard, and IME behavior remain intact while the thin system border line stays hidden.
+
+### Files
+
+- `include/darkui/edit.h`
+- `src/edit.cpp`
+- `demo/demo_edit.cpp`
+- `build_demo_edit.bat`
+
+### Create
+
+```cpp
+darkui::Theme theme;
+theme.editBackground = RGB(43, 47, 54);
+theme.editText = RGB(236, 239, 244);
+theme.editPlaceholder = RGB(128, 137, 150);
+
+darkui::Edit edit;
+edit.Create(hwnd, 9001, L"", theme);
+edit.SetCueBanner(L"Search or enter text");
+edit.SetCornerRadius(16);
+```
+
+### Runtime API
+
+```cpp
+edit.SetTheme(theme);
+edit.SetText(L"Updated text");
+edit.SetCueBanner(L"Placeholder");
+edit.SetCornerRadius(16);
+edit.SetReadOnly(false);
+std::wstring text = edit.GetText();
+```
+
+Runtime notes:
+
+- `SetCornerRadius()` updates both the painted shape and the host window region.
+- `SetCueBanner()` updates the custom placeholder overlay immediately.
+- `SetReadOnly(true)` keeps the same dark colors as editable mode.
+
+### Parent Notification
+
+The inner native edit forwards standard `EN_*` notifications to the parent through `WM_COMMAND` using the edit control ID:
+
+```cpp
+case WM_COMMAND:
+    if (LOWORD(wParam) == 9001 && HIWORD(wParam) == EN_CHANGE) {
+        return 0;
+    }
+    break;
+```
+
+For compatibility with normal Win32 edit handling, the forwarded `WM_COMMAND` uses the inner native `EDIT` handle as `lParam`.
+
+### Theme Fields Used By Edit
+
+- `editBackground`: input background color
+- `editText`: input text color
+- `editPlaceholder`: placeholder text color
+- `uiFont`: edit text font
+
+### Notes
+
+- The host window paints the dark background, so no native border line is shown.
+- `SetCornerRadius()` controls the rounded outer shape of the host surface.
+- The inner `EDIT` is created without `WS_BORDER` or `WS_EX_CLIENTEDGE`.
+- `SetCueBanner()` uses a custom placeholder overlay, so color and visibility stay consistent even if `EM_SETCUEBANNER` is unsupported.
+- Read-only mode keeps the same dark colors as editable mode.
+- `hwnd()` returns the dark host window, and `edit_hwnd()` returns the inner native `EDIT`.
+
+### Edit Demo
+
+The edit demo shows two dark input boxes, cue-banner placeholder text, forwarded `EN_CHANGE` notifications, and a sample button that reads both edit values.
+
+```powershell
+.\build_demo_edit.bat
+```
+
+Output:
+
+```text
+build\darkui_edit_demo.exe
+```

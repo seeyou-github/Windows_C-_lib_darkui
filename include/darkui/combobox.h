@@ -65,6 +65,12 @@ struct Theme {
     COLORREF popupAccentItem = RGB(27, 47, 83);
     // Combo-box accented item hover color.
     COLORREF popupAccentItemHot = RGB(39, 66, 116);
+    // Edit control background color.
+    COLORREF editBackground = RGB(44, 47, 52);
+    // Edit control text color.
+    COLORREF editText = RGB(224, 227, 232);
+    // Edit control placeholder text color.
+    COLORREF editPlaceholder = RGB(142, 149, 160);
     // Table body background color.
     COLORREF tableBackground = RGB(34, 36, 40);
     // Table body text color.
