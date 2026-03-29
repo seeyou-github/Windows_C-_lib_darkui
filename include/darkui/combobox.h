@@ -113,6 +113,20 @@ struct Theme {
     COLORREF tabText = RGB(210, 214, 220);
     // Active tab text color.
     COLORREF tabTextActive = RGB(245, 247, 250);
+    // Toolbar background color.
+    COLORREF toolbarBackground = RGB(34, 36, 40);
+    // Toolbar item normal background color.
+    COLORREF toolbarItem = RGB(52, 56, 62);
+    // Toolbar item hover background color.
+    COLORREF toolbarItemHot = RGB(72, 80, 92);
+    // Toolbar item checked or pressed background color.
+    COLORREF toolbarItemActive = RGB(78, 120, 184);
+    // Toolbar item normal text color.
+    COLORREF toolbarText = RGB(224, 227, 232);
+    // Toolbar item active text color.
+    COLORREF toolbarTextActive = RGB(245, 247, 250);
+    // Toolbar separator color.
+    COLORREF toolbarSeparator = RGB(61, 66, 74);
     // Font shared by controls that render text.
     FontSpec uiFont{};
     // Default combo-box item height.
@@ -145,6 +159,8 @@ struct Theme {
     int tabHeight = 36;
     // Tab strip width in vertical mode.
     int tabWidth = 180;
+    // Toolbar height.
+    int toolbarHeight = 40;
 };
 
 // Single item stored by darkui::ComboBox.

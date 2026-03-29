@@ -1101,3 +1101,120 @@ Output:
 ```text
 build\darkui_tab_demo.exe
 ```
+
+## Toolbar Control
+
+`darkui::Toolbar` is a custom dark toolbar for Win32. It draws its own background, clickable items, checked state, hover state, separators, and disabled items while keeping a standard `WM_COMMAND` notification path.
+
+### Files
+
+- `include/darkui/toolbar.h`
+- `src/toolbar.cpp`
+- `demo/demo_toolbar.cpp`
+- `build_demo_toolbar.bat`
+
+### Public Types
+
+```cpp
+struct ToolbarItem {
+    std::wstring text;
+    int commandId = 0;
+    std::uintptr_t userData = 0;
+    bool separator = false;
+    bool checked = false;
+    bool disabled = false;
+};
+```
+
+### Create
+
+```cpp
+darkui::Theme theme;
+theme.toolbarBackground = RGB(25, 28, 32);
+theme.toolbarItem = RGB(46, 51, 58);
+theme.toolbarItemHot = RGB(64, 71, 82);
+theme.toolbarItemActive = RGB(78, 120, 184);
+theme.toolbarText = RGB(228, 232, 238);
+theme.toolbarTextActive = RGB(248, 250, 252);
+theme.toolbarSeparator = RGB(70, 76, 86);
+theme.toolbarHeight = 44;
+
+darkui::Toolbar toolbar;
+toolbar.Create(hwnd, 8001, theme);
+toolbar.SetItems({
+    {L"New", 8101},
+    {L"Open", 8102},
+    {L"", 0, 0, true},
+    {L"Share", 8103},
+});
+```
+
+### Runtime API
+
+```cpp
+toolbar.SetTheme(theme);
+toolbar.AddItem({L"Export", 8104});
+toolbar.SetChecked(0, true);
+toolbar.SetDisabled(3, true);
+std::size_t count = toolbar.GetCount();
+```
+
+### Parent Notification
+
+The toolbar sends standard `WM_COMMAND` notifications using each item's `commandId`:
+
+```cpp
+case WM_COMMAND:
+    switch (LOWORD(wParam)) {
+    case 8101:
+        return 0;
+    case 8102:
+        return 0;
+    }
+    break;
+```
+
+### Theme Fields Used By Toolbar
+
+- `toolbarBackground`: toolbar background color
+- `toolbarItem`: normal item background color
+- `toolbarItemHot`: hover item background color
+- `toolbarItemActive`: checked or pressed item background color
+- `toolbarText`: normal item text color
+- `toolbarTextActive`: active item text color
+- `toolbarSeparator`: separator line color
+- `toolbarHeight`: recommended toolbar height
+- `buttonDisabledText`: disabled item text color
+- `textPadding`: horizontal item padding
+- `uiFont`: toolbar text font
+
+### Current Scope
+
+- Clickable toolbar items
+- Hover and pressed visuals
+- Checked state
+- Disabled state
+- Separator items
+- Standard `WM_COMMAND` parent notification
+
+Not included yet:
+
+- Item icons
+- Overflow handling
+- Right-aligned groups
+- Drop-down buttons
+- Keyboard navigation between items
+
+### Toolbar Demo
+
+The toolbar demo shows grouped actions, one checked item, one disabled item, and a simple status line updated through `WM_COMMAND`.
+
+```powershell
+.\build_demo_toolbar.bat
+```
+
+Output:
+
+```text
+build\darkui_toolbar_demo.exe
+```

@@ -6,3 +6,4 @@
 #include "darkui/slider.h"
 #include "darkui/tab.h"
 #include "darkui/table.h"
+#include "darkui/toolbar.h"
