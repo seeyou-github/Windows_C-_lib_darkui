@@ -1,28 +1,28 @@
 ﻿# Button
 
-## 概述
+## Overview
 
-`darkui::Button` 是一个自绘暗色按钮控件。它保留标准 Win32 按钮通知方式，同时允许应用层控制按钮颜色、圆角和宿主表面色。
+`darkui::Button` is a custom dark owner-draw button for Win32. It preserves the standard Win32 button notification flow while giving application code control over colors, corner radius, and host surface blending.
 
-## 头文件与实现
+## Files
 
 - `include/darkui/button.h`
 - `src/button.cpp`
 
-## 适用场景
+## Suitable Scenarios
 
-- 暗色窗口中的主按钮、次按钮
-- 放置在卡片、面板、工具区中的圆角按钮
-- 需要保持 `BN_CLICKED` 兼容行为的业务按钮
+- Primary and secondary buttons in dark windows
+- Rounded buttons placed on cards or panels
+- Win32 applications that still want standard `BN_CLICKED` behavior
 
-## 主要能力
+## Main Features
 
-- 普通、悬停、按下、禁用四种视觉状态
-- 自定义边框颜色和文字颜色
-- 自定义圆角
-- 支持宿主表面色，避免圆角外侧出现背景接缝
+- Normal, hover, pressed, and disabled states
+- Custom border and text colors
+- Configurable corner radius
+- Host surface color support to avoid visible seams around rounded corners
 
-## 创建方式
+## Basic Usage
 
 ```cpp
 #include "darkui/button.h"
@@ -43,7 +43,7 @@ button.SetSurfaceColor(theme.panel);
 MoveWindow(button.hwnd(), 20, 20, 140, 40, TRUE);
 ```
 
-## 父窗口消息处理
+## Parent Message Handling
 
 ```cpp
 case WM_COMMAND:
@@ -54,47 +54,45 @@ case WM_COMMAND:
     break;
 ```
 
-## 常用 API
+## Common API
 
-### Create
+### `Create`
 
 ```cpp
 bool Create(HWND parent, int controlId, const std::wstring& text, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, DWORD exStyle = 0);
 ```
 
-### SetTheme
+### `SetTheme`
 
 ```cpp
 button.SetTheme(theme);
 ```
 
-### SetText / GetText
+### `SetText` / `GetText`
 
 ```cpp
 button.SetText(L"Processing...");
 std::wstring text = button.GetText();
 ```
 
-### SetCornerRadius
+### `SetCornerRadius`
 
 ```cpp
 button.SetCornerRadius(18);
 ```
 
-### SetSurfaceColor
+### `SetSurfaceColor`
 
 ```cpp
 button.SetSurfaceColor(theme.panel);
 ```
 
-作用：
+Purpose:
 
-- 设置按钮圆角外侧的宿主背景色
-- 当按钮位于卡片、面板上时，建议显式设置
+- Sets the background color behind the rounded button corners
+- Recommended when the button sits on a card or panel instead of the main window background
 
-## 主题字段
-
-`Button` 主要使用这些 `Theme` 字段：
+## Theme Fields Used
 
 - `button`
 - `buttonHover`
@@ -107,15 +105,25 @@ button.SetSurfaceColor(theme.panel);
 - `uiFont`
 - `background`
 
-## 使用建议
+## Usage Notes
 
-- 默认按钮可以直接使用 `theme.background` 作为宿主表面色
-- 卡片或面板上的按钮建议调用 `SetSurfaceColor(cardColor)`
-- 需要禁用时直接对 `button.hwnd()` 调用 `EnableWindow(..., FALSE)`
+- For plain window backgrounds, the default surface fallback is usually enough
+- For cards and panels, call `SetSurfaceColor(cardColor)`
+- To disable the control, use `EnableWindow(button.hwnd(), FALSE)`
 
-## 当前限制
+## Demo Reference
 
-- 不带图标
-- 不带下拉箭头
-- 不带默认按钮光环样式
-- 不提供按钮组管理逻辑
+For complete examples, see:
+
+- `../demo/src/demo_button.cpp`
+- `../demo/src/demo_edit.cpp`
+- `../demo/src/demo_progress.cpp`
+- `../demo/src/demo_showcase.cpp`
+- `../demo/src/demo_slider.cpp`
+
+## Current Limitations
+
+- No built-in icon support
+- No drop-down arrow support
+- No default-button glow behavior
+- No button-group management

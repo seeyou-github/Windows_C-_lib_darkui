@@ -1,28 +1,28 @@
 ﻿# Tab
 
-## 概述
+## Overview
 
-`darkui::Tab` 是一个自定义暗色标签页控件。它绘制自己的标签条，并允许应用层把页面窗口挂接到各标签项上。
+`darkui::Tab` is a custom dark tab control. It draws its own tab strip and allows application code to attach page windows to each tab item.
 
-## 头文件与实现
+## Files
 
 - `include/darkui/tab.h`
 - `src/tab.cpp`
 
-## 适用场景
+## Suitable Scenarios
 
-- 设置窗口
-- 多页工作区
-- 暗色后台管理界面
+- Settings windows
+- Multi-page work areas
+- Dark admin or dashboard interfaces
 
-## 主要能力
+## Main Features
 
-- 水平或垂直标签布局
-- 动态增删标签项
-- 挂接已有子窗口作为页面
-- 保持 `WM_NOTIFY + TCN_SELCHANGE`
+- Horizontal or vertical tab layout
+- Dynamic tab item management
+- Attached child-page windows
+- Standard `WM_NOTIFY + TCN_SELCHANGE` notification flow
 
-## 核心类型
+## Core Type
 
 ```cpp
 struct TabItem {
@@ -31,7 +31,7 @@ struct TabItem {
 };
 ```
 
-## 创建方式
+## Basic Usage
 
 ```cpp
 #include "darkui/tab.h"
@@ -54,7 +54,7 @@ tab.SetItems({
 MoveWindow(tab.hwnd(), 20, 20, 640, 420, TRUE);
 ```
 
-## 挂接页面
+## Attaching Pages
 
 ```cpp
 HWND pageOne = CreateWindowExW(0, L"STATIC", L"Overview", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, tab.hwnd(), nullptr, instance, nullptr);
@@ -67,7 +67,7 @@ tab.AttachPage(2, pageThree);
 tab.SetSelection(0);
 ```
 
-## 父窗口消息处理
+## Parent Message Handling
 
 ```cpp
 case WM_NOTIFY: {
@@ -80,15 +80,15 @@ case WM_NOTIFY: {
 }
 ```
 
-## 常用 API
+## Common API
 
-### SetVertical
+### `SetVertical`
 
 ```cpp
 tab.SetVertical(true);
 ```
 
-### SetItems / AddItem / ClearItems
+### `SetItems` / `AddItem` / `ClearItems`
 
 ```cpp
 tab.SetItems({{L"A", 1}, {L"B", 2}});
@@ -96,32 +96,32 @@ tab.AddItem({L"C", 3});
 tab.ClearItems();
 ```
 
-### AttachPage
+### `AttachPage`
 
 ```cpp
 tab.AttachPage(0, pageOne);
 ```
 
-### SetSelection / GetSelection
+### `SetSelection` / `GetSelection`
 
 ```cpp
 tab.SetSelection(1, true);
 int index = tab.GetSelection();
 ```
 
-### GetContentRect
+### `GetContentRect`
 
 ```cpp
 RECT contentRect = tab.GetContentRect();
 ```
 
-### SetTheme
+### `SetTheme`
 
 ```cpp
 tab.SetTheme(theme);
 ```
 
-## 主题字段
+## Theme Fields Used
 
 - `tabBackground`
 - `tabItem`
@@ -134,15 +134,24 @@ tab.SetTheme(theme);
 - `textPadding`
 - `uiFont`
 
-## 使用建议
+## Usage Notes
 
-- 页面窗口的创建与布局仍由应用层负责
-- 垂直模式适合左侧导航
-- 水平模式适合传统页签界面
+- Page creation and page layout stay in application code
+- Vertical layout works well for left navigation
+- Horizontal layout works well for classic tabbed windows
 
-## 当前限制
+## Demo Reference
 
-- 不支持关闭按钮
-- 不支持拖拽排序
-- 不支持图标标签项
-- 不支持禁用项
+For complete examples, see:
+
+- `../demo/src/demo_tab.cpp`
+- `../demo/src/demo_showcase.cpp`
+- `../demo/src/demo_toolbar.cpp`
+- `../demo/src/demo_toolbar_menubar.cpp`
+
+## Current Limitations
+
+- No close buttons
+- No drag reordering
+- No icon tabs
+- No disabled tabs

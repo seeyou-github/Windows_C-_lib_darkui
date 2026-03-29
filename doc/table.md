@@ -1,29 +1,29 @@
 ﻿# Table
 
-## 概述
+## Overview
 
-`darkui::Table` 是一个自定义暗色表格控件，用于展示型数据。它自绘表头、表体、网格和选中高亮，适合暗色数据面板。
+`darkui::Table` is a custom dark table control intended for data presentation. It draws its own header, body, grid lines, and selected-row highlight so it stays visually consistent in dark interfaces.
 
-## 头文件与实现
+## Files
 
 - `include/darkui/table.h`
 - `src/table.cpp`
 
-## 适用场景
+## Suitable Scenarios
 
-- 设置列表
-- 数据总览表
-- 暗色管理后台中的展示表格
+- Settings lists
+- Data overview panels
+- Dark admin-style display tables
 
-## 主要能力
+## Main Features
 
-- 自定义表头背景和文字
-- 自定义表体背景、文字和网格线
-- 支持列定义与行数据
-- 支持选中高亮
-- 支持是否在空白扩展区域继续绘制网格
+- Custom header background and text
+- Custom body background, text, and grid colors
+- Column and row data management
+- Selected-row highlight
+- Optional grid drawing below the last row
 
-## 核心类型
+## Core Types
 
 ```cpp
 struct TableColumn {
@@ -35,7 +35,7 @@ struct TableColumn {
 using TableRow = std::vector<std::wstring>;
 ```
 
-## 创建方式
+## Basic Usage
 
 ```cpp
 #include "darkui/table.h"
@@ -64,9 +64,9 @@ table.SetRows({
 MoveWindow(table.hwnd(), 20, 20, 640, 360, TRUE);
 ```
 
-## 常用 API
+## Common API
 
-### SetColumns
+### `SetColumns`
 
 ```cpp
 table.SetColumns({
@@ -77,7 +77,7 @@ table.SetColumns({
 });
 ```
 
-### SetRows / AddRow / ClearRows
+### `SetRows` / `AddRow` / `ClearRows`
 
 ```cpp
 table.SetRows(rows);
@@ -85,19 +85,19 @@ table.AddRow({L"Theme", L"Config", L"Live", L"Updated at runtime"});
 table.ClearRows();
 ```
 
-### SetDrawEmptyGrid
+### `SetDrawEmptyGrid`
 
 ```cpp
 table.SetDrawEmptyGrid(false);
 ```
 
-### SetTheme
+### `SetTheme`
 
 ```cpp
 table.SetTheme(theme);
 ```
 
-## 读取状态
+## Reading State
 
 ```cpp
 std::size_t rowCount = table.GetRowCount();
@@ -105,7 +105,7 @@ std::size_t columnCount = table.GetColumnCount();
 bool drawEmptyGrid = table.draw_empty_grid();
 ```
 
-## 主题字段
+## Theme Fields Used
 
 - `tableBackground`
 - `tableText`
@@ -117,14 +117,21 @@ bool drawEmptyGrid = table.draw_empty_grid();
 - `textPadding`
 - `buttonHot`
 
-## 使用建议
+## Usage Notes
 
-- 更适合展示型表格，而不是强交互数据表
-- 如果你需要排序、分页、编辑，建议在业务层自行扩展
+- Best suited for presentation-oriented tables rather than highly interactive grids
+- Sorting, paging, and editing are expected to be implemented by application code if needed
 
-## 当前限制
+## Demo Reference
 
-- 当前没有内建滚动封装
-- 不支持列拖动和排序
-- 不支持单元格编辑
-- 不支持多选
+For complete examples, see:
+
+- `../demo/src/demo_table.cpp`
+- `../demo/src/demo_showcase.cpp`
+
+## Current Limitations
+
+- No built-in scroll container
+- No column drag or sorting support
+- No in-place cell editing
+- No multi-select support

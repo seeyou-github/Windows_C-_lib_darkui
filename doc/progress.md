@@ -1,28 +1,28 @@
 ﻿# ProgressBar
 
-## 概述
+## Overview
 
-`darkui::ProgressBar` 是一个自定义暗色进度条控件。它把宿主背景、外层壳、内层轨道、填充和百分比文字拆开处理，便于在暗色卡片和面板中保持层次。
+`darkui::ProgressBar` is a custom dark progress bar. It separates host background, outer shell, inner track, fill, and percentage text so the control fits naturally into dark cards and panels.
 
-## 头文件与实现
+## Files
 
 - `include/darkui/progress.h`
 - `src/progress.cpp`
 
-## 适用场景
+## Suitable Scenarios
 
-- 下载进度
-- 任务执行进度
-- 暗色卡片中的统计条
+- Download progress
+- Task execution status
+- Stats bars inside dark cards or dashboards
 
-## 主要能力
+## Main Features
 
-- 自定义逻辑范围
-- 自定义填充值
-- 可显示或隐藏百分比
-- 支持宿主表面色
+- Configurable logical range
+- Configurable current value
+- Optional percentage text
+- Host surface color support
 
-## 创建方式
+## Basic Usage
 
 ```cpp
 #include "darkui/progress.h"
@@ -42,39 +42,39 @@ progress.SetValue(64);
 MoveWindow(progress.hwnd(), 20, 20, 300, 40, TRUE);
 ```
 
-## 常用 API
+## Common API
 
-### SetRange
+### `SetRange`
 
 ```cpp
 progress.SetRange(0, 100);
 ```
 
-### SetValue
+### `SetValue`
 
 ```cpp
 progress.SetValue(72);
 ```
 
-### SetShowPercentage
+### `SetShowPercentage`
 
 ```cpp
 progress.SetShowPercentage(true);
 ```
 
-### SetSurfaceColor
+### `SetSurfaceColor`
 
 ```cpp
 progress.SetSurfaceColor(theme.panel);
 ```
 
-### SetTheme
+### `SetTheme`
 
 ```cpp
 progress.SetTheme(theme);
 ```
 
-## 读取状态
+## Reading State
 
 ```cpp
 int value = progress.GetValue();
@@ -83,7 +83,7 @@ int maxValue = progress.GetMaximum();
 bool showText = progress.show_percentage();
 ```
 
-## 主题字段
+## Theme Fields Used
 
 - `progressBackground`
 - `progressTrack`
@@ -93,14 +93,21 @@ bool showText = progress.show_percentage();
 - `uiFont`
 - `background`
 
-## 使用建议
+## Usage Notes
 
-- 如果进度条放在自定义卡片上，建议调用 `SetSurfaceColor(cardColor)`
-- 逻辑范围变化后，当前值会被自动夹紧
+- When the control sits on a custom card, call `SetSurfaceColor(cardColor)`
+- Changing the logical range automatically clamps the current value
 
-## 当前限制
+## Demo Reference
 
-- 当前只支持水平模式
-- 不支持不确定进度动画
-- 不支持渐变填充
-- 不发送父窗口通知
+For complete examples, see:
+
+- `../demo/src/demo_progress.cpp`
+- `../demo/src/demo_showcase.cpp`
+
+## Current Limitations
+
+- Horizontal mode only
+- No indeterminate animation
+- No gradient fill
+- No parent notification flow

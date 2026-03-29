@@ -1,28 +1,28 @@
 ﻿# Slider
 
-## 概述
+## Overview
 
-`darkui::Slider` 是一个自定义暗色滑块控件，用于数值范围选择。它目前为水平模式，并通过标准 `WM_HSCROLL` 通知父窗口。
+`darkui::Slider` is a custom dark slider control for range-based input. It currently supports horizontal layout and reports value changes through the standard `WM_HSCROLL` path.
 
-## 头文件与实现
+## Files
 
 - `include/darkui/slider.h`
 - `src/slider.cpp`
 
-## 适用场景
+## Suitable Scenarios
 
-- 参数调节
-- 音量、亮度、曝光、缩放等连续数值控制
-- 暗色设置面板
+- Parameter tuning
+- Volume, brightness, exposure, or zoom controls
+- Dark settings panels
 
-## 主要能力
+## Main Features
 
-- 水平滑块
-- 自定义轨道、填充、滑块样式
-- 可选刻度
-- 鼠标拖拽和键盘操作
+- Horizontal slider
+- Custom track, fill, thumb, and tick styling
+- Optional tick marks
+- Mouse drag and keyboard control
 
-## 创建方式
+## Basic Usage
 
 ```cpp
 #include "darkui/slider.h"
@@ -46,7 +46,7 @@ slider.SetTickCount(11);
 MoveWindow(slider.hwnd(), 20, 20, 320, 80, TRUE);
 ```
 
-## 父窗口消息处理
+## Parent Message Handling
 
 ```cpp
 case WM_HSCROLL:
@@ -57,35 +57,35 @@ case WM_HSCROLL:
     break;
 ```
 
-## 常用 API
+## Common API
 
-### SetRange
+### `SetRange`
 
 ```cpp
 slider.SetRange(0, 100);
 ```
 
-### SetValue
+### `SetValue`
 
 ```cpp
 slider.SetValue(50);
 slider.SetValue(60, true);
 ```
 
-### SetShowTicks / SetTickCount
+### `SetShowTicks` / `SetTickCount`
 
 ```cpp
 slider.SetShowTicks(true);
 slider.SetTickCount(11);
 ```
 
-### SetTheme
+### `SetTheme`
 
 ```cpp
 slider.SetTheme(theme);
 ```
 
-## 读取状态
+## Reading State
 
 ```cpp
 int value = slider.GetValue();
@@ -95,7 +95,7 @@ bool showTicks = slider.show_ticks();
 int tickCount = slider.tick_count();
 ```
 
-## 主题字段
+## Theme Fields Used
 
 - `sliderBackground`
 - `sliderTrack`
@@ -106,14 +106,23 @@ int tickCount = slider.tick_count();
 - `sliderTrackHeight`
 - `sliderThumbRadius`
 
-## 使用建议
+## Usage Notes
 
-- 适合连续数值控制
-- 需要即时反馈时，可在 `WM_HSCROLL` 中同步更新业务值
-- 想做更细粒度步进时，由业务层自行对值进行换算
+- Suitable for continuous numeric values
+- Use `WM_HSCROLL` to keep application state synchronized
+- Fine-grained stepping can be implemented in application code
 
-## 当前限制
+## Demo Reference
 
-- 仅支持水平模式
-- 不支持气泡提示
-- 不支持禁用态专用视觉
+For complete examples, see:
+
+- `../demo/src/demo_slider.cpp`
+- `../demo/src/demo_showcase.cpp`
+- `../demo/src/demo_toolbar.cpp`
+- `../demo/src/demo_toolbar_menubar.cpp`
+
+## Current Limitations
+
+- Horizontal mode only
+- No value bubble
+- No dedicated disabled-state visuals

@@ -1,30 +1,30 @@
 ﻿# ScrollBar
 
-## 概述
+## Overview
 
-`darkui::ScrollBar` 是一个自定义暗色滚动条，支持横向和纵向模式，并保留标准 Win32 滚动通知方式。
+`darkui::ScrollBar` is a custom dark scrollbar that supports both horizontal and vertical modes while preserving standard Win32 scroll notification behavior.
 
-## 头文件与实现
+## Files
 
 - `include/darkui/scrollbar.h`
 - `src/scrollbar.cpp`
 
-## 适用场景
+## Suitable Scenarios
 
-- 自定义内容区域滚动
-- 暗色侧栏滚动
-- 与自绘控件或自定义画布配合使用
+- Scrolling custom-drawn content
+- Dark side panels
+- Scrollable regions paired with custom controls or custom canvases
 
-## 主要能力
+## Main Features
 
-- 横向和纵向滚动条
-- 自定义逻辑范围
-- 自定义页大小
-- 拖拽滚动块
-- 点击轨道翻页
-- 键盘方向键、Home、End
+- Horizontal and vertical modes
+- Custom logical range
+- Configurable page size
+- Thumb dragging
+- Track click paging
+- Keyboard arrows, `Home`, and `End`
 
-## 创建方式
+## Basic Usage
 
 ```cpp
 #include "darkui/scrollbar.h"
@@ -45,9 +45,9 @@ verticalBar.SetValue(56);
 MoveWindow(verticalBar.hwnd(), 20, 20, 16, 220, TRUE);
 ```
 
-## 父窗口消息处理
+## Parent Message Handling
 
-### 纵向
+### Vertical
 
 ```cpp
 case WM_VSCROLL:
@@ -58,7 +58,7 @@ case WM_VSCROLL:
     break;
 ```
 
-### 横向
+### Horizontal
 
 ```cpp
 case WM_HSCROLL:
@@ -69,34 +69,34 @@ case WM_HSCROLL:
     break;
 ```
 
-## 常用 API
+## Common API
 
-### SetRange
+### `SetRange`
 
 ```cpp
 scrollBar.SetRange(0, 100);
 ```
 
-### SetPageSize
+### `SetPageSize`
 
 ```cpp
 scrollBar.SetPageSize(20);
 ```
 
-### SetValue
+### `SetValue`
 
 ```cpp
 scrollBar.SetValue(40);
 scrollBar.SetValue(48, true);
 ```
 
-### SetTheme
+### `SetTheme`
 
 ```cpp
 scrollBar.SetTheme(theme);
 ```
 
-## 读取状态
+## Reading State
 
 ```cpp
 int value = scrollBar.GetValue();
@@ -106,7 +106,7 @@ int pageSize = scrollBar.GetPageSize();
 bool isVertical = scrollBar.vertical();
 ```
 
-## 主题字段
+## Theme Fields Used
 
 - `scrollBarBackground`
 - `scrollBarTrack`
@@ -115,14 +115,24 @@ bool isVertical = scrollBar.vertical();
 - `scrollBarThickness`
 - `scrollBarMinThumbSize`
 
-## 使用建议
+## Usage Notes
 
-- 这个控件只负责滚动条本身，不自动联动内容区域
-- 宿主窗口收到滚动值变化后，应自行更新内容偏移
-- `pageSize` 会影响滚动块长度和最大可滚范围
+- The control only represents the scrollbar itself
+- The parent window is responsible for applying the resulting content offset
+- `pageSize` affects both thumb size and reachable scroll range
 
-## 当前限制
+## Demo Reference
 
-- 不带箭头按钮
-- 不支持长按自动连发
-- 不提供滚动容器封装
+For complete examples, see:
+
+- `../demo/src/demo_scrollbar.cpp`
+- `../demo/src/demo_showcase.cpp`
+- `../demo/src/demo_tab.cpp`
+- `../demo/src/demo_toolbar.cpp`
+- `../demo/src/demo_toolbar_menubar.cpp`
+
+## Current Limitations
+
+- No arrow buttons
+- No auto-repeat on hold
+- No scroll-container helper

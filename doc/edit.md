@@ -1,29 +1,29 @@
 ﻿# Edit
 
-## 概述
+## Overview
 
-`darkui::Edit` 是一个暗色输入框控件。它通过“暗色宿主窗口 + 内层原生 `EDIT`”的方式，保留原生输入行为，同时去掉原生浅色边框，统一暗色外观。
+`darkui::Edit` is a dark input control built from a dark host window plus an inner native `EDIT`. This keeps native text input, caret, selection, and IME behavior while removing the thin default light border.
 
-## 头文件与实现
+## Files
 
 - `include/darkui/edit.h`
 - `src/edit.cpp`
 
-## 适用场景
+## Suitable Scenarios
 
-- 暗色搜索框
-- 暗色表单输入框
-- 需要保留原生 IME、选区、光标行为的文本输入场景
+- Dark search boxes
+- Dark form inputs
+- Input fields that must keep native IME and selection behavior
 
-## 主要能力
+## Main Features
 
-- 暗色背景
-- 自定义占位文本颜色
-- 圆角外形
-- 只读模式
-- 转发标准 `EN_*` 通知
+- Dark background and text rendering
+- Custom placeholder color
+- Rounded outer shape
+- Read-only mode
+- Standard forwarded `EN_*` notifications
 
-## 创建方式
+## Basic Usage
 
 ```cpp
 #include "darkui/edit.h"
@@ -40,7 +40,7 @@ edit.SetCornerRadius(16);
 MoveWindow(edit.hwnd(), 20, 20, 260, 42, TRUE);
 ```
 
-## 父窗口消息处理
+## Parent Message Handling
 
 ```cpp
 case WM_COMMAND:
@@ -51,68 +51,75 @@ case WM_COMMAND:
     break;
 ```
 
-## 常用 API
+## Common API
 
-### Create
+### `Create`
 
 ```cpp
 bool Create(HWND parent, int controlId, const std::wstring& text = L"", const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, DWORD exStyle = 0);
 ```
 
-### SetTheme
+### `SetTheme`
 
 ```cpp
 edit.SetTheme(theme);
 ```
 
-### SetText / GetText
+### `SetText` / `GetText`
 
 ```cpp
 edit.SetText(L"Updated text");
 std::wstring text = edit.GetText();
 ```
 
-### SetCueBanner
+### `SetCueBanner`
 
 ```cpp
 edit.SetCueBanner(L"Placeholder");
 ```
 
-### SetCornerRadius
+### `SetCornerRadius`
 
 ```cpp
 edit.SetCornerRadius(16);
 ```
 
-### SetReadOnly
+### `SetReadOnly`
 
 ```cpp
 edit.SetReadOnly(true);
 ```
 
-### hwnd / edit_hwnd
+### `hwnd` / `edit_hwnd`
 
 ```cpp
 HWND host = edit.hwnd();
 HWND nativeEdit = edit.edit_hwnd();
 ```
 
-## 主题字段
+## Theme Fields Used
 
 - `editBackground`
 - `editText`
 - `editPlaceholder`
 - `uiFont`
 
-## 使用建议
+## Usage Notes
 
-- 布局时移动的是 `edit.hwnd()`，不是 `edit.edit_hwnd()`
-- 需要兼容原生编辑消息时，用 `edit.edit_hwnd()` 作为目标窗口
-- 只读模式下仍保留暗色外观，不会切回系统浅色样式
+- Move and size the host returned by `edit.hwnd()`
+- Use `edit.edit_hwnd()` when you need direct access to the inner native `EDIT`
+- Read-only mode keeps the same dark appearance
 
-## 当前限制
+## Demo Reference
 
-- 当前偏向单行输入
-- 不提供富文本能力
-- 不提供内建校验逻辑
-- 不负责复杂表单状态管理
+For a complete example, see:
+
+- `../demo/src/demo_edit.cpp`
+- `../demo/src/demo_toolbar_menubar.cpp`
+
+## Current Limitations
+
+- Currently oriented toward single-line input
+- No rich-text support
+- No built-in validation rules
+- No form-state management

@@ -1,31 +1,31 @@
 ﻿# Toolbar
 
-## 概述
+## Overview
 
-`darkui::Toolbar` 是一个自定义暗色工具栏控件。它支持普通按钮、图标按钮、分隔项、右对齐项、下拉菜单和溢出菜单，适合顶部操作栏和菜单栏风格界面。
+`darkui::Toolbar` is a custom dark toolbar control. It supports standard buttons, icon buttons, separators, right-aligned items, drop-down menus, and overflow handling for compact layouts.
 
-## 头文件与实现
+## Files
 
 - `include/darkui/toolbar.h`
 - `src/toolbar.cpp`
 
-## 适用场景
+## Suitable Scenarios
 
-- 顶部工具栏
-- 文件管理器风格操作栏
-- 菜单栏式下拉操作入口
+- Top application toolbars
+- File-manager style action bars
+- Menu-bar style drop-down command surfaces
 
-## 主要能力
+## Main Features
 
-- 普通文字按钮
-- 图标按钮与 icon-only 按钮
-- 分隔项
-- 右对齐按钮组
-- 下拉菜单
-- 空间不足时自动溢出
-- 保持 `WM_COMMAND`
+- Standard text buttons
+- Icon buttons and icon-only buttons
+- Separator items
+- Right-aligned item group
+- Drop-down menus
+- Automatic overflow handling
+- Standard `WM_COMMAND` notification flow
 
-## 核心类型
+## Core Type
 
 ```cpp
 struct ToolbarItem {
@@ -43,7 +43,7 @@ struct ToolbarItem {
 };
 ```
 
-## 创建方式
+## Basic Usage
 
 ```cpp
 #include "darkui/toolbar.h"
@@ -71,7 +71,7 @@ toolbar.SetItems({
 MoveWindow(toolbar.hwnd(), 0, 0, 900, 44, TRUE);
 ```
 
-## 父窗口消息处理
+## Parent Message Handling
 
 ```cpp
 case WM_COMMAND:
@@ -86,9 +86,9 @@ case WM_COMMAND:
     break;
 ```
 
-## 常用 API
+## Common API
 
-### SetItems / AddItem / ClearItems
+### `SetItems` / `AddItem` / `ClearItems`
 
 ```cpp
 toolbar.SetItems(items);
@@ -96,33 +96,33 @@ toolbar.AddItem({L"Export", 8104});
 toolbar.ClearItems();
 ```
 
-### SetItem
+### `SetItem`
 
 ```cpp
 toolbar.SetItem(1, {L"Open", 8102, iconOpen});
 ```
 
-### SetChecked / SetDisabled
+### `SetChecked` / `SetDisabled`
 
 ```cpp
 toolbar.SetChecked(0, true);
 toolbar.SetDisabled(3, true);
 ```
 
-### SetTheme
+### `SetTheme`
 
 ```cpp
 toolbar.SetTheme(theme);
 ```
 
-### GetCount / GetItem
+### `GetCount` / `GetItem`
 
 ```cpp
 std::size_t count = toolbar.GetCount();
 auto item = toolbar.GetItem(0);
 ```
 
-## 主题字段
+## Theme Fields Used
 
 - `toolbarBackground`
 - `toolbarItem`
@@ -136,21 +136,29 @@ auto item = toolbar.GetItem(0);
 - `textPadding`
 - `uiFont`
 
-## 使用建议
+## Usage Notes
 
-- `iconOnly = true` 时，仍建议填写 `text`，便于溢出菜单显示
-- `dropDown = true` 时需要提供有效 `HMENU`
-- `alignRight = true` 适合次级操作区或窗口右侧工具组
-- 作为菜单栏使用时，可以配合文本型下拉项
+- When `iconOnly = true`, still provide `text` so overflow popups can show a readable label
+- When `dropDown = true`, `popupMenu` must be a valid application-owned `HMENU`
+- `alignRight = true` is useful for secondary tools or far-edge actions
+- The same control can be used as a menu-bar style surface
 
-## 下拉与溢出行为
+## Drop-Down and Overflow Behavior
 
-- 下拉菜单使用自定义暗色弹层，不直接显示原生浅色菜单
-- 控件宽度不足时，多余项自动进入溢出按钮
-- 溢出中会尽量保留 drop-down 层级关系
+- Drop-down menus are rendered through a custom dark popup instead of the native light menu UI
+- When space becomes insufficient, hidden items move into an overflow button
+- Overflow tries to preserve drop-down hierarchy instead of flattening every submenu entry
 
-## 当前限制
+## Demo Reference
 
-- 当前不支持完整键盘导航
-- 不提供工具栏自定义拖拽布局
-- 不提供内建图标资源管理
+For complete examples, see:
+
+- `../demo/src/demo_toolbar.cpp`
+- `../demo/src/demo_toolbar_menubar.cpp`
+- `../demo/src/demo_showcase.cpp`
+
+## Current Limitations
+
+- No full keyboard navigation model yet
+- No drag-based toolbar customization
+- No built-in icon resource management

@@ -1,29 +1,29 @@
 ﻿# ComboBox
 
-## 概述
+## Overview
 
-`darkui::ComboBox` 是一个自定义暗色下拉框。它不是直接包装原生 `COMBOBOX`，而是由按钮、弹层和列表组合而成，用来获得更稳定的暗色外观控制。
+`darkui::ComboBox` is a custom dark drop-down control. It does not directly wrap the native Win32 `COMBOBOX`; instead, it combines a button, a popup host, and a list to provide stable dark-theme rendering.
 
-## 头文件与实现
+## Files
 
 - `include/darkui/combobox.h`
 - `src/combobox.cpp`
 
-## 适用场景
+## Suitable Scenarios
 
-- 暗色主题下的格式选择、模式选择、筛选器
-- 需要自定义列表项高亮和强调色的下拉框
-- 希望继续沿用 `CBN_SELCHANGE` 风格通知的 Win32 工程
+- Format selectors, mode selectors, and filters in dark UIs
+- Drop-downs that need accent items
+- Win32 applications that still want `CBN_SELCHANGE` style notifications
 
-## 主要能力
+## Main Features
 
-- 自绘按钮区域
-- 自绘下拉弹层与列表项
-- 支持普通项和强调项
-- 支持运行时替换整个项目列表
-- 保持 `WM_COMMAND + CBN_SELCHANGE`
+- Custom-painted button area
+- Custom popup host and list rendering
+- Normal and accent item support
+- Runtime replacement of the full item list
+- Standard `WM_COMMAND + CBN_SELCHANGE` notification flow
 
-## 核心类型
+## Core Type
 
 ```cpp
 struct ComboItem {
@@ -33,7 +33,7 @@ struct ComboItem {
 };
 ```
 
-## 创建方式
+## Basic Usage
 
 ```cpp
 #include "darkui/combobox.h"
@@ -61,7 +61,7 @@ combo.SetSelection(0);
 MoveWindow(combo.hwnd(), 20, 20, 280, 38, TRUE);
 ```
 
-## 父窗口消息处理
+## Parent Message Handling
 
 ```cpp
 case WM_COMMAND:
@@ -73,15 +73,15 @@ case WM_COMMAND:
     break;
 ```
 
-## 常用 API
+## Common API
 
-### Create
+### `Create`
 
 ```cpp
 bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, DWORD exStyle = 0);
 ```
 
-### SetItems
+### `SetItems`
 
 ```cpp
 combo.SetItems({
@@ -90,26 +90,26 @@ combo.SetItems({
 });
 ```
 
-### AddItem
+### `AddItem`
 
 ```cpp
 combo.AddItem({L"C", 3, false});
 ```
 
-### ClearItems
+### `ClearItems`
 
 ```cpp
 combo.ClearItems();
 ```
 
-### SetSelection / GetSelection
+### `SetSelection` / `GetSelection`
 
 ```cpp
 combo.SetSelection(1);
 int index = combo.GetSelection();
 ```
 
-### GetItem / GetText / GetCount
+### `GetItem` / `GetText` / `GetCount`
 
 ```cpp
 auto item = combo.GetItem(index);
@@ -117,15 +117,13 @@ std::wstring text = combo.GetText();
 std::size_t count = combo.GetCount();
 ```
 
-### SetTheme
+### `SetTheme`
 
 ```cpp
 combo.SetTheme(theme);
 ```
 
-## 主题字段
-
-`ComboBox` 主要使用这些 `Theme` 字段：
+## Theme Fields Used
 
 - `panel`
 - `button`
@@ -145,15 +143,23 @@ combo.SetTheme(theme);
 - `popupBorder`
 - `popupOffsetY`
 
-## 使用建议
+## Usage Notes
 
-- `accent = true` 适合当前推荐项、重点项
-- `userData` 可以存放业务枚举值或 ID
-- 布局仍由宿主自己负责，通常在 `WM_SIZE` 中 `MoveWindow()`
+- Use `accent = true` for highlighted or recommended items
+- Use `userData` for enum values, IDs, or application payloads
+- Layout is still owned by the parent window, typically through `MoveWindow()`
 
-## 当前限制
+## Demo Reference
 
-- 不支持原生可编辑下拉框
-- 不支持多选
-- 不带内置搜索
-- 不负责复杂数据绑定
+For complete examples, see:
+
+- `../demo/src/demo_combobox.cpp`
+- `../demo/src/demo_combobox_only.cpp`
+- `../demo/src/demo_showcase.cpp`
+
+## Current Limitations
+
+- No editable combo-box mode
+- No multi-select support
+- No built-in search
+- No complex data binding layer
