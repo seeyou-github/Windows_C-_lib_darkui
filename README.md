@@ -816,14 +816,15 @@ build\darkui_slider_demo.exe
 
 ```cpp
 darkui::Theme theme;
-theme.progressBackground = RGB(24, 27, 31);
-theme.progressTrack = RGB(49, 54, 61);
+theme.progressBackground = RGB(49, 54, 61);
+theme.progressTrack = RGB(36, 40, 46);
 theme.progressFill = RGB(78, 120, 184);
 theme.progressText = RGB(240, 244, 248);
 theme.progressHeight = 18;
 
 darkui::ProgressBar progress;
 progress.Create(hwnd, 5001, theme);
+progress.SetSurfaceColor(theme.panel);
 progress.SetRange(0, 100);
 progress.SetValue(64);
 ```
@@ -835,16 +836,26 @@ progress.SetTheme(theme);
 progress.SetRange(0, 100);
 progress.SetValue(72);
 progress.SetShowPercentage(true);
+progress.SetSurfaceColor(theme.panel);
 ```
+
+`SetSurfaceColor(COLORREF color)` controls the host/card color around the inner progress track. Use it when the progress bar sits on a panel whose color differs from `theme.background`.
 
 ### Theme Fields Used By ProgressBar
 
-- `progressBackground`: outer control background color
-- `progressTrack`: inner track background color
+- `progressBackground`: outer track shell color
+- `progressTrack`: inner recessed track color
 - `progressFill`: filled progress color
 - `progressText`: percentage text color
 - `progressHeight`: track height
 - `uiFont`: percentage text font
+- `background`: default host surface color used by `Create()`
+
+### Notes
+
+- The full control rectangle is filled with the host surface color first.
+- The visible progress track is then painted inside that surface using `progressBackground` and `progressTrack`.
+- Rounded cards or custom panels should usually call `SetSurfaceColor(cardColor)`.
 
 ### Current Scope
 

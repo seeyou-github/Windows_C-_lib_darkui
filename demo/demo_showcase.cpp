@@ -360,12 +360,15 @@ void ApplyTheme(AppState* state, int themeIndex) {
     state->overview.disabled.SetSurfaceColor(state->theme.panel);
     state->overview.storage.SetTheme(state->theme);
     state->overview.index.SetTheme(state->theme);
+    state->overview.storage.SetSurfaceColor(state->theme.panel);
+    state->overview.index.SetSurfaceColor(state->theme.panel);
 
     state->controls.exposure.SetTheme(state->theme);
     state->controls.balance.SetTheme(state->theme);
     state->controls.timeline.SetTheme(state->theme);
     state->controls.navigator.SetTheme(state->theme);
     state->controls.preview.SetTheme(state->theme);
+    state->controls.preview.SetSurfaceColor(state->theme.panel);
 
     state->data.filter.SetTheme(state->theme);
     state->data.refresh.SetTheme(state->theme);
@@ -668,8 +671,10 @@ bool CreateOverviewControls(AppState* app) {
     app->overview.surface.SetSelection(0);
 
     app->overview.storage.SetRange(0, 100);
+    app->overview.storage.SetSurfaceColor(app->theme.panel);
     app->overview.storage.SetValue(74);
     app->overview.index.SetRange(0, 100);
+    app->overview.index.SetSurfaceColor(app->theme.panel);
     app->overview.index.SetValue(61);
     app->overview.index.SetShowPercentage(false);
     return true;
@@ -701,6 +706,7 @@ bool CreateControlsPanel(AppState* app) {
     app->controls.navigator.SetValue(26);
 
     app->controls.preview.SetRange(0, 100);
+    app->controls.preview.SetSurfaceColor(app->theme.panel);
     UpdateControlPreview(app);
     return true;
 }

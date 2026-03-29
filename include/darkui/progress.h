@@ -47,6 +47,8 @@ public:
     int control_id() const { return controlId_; }
     // Returns the theme currently stored by the control.
     const Theme& theme() const { return theme_; }
+    // Returns the host surface color used outside the inner progress track.
+    COLORREF surface_color() const { return surfaceColor_; }
 
     // Replaces the current theme and repaints the control.
     // Parameter:
@@ -70,6 +72,15 @@ public:
     // Parameter:
     // - enabled: true to show the percentage text, false to hide it.
     void SetShowPercentage(bool enabled);
+    // Sets the host surface color behind the progress track.
+    // Purpose:
+    // - Fills the full control rectangle before the inner progress track is painted.
+    // - Prevents visible seams when the progress bar is placed on a card/panel whose color differs from the main window background.
+    // Parameters:
+    // - color: Host/background color expected around the inner track.
+    // Notes:
+    // - This does not change the inner track color. Use Theme::progressBackground / Theme::progressTrack / Theme::progressFill for that.
+    void SetSurfaceColor(COLORREF color);
 
     // Returns the current logical value.
     int GetValue() const { return value_; }
@@ -97,6 +108,8 @@ private:
     int value_ = 0;
     // Whether centered percentage text is drawn.
     bool showPercentage_ = true;
+    // Host/background color behind the inner progress track.
+    COLORREF surfaceColor_ = RGB(34, 36, 40);
     // Theme currently used by the control.
     Theme theme_{};
 };

@@ -74,15 +74,23 @@ struct ProgressBar::Impl {
 
         RECT client{};
         GetClientRect(owner->progressHwnd_, &client);
-        FillRect(targetDc, &client, backgroundBrush);
+        HBRUSH surfaceBrush = CreateSolidBrush(owner->surfaceColor_);
+        FillRect(targetDc, &client, surfaceBrush);
+        DeleteObject(surfaceBrush);
 
         RECT track = GetTrackRect();
-        FillRect(targetDc, &track, trackBrush);
+        FillRect(targetDc, &track, backgroundBrush);
 
-        RECT fill = track;
-        fill.right = std::clamp(FillRight(track),
-                                static_cast<int>(track.left),
-                                static_cast<int>(track.right));
+        RECT innerTrack = track;
+        InflateRect(&innerTrack, -1, -1);
+        if (innerTrack.right > innerTrack.left && innerTrack.bottom > innerTrack.top) {
+            FillRect(targetDc, &innerTrack, trackBrush);
+        }
+
+        RECT fill = innerTrack;
+        fill.right = std::clamp(FillRight(innerTrack),
+                                static_cast<int>(innerTrack.left),
+                                static_cast<int>(innerTrack.right));
         if (fill.right > fill.left) {
             FillRect(targetDc, &fill, fillBrush);
         }
@@ -175,6 +183,7 @@ bool ProgressBar::Create(HWND parent, int controlId, const Theme& theme, DWORD s
     parentHwnd_ = parent;
     controlId_ = controlId;
     theme_ = theme;
+    surfaceColor_ = theme.background;
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
@@ -246,6 +255,13 @@ void ProgressBar::SetShowPercentage(bool enabled) {
     showPercentage_ = enabled;
     if (progressHwnd_) {
         InvalidateRect(progressHwnd_, nullptr, FALSE);
+    }
+}
+
+void ProgressBar::SetSurfaceColor(COLORREF color) {
+    surfaceColor_ = color;
+    if (progressHwnd_) {
+        InvalidateRect(progressHwnd_, nullptr, TRUE);
     }
 }
 
