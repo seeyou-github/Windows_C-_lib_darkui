@@ -786,3 +786,77 @@ Output:
 ```text
 build\darkui_slider_demo.exe
 ```
+
+## ProgressBar Control
+
+`darkui::ProgressBar` is a custom dark progress bar for Win32. It is fully custom-painted and separates the outer control background, track background, fill color, and percentage text color.
+
+### Files
+
+- `include/darkui/progress.h`
+- `src/progress.cpp`
+- `demo/demo_progress.cpp`
+- `build_demo_progress.bat`
+
+### Create
+
+```cpp
+darkui::Theme theme;
+theme.progressBackground = RGB(24, 27, 31);
+theme.progressTrack = RGB(49, 54, 61);
+theme.progressFill = RGB(78, 120, 184);
+theme.progressText = RGB(240, 244, 248);
+theme.progressHeight = 18;
+
+darkui::ProgressBar progress;
+progress.Create(hwnd, 5001, theme);
+progress.SetRange(0, 100);
+progress.SetValue(64);
+```
+
+### Runtime API
+
+```cpp
+progress.SetTheme(theme);
+progress.SetRange(0, 100);
+progress.SetValue(72);
+progress.SetShowPercentage(true);
+```
+
+### Theme Fields Used By ProgressBar
+
+- `progressBackground`: outer control background color
+- `progressTrack`: inner track background color
+- `progressFill`: filled progress color
+- `progressText`: percentage text color
+- `progressHeight`: track height
+- `uiFont`: percentage text font
+
+### Current Scope
+
+- Horizontal progress bar
+- Fixed-value display
+- Optional centered percentage text
+- Custom outer background and inner track colors
+
+Not included yet:
+
+- Rounded corners
+- Gradient fill
+- Indeterminate / marquee mode
+- Animation
+- Parent notifications
+
+### ProgressBar Demo
+
+The demo includes `-10`, `+10`, and `Toggle Percent` buttons to inspect the control visually.
+
+```powershell
+.\build_demo_progress.bat
+```
+
+Output:
+
+```text
+build\darkui_progress_demo.exe
+```

@@ -44,6 +44,10 @@ struct Theme {
     COLORREF sliderThumb = RGB(224, 227, 232);
     COLORREF sliderThumbHot = RGB(245, 247, 250);
     COLORREF sliderTick = RGB(92, 100, 112);
+    COLORREF progressBackground = RGB(34, 36, 40);
+    COLORREF progressTrack = RGB(52, 56, 62);
+    COLORREF progressFill = RGB(78, 120, 184);
+    COLORREF progressText = RGB(232, 236, 241);
     FontSpec uiFont{};
     int itemHeight = 24;
     int arrowWidth = 12;
@@ -55,6 +59,7 @@ struct Theme {
     int tableHeaderHeight = 30;
     int sliderTrackHeight = 6;
     int sliderThumbRadius = 9;
+    int progressHeight = 12;
 };
 
 struct ComboItem {
