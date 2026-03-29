@@ -54,9 +54,15 @@ public:
     int control_id() const { return controlId_; }
     // Returns the theme currently stored by the control.
     const Theme& theme() const { return theme_; }
+    // Returns whether the tab strip is currently vertical.
+    bool vertical() const { return vertical_ ; }
 
     // Replaces the current theme and repaints the control.
     void SetTheme(const Theme& theme);
+    // Switches between horizontal and vertical tab-strip layout.
+    // Parameter:
+    // - enabled: true for a vertical left-side strip, false for a horizontal top strip.
+    void SetVertical(bool enabled);
     // Replaces all tab items at once.
     // Notes:
     // - Existing attached pages remain stored by index where possible.
@@ -95,6 +101,8 @@ private:
     HWND tabHwnd_ = nullptr;
     // Child control ID.
     int controlId_ = 0;
+    // Whether the tab strip is vertical.
+    bool vertical_ = false;
     // Theme currently used by the control.
     Theme theme_{};
 };

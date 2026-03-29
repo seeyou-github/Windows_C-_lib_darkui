@@ -141,8 +141,10 @@ struct Theme {
     int scrollBarThickness = 14;
     // Minimum scrollbar thumb length.
     int scrollBarMinThumbSize = 28;
-    // Tab strip height.
+    // Tab strip height in horizontal mode, and item height in vertical mode.
     int tabHeight = 36;
+    // Tab strip width in vertical mode.
+    int tabWidth = 180;
 };
 
 // Single item stored by darkui::ComboBox.

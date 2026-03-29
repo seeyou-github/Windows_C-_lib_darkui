@@ -66,26 +66,45 @@ struct Tab::Impl {
     RECT TabStripRect() const {
         RECT client{};
         GetClientRect(owner->tabHwnd_, &client);
-        client.bottom = client.top + std::max(24, owner->theme_.tabHeight);
+        if (owner->vertical_) {
+            client.right = client.left + std::max(96, owner->theme_.tabWidth);
+        } else {
+            client.bottom = client.top + std::max(24, owner->theme_.tabHeight);
+        }
         return client;
     }
 
     RECT ContentRect() const {
         RECT client{};
         GetClientRect(owner->tabHwnd_, &client);
-        client.top += std::max(24, owner->theme_.tabHeight);
+        if (owner->vertical_) {
+            client.left += std::max(96, owner->theme_.tabWidth);
+        } else {
+            client.top += std::max(24, owner->theme_.tabHeight);
+        }
         return client;
     }
 
     RECT ItemRect(int index) const {
         RECT strip = TabStripRect();
-        const int count = std::max(1, static_cast<int>(items.size()));
-        const int width = std::max(1, static_cast<int>(strip.right - strip.left) / count);
-        RECT rc{strip.left + index * width, strip.top, strip.left + (index + 1) * width, strip.bottom};
-        if (index == count - 1) {
-            rc.right = strip.right;
+        if (owner->vertical_) {
+            const int itemHeight = std::max(32, owner->theme_.tabHeight);
+            RECT rc{
+                strip.left,
+                strip.top + index * itemHeight,
+                strip.right,
+                std::min(static_cast<int>(strip.bottom), static_cast<int>(strip.top + (index + 1) * itemHeight))
+            };
+            return rc;
+        } else {
+            const int count = std::max(1, static_cast<int>(items.size()));
+            const int width = std::max(1, static_cast<int>(strip.right - strip.left) / count);
+            RECT rc{strip.left + index * width, strip.top, strip.left + (index + 1) * width, strip.bottom};
+            if (index == count - 1) {
+                rc.right = strip.right;
+            }
+            return rc;
         }
-        return rc;
     }
 
     int HitTest(POINT point) const {
@@ -239,11 +258,11 @@ struct Tab::Impl {
             return 0;
         }
         case WM_KEYDOWN:
-            if (wParam == VK_LEFT || wParam == VK_UP) {
+            if ((self->owner->vertical_ && wParam == VK_UP) || (!self->owner->vertical_ && wParam == VK_LEFT)) {
                 self->owner->SetSelection(self->selection - 1, true);
                 return 0;
             }
-            if (wParam == VK_RIGHT || wParam == VK_DOWN) {
+            if ((self->owner->vertical_ && wParam == VK_DOWN) || (!self->owner->vertical_ && wParam == VK_RIGHT)) {
                 self->owner->SetSelection(self->selection + 1, true);
                 return 0;
             }
@@ -313,7 +332,7 @@ bool Tab::Create(HWND parent, int controlId, const Theme& theme, DWORD style, DW
     tabHwnd_ = CreateWindowExW(exStyle,
                                kTabClassName,
                                L"",
-                               style | WS_CLIPSIBLINGS,
+                               style | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
                                0,
                                0,
                                0,
@@ -347,6 +366,14 @@ void Tab::Destroy() {
 void Tab::SetTheme(const Theme& theme) {
     theme_ = theme;
     impl_->UpdateThemeResources();
+}
+
+void Tab::SetVertical(bool enabled) {
+    vertical_ = enabled;
+    impl_->UpdatePageVisibility();
+    if (tabHwnd_) {
+        InvalidateRect(tabHwnd_, nullptr, TRUE);
+    }
 }
 
 void Tab::SetItems(const std::vector<TabItem>& items) {
