@@ -962,3 +962,116 @@ Output:
 ```text
 build\darkui_scrollbar_demo.exe
 ```
+
+## Tab Control
+
+`darkui::Tab` is a custom dark tab control for Win32. It draws its own tab strip, supports external child pages, and sends a standard `TCN_SELCHANGE` notification through `WM_NOTIFY`.
+
+### Files
+
+- `include/darkui/tab.h`
+- `src/tab.cpp`
+- `demo/demo_tab.cpp`
+- `build_demo_tab.bat`
+
+### Create
+
+```cpp
+darkui::Theme theme;
+theme.tabBackground = RGB(24, 27, 31);
+theme.tabItem = RGB(48, 53, 60);
+theme.tabItemActive = RGB(78, 120, 184);
+theme.tabText = RGB(206, 211, 218);
+theme.tabTextActive = RGB(245, 247, 250);
+theme.tabHeight = 38;
+
+darkui::Tab tab;
+tab.Create(hwnd, 7001, theme);
+tab.SetItems({
+    {L"Overview", 1},
+    {L"Metrics", 2},
+    {L"Notes", 3},
+});
+```
+
+### Attach Pages
+
+```cpp
+HWND pageOne = CreateWindowExW(0, L"STATIC", L"Overview page", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, tab.hwnd(), nullptr, instance, nullptr);
+HWND pageTwo = CreateWindowExW(0, L"STATIC", L"Metrics page", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, tab.hwnd(), nullptr, instance, nullptr);
+HWND pageThree = CreateWindowExW(0, L"STATIC", L"Notes page", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, tab.hwnd(), nullptr, instance, nullptr);
+
+tab.AttachPage(0, pageOne);
+tab.AttachPage(1, pageTwo);
+tab.AttachPage(2, pageThree);
+tab.SetSelection(0);
+```
+
+### Runtime API
+
+```cpp
+tab.SetTheme(theme);
+tab.AddItem({L"Logs", 4});
+tab.SetSelection(1, true);
+int index = tab.GetSelection();
+RECT contentRect = tab.GetContentRect();
+```
+
+### Parent Notification
+
+The tab control uses the standard `WM_NOTIFY + TCN_SELCHANGE` path:
+
+```cpp
+case WM_NOTIFY: {
+    auto* hdr = reinterpret_cast<NMHDR*>(lParam);
+    if (hdr && hdr->hwndFrom == tab.hwnd() && hdr->code == TCN_SELCHANGE) {
+        int index = tab.GetSelection();
+        return 0;
+    }
+    break;
+}
+```
+
+### Theme Fields Used By Tab
+
+- `tabBackground`: tab control background color
+- `tabItem`: inactive tab background color
+- `tabItemActive`: active tab background color
+- `tabText`: inactive tab text color
+- `tabTextActive`: active tab text color
+- `tabHeight`: tab strip height
+- `background`: content area background color
+- `text`: content child text color used by `WM_CTLCOLORSTATIC`
+- `textPadding`: horizontal text padding inside each tab item
+- `uiFont`: tab text font
+
+### Current Scope
+
+- Custom tab strip drawing
+- Mouse click selection
+- Keyboard `Left`, `Right`, `Home`, `End`
+- External child-page attachment
+- Standard `TCN_SELCHANGE` parent notification
+- Content area uses `theme.background`
+
+Not included yet:
+
+- Scrollable tab strip
+- Close buttons
+- Drag reordering
+- Per-tab icons
+- Disabled tabs
+
+### Tab Demo
+
+The demo shows three tabs with three attached child pages.
+
+```powershell
+.\build_demo_tab.bat
+```
+
+Output:
+
+```text
+build\darkui_tab_demo.exe
+```

@@ -11,6 +11,7 @@ add_library(darkui_combobox STATIC
     src/progress.cpp
     src/scrollbar.cpp
     src/slider.cpp
+    src/tab.cpp
     src/table.cpp
 )
 
@@ -79,6 +80,14 @@ target_link_libraries(darkui_scrollbar_demo PRIVATE
     darkui_combobox
 )
 
+add_executable(darkui_tab_demo WIN32
+    demo/demo_tab.cpp
+)
+
+target_link_libraries(darkui_tab_demo PRIVATE
+    darkui_combobox
+)
+
 if (MINGW)
     target_link_options(darkui_combobox_demo PRIVATE -municode)
     target_link_options(darkui_table_demo PRIVATE -municode)
@@ -86,4 +95,5 @@ if (MINGW)
     target_link_options(darkui_slider_demo PRIVATE -municode)
     target_link_options(darkui_progress_demo PRIVATE -municode)
     target_link_options(darkui_scrollbar_demo PRIVATE -municode)
+    target_link_options(darkui_tab_demo PRIVATE -municode)
 endif()

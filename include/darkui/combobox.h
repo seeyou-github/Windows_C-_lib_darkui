@@ -103,6 +103,16 @@ struct Theme {
     COLORREF scrollBarThumb = RGB(120, 128, 140);
     // Scrollbar thumb hover and drag color.
     COLORREF scrollBarThumbHot = RGB(150, 160, 174);
+    // Tab control background color.
+    COLORREF tabBackground = RGB(34, 36, 40);
+    // Inactive tab item background color.
+    COLORREF tabItem = RGB(52, 56, 62);
+    // Active tab item background color.
+    COLORREF tabItemActive = RGB(78, 86, 98);
+    // Inactive tab text color.
+    COLORREF tabText = RGB(210, 214, 220);
+    // Active tab text color.
+    COLORREF tabTextActive = RGB(245, 247, 250);
     // Font shared by controls that render text.
     FontSpec uiFont{};
     // Default combo-box item height.
@@ -131,6 +141,8 @@ struct Theme {
     int scrollBarThickness = 14;
     // Minimum scrollbar thumb length.
     int scrollBarMinThumbSize = 28;
+    // Tab strip height.
+    int tabHeight = 36;
 };
 
 // Single item stored by darkui::ComboBox.
