@@ -26,6 +26,14 @@ struct DemoState {
     HFONT titleFont = nullptr;
     HFONT textFont = nullptr;
     std::wstring status = L"Ready";
+    HICON iconNew = nullptr;
+    HICON iconOpen = nullptr;
+    HICON iconShare = nullptr;
+    HICON iconLayout = nullptr;
+    HICON iconExport = nullptr;
+    HICON iconSearch = nullptr;
+    HICON iconPin = nullptr;
+    HMENU layoutMenu = nullptr;
 };
 
 void CleanupState(DemoState* state) {
@@ -35,6 +43,7 @@ void CleanupState(DemoState* state) {
     if (state->brushBackground) DeleteObject(state->brushBackground);
     if (state->titleFont) DeleteObject(state->titleFont);
     if (state->textFont) DeleteObject(state->textFont);
+    if (state->layoutMenu) DestroyMenu(state->layoutMenu);
     delete state;
 }
 
@@ -98,14 +107,29 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             CleanupState(created);
             return -1;
         }
+        created->iconNew = LoadIconW(nullptr, IDI_APPLICATION);
+        created->iconOpen = LoadIconW(nullptr, IDI_INFORMATION);
+        created->iconShare = LoadIconW(nullptr, IDI_QUESTION);
+        created->iconLayout = LoadIconW(nullptr, IDI_WARNING);
+        created->iconExport = LoadIconW(nullptr, IDI_ERROR);
+        created->iconSearch = LoadIconW(nullptr, IDI_INFORMATION);
+        created->iconPin = LoadIconW(nullptr, IDI_SHIELD);
+        created->layoutMenu = CreatePopupMenu();
+        if (created->layoutMenu) {
+            AppendMenuW(created->layoutMenu, MF_STRING, ID_CMD_LAYOUT + 100, L"Grid Layout");
+            AppendMenuW(created->layoutMenu, MF_STRING, ID_CMD_LAYOUT + 101, L"Focus Layout");
+            AppendMenuW(created->layoutMenu, MF_STRING, ID_CMD_LAYOUT + 102, L"Review Layout");
+        }
         created->toolbar.SetItems({
-            {L"New", ID_CMD_NEW, 0, false, true, false},
-            {L"Open", ID_CMD_OPEN, 0, false, false, false},
-            {L"", 0, 0, true, false, false},
-            {L"Share", ID_CMD_SHARE, 0, false, false, false},
-            {L"Layout", ID_CMD_LAYOUT, 0, false, false, false},
-            {L"", 0, 0, true, false, false},
-            {L"Export", ID_CMD_EXPORT, 0, false, false, true}
+            {L"New", ID_CMD_NEW, created->iconNew, nullptr, 0, false, true, false, false, false, false},
+            {L"Open", ID_CMD_OPEN, created->iconOpen, nullptr, 0, false, false, false, false, false, false},
+            {L"", 0, nullptr, nullptr, 0, true, false, false, false, false, false},
+            {L"Search", 8201, created->iconSearch, nullptr, 0, false, false, false, false, true, false},
+            {L"Pin", 8202, created->iconPin, nullptr, 0, false, false, false, false, true, false},
+            {L"Share", ID_CMD_SHARE, created->iconShare, nullptr, 0, false, false, false, true, false, false},
+            {L"Layout", ID_CMD_LAYOUT, created->iconLayout, created->layoutMenu, 0, false, false, false, true, false, true},
+            {L"", 0, nullptr, nullptr, 0, true, false, false, true, false, false},
+            {L"Export", ID_CMD_EXPORT, created->iconExport, nullptr, 0, false, false, true, true, false, false}
         });
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
@@ -134,7 +158,22 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
                 state->status = L"Share sheet opened";
                 return 0;
             case ID_CMD_LAYOUT:
-                state->status = L"Layout switched";
+                state->status = L"Layout menu opened";
+                return 0;
+            case ID_CMD_LAYOUT + 100:
+                state->status = L"Grid layout selected";
+                return 0;
+            case ID_CMD_LAYOUT + 101:
+                state->status = L"Focus layout selected";
+                return 0;
+            case ID_CMD_LAYOUT + 102:
+                state->status = L"Review layout selected";
+                return 0;
+            case 8201:
+                state->status = L"Search activated";
+                return 0;
+            case 8202:
+                state->status = L"Pinned current view";
                 return 0;
             default:
                 break;
@@ -163,9 +202,9 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             RECT statusRect{28, client.bottom - 56, client.right - 28, client.bottom - 28};
 
             DrawLine(dc, state->titleFont, state->theme.text, titleRect, L"Dark Toolbar Demo", DT_LEFT | DT_TOP | DT_SINGLELINE);
-            DrawLine(dc, state->textFont, state->theme.mutedText, descRect, L"Custom dark toolbar with separators, checked items, hover state, disabled items, and standard WM_COMMAND routing.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+            DrawLine(dc, state->textFont, state->theme.mutedText, descRect, L"Custom dark toolbar with icons, icon-only tools, a drop-down button, a right-aligned tool group, and overflow handling.", DT_LEFT | DT_TOP | DT_WORDBREAK);
             DrawTextW(dc,
-                      L"Try the toolbar buttons above:\n- Checked items stay highlighted.\n- Separators split action groups.\n- Disabled items remain visible but inactive.\n- Click notifications arrive through the parent window like a standard toolbar command path.",
+                      L"Try the toolbar buttons above:\n- Left group holds primary actions.\n- The two center square buttons are icon-only items.\n- Layout opens a drop-down menu.\n- Resize the window narrower to force overflow into the ... button on the right edge.",
                       -1,
                       &noteRect,
                       DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);

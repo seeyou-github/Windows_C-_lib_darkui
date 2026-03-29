@@ -1,5 +1,6 @@
 #include "darkui/toolbar.h"
 
+#include <commctrl.h>
 #include <windowsx.h>
 
 #include <algorithm>
@@ -8,23 +9,69 @@ namespace darkui {
 namespace {
 
 constexpr wchar_t kToolbarClassName[] = L"DarkUiToolbarControl";
+constexpr wchar_t kToolbarPopupClassName[] = L"DarkUiToolbarPopupHost";
+constexpr int kToolbarIconSize = 16;
+constexpr int kToolbarArrowWidth = 14;
+constexpr int kOverflowCommandId = 0x7F41;
+constexpr int kToolbarPopupListId = 0x7F42;
+constexpr int kToolbarButtonMinWidth = 46;
+constexpr int kToolbarButtonSideInset = 14;
+constexpr int kToolbarButtonGap = 6;
+constexpr int kToolbarPopupMinWidth = 180;
+constexpr int kToolbarPopupArrowInset = 18;
 
 ATOM EnsureToolbarClassRegistered(HINSTANCE instance);
+ATOM EnsureToolbarPopupClassRegistered(HINSTANCE instance);
 LRESULT CALLBACK ToolbarWindowProcThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK ToolbarPopupWindowProcThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 
 }  // namespace
 
 struct Toolbar::Impl {
+    struct PopupEntry {
+        std::wstring text;
+        int commandId = 0;
+        int sourceIndex = -1;
+        HMENU popupMenu = nullptr;
+        bool separator = false;
+        bool checked = false;
+        bool disabled = false;
+        bool opensSubmenu = false;
+    };
+
     Toolbar* owner = nullptr;
     HINSTANCE instance = nullptr;
     HBRUSH brushBackground = nullptr;
     HBRUSH brushItem = nullptr;
     HBRUSH brushItemHot = nullptr;
     HBRUSH brushItemActive = nullptr;
+    HBRUSH brushPopupPanel = nullptr;
+    HBRUSH brushPopupItem = nullptr;
+    HBRUSH brushPopupItemHot = nullptr;
+    HBRUSH brushPopupItemChecked = nullptr;
     HPEN penSeparator = nullptr;
+    HPEN penPopupBorder = nullptr;
     HFONT font = nullptr;
     std::vector<ToolbarItem> items;
     std::vector<RECT> itemRects;
+    std::vector<bool> itemVisible;
+    std::vector<int> overflowIndices;
+    RECT overflowRect{0, 0, 0, 0};
+    std::vector<PopupEntry> popupEntries;
+    // Tracks which toolbar trigger currently owns the custom popup so a repeated
+    // click on the same trigger can close the popup instead of reopening it.
+    int popupSourceIndex = -1;
+    bool popupFromOverflow = false;
+    // True when the current popup is showing a submenu opened from an overflow entry.
+    bool popupEntriesFromSubmenu = false;
+    // Temporary suppression absorbs the second half of a "close popup" click.
+    // Without this, focus changes can close the popup first and the matching
+    // toolbar mouse-up would immediately reopen it.
+    int suppressPopupToggleIndex = -2;
+    bool suppressPopupToggleOverflow = false;
+    // Separate hover suppression avoids a one-frame hot-state flash while the popup closes.
+    int suppressHotIndex = -2;
+    bool suppressHotOverflow = false;
     int hotIndex = -1;
     int pressedIndex = -1;
     bool trackingMouseLeave = false;
@@ -37,7 +84,12 @@ struct Toolbar::Impl {
         if (brushItem) DeleteObject(brushItem);
         if (brushItemHot) DeleteObject(brushItemHot);
         if (brushItemActive) DeleteObject(brushItemActive);
+        if (brushPopupPanel) DeleteObject(brushPopupPanel);
+        if (brushPopupItem) DeleteObject(brushPopupItem);
+        if (brushPopupItemHot) DeleteObject(brushPopupItemHot);
+        if (brushPopupItemChecked) DeleteObject(brushPopupItemChecked);
         if (penSeparator) DeleteObject(penSeparator);
+        if (penPopupBorder) DeleteObject(penPopupBorder);
         if (font) DeleteObject(font);
     }
 
@@ -46,15 +98,27 @@ struct Toolbar::Impl {
         HBRUSH newBrushItem = CreateSolidBrush(owner->theme_.toolbarItem);
         HBRUSH newBrushItemHot = CreateSolidBrush(owner->theme_.toolbarItemHot);
         HBRUSH newBrushItemActive = CreateSolidBrush(owner->theme_.toolbarItemActive);
+        HBRUSH newBrushPopupPanel = CreateSolidBrush(owner->theme_.panel);
+        HBRUSH newBrushPopupItem = CreateSolidBrush(owner->theme_.popupItem);
+        HBRUSH newBrushPopupItemHot = CreateSolidBrush(owner->theme_.popupItemHot);
+        HBRUSH newBrushPopupItemChecked = CreateSolidBrush(owner->theme_.popupAccentItem);
         HPEN newPenSeparator = CreatePen(PS_SOLID, 1, owner->theme_.toolbarSeparator);
+        HPEN newPenPopupBorder = CreatePen(PS_SOLID, 1, owner->theme_.border);
         HFONT newFont = CreateFont(owner->theme_.uiFont);
 
-        if (!newBrushBackground || !newBrushItem || !newBrushItemHot || !newBrushItemActive || !newPenSeparator || !newFont) {
+        if (!newBrushBackground || !newBrushItem || !newBrushItemHot || !newBrushItemActive ||
+            !newBrushPopupPanel || !newBrushPopupItem || !newBrushPopupItemHot || !newBrushPopupItemChecked ||
+            !newPenSeparator || !newPenPopupBorder || !newFont) {
             if (newBrushBackground) DeleteObject(newBrushBackground);
             if (newBrushItem) DeleteObject(newBrushItem);
             if (newBrushItemHot) DeleteObject(newBrushItemHot);
             if (newBrushItemActive) DeleteObject(newBrushItemActive);
+            if (newBrushPopupPanel) DeleteObject(newBrushPopupPanel);
+            if (newBrushPopupItem) DeleteObject(newBrushPopupItem);
+            if (newBrushPopupItemHot) DeleteObject(newBrushPopupItemHot);
+            if (newBrushPopupItemChecked) DeleteObject(newBrushPopupItemChecked);
             if (newPenSeparator) DeleteObject(newPenSeparator);
+            if (newPenPopupBorder) DeleteObject(newPenPopupBorder);
             if (newFont) DeleteObject(newFont);
             return false;
         }
@@ -63,19 +127,32 @@ struct Toolbar::Impl {
         if (brushItem) DeleteObject(brushItem);
         if (brushItemHot) DeleteObject(brushItemHot);
         if (brushItemActive) DeleteObject(brushItemActive);
+        if (brushPopupPanel) DeleteObject(brushPopupPanel);
+        if (brushPopupItem) DeleteObject(brushPopupItem);
+        if (brushPopupItemHot) DeleteObject(brushPopupItemHot);
+        if (brushPopupItemChecked) DeleteObject(brushPopupItemChecked);
         if (penSeparator) DeleteObject(penSeparator);
+        if (penPopupBorder) DeleteObject(penPopupBorder);
         if (font) DeleteObject(font);
 
         brushBackground = newBrushBackground;
         brushItem = newBrushItem;
         brushItemHot = newBrushItemHot;
         brushItemActive = newBrushItemActive;
+        brushPopupPanel = newBrushPopupPanel;
+        brushPopupItem = newBrushPopupItem;
+        brushPopupItemHot = newBrushPopupItemHot;
+        brushPopupItemChecked = newBrushPopupItemChecked;
         penSeparator = newPenSeparator;
+        penPopupBorder = newPenPopupBorder;
         font = newFont;
         layoutDirty = true;
 
         if (owner->toolbarHwnd_) {
             InvalidateRect(owner->toolbarHwnd_, nullptr, TRUE);
+        }
+        if (owner->popupList_) {
+            SendMessageW(owner->popupList_, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
         }
         return true;
     }
@@ -86,20 +163,56 @@ struct Toolbar::Impl {
         return rect;
     }
 
+    RECT RectToScreen(HWND source, RECT rect) const {
+        POINT topLeft{rect.left, rect.top};
+        POINT bottomRight{rect.right, rect.bottom};
+        ClientToScreen(source, &topLeft);
+        ClientToScreen(source, &bottomRight);
+        rect.left = topLeft.x;
+        rect.top = topLeft.y;
+        rect.right = bottomRight.x;
+        rect.bottom = bottomRight.y;
+        return rect;
+    }
+
     int ItemWidth(HDC dc, const ToolbarItem& item) const {
         if (item.separator) {
             return 14;
         }
-        const int base = 44;
-        SIZE size{};
-        GetTextExtentPoint32W(dc, item.text.c_str(), static_cast<int>(item.text.size()), &size);
-        const int textWidth = size.cx;
-        return std::max(base, textWidth + owner->theme_.textPadding * 2 + 10);
+        // Measure against the active font so icon/text/drop-down combinations scale
+        // consistently across different DPI settings and font families.
+        const int baseHeight = std::max(owner->theme_.toolbarHeight - 12, 28);
+        const int sideInset = std::max(owner->theme_.textPadding, kToolbarButtonSideInset);
+        const int base = item.iconOnly ? std::max(baseHeight, kToolbarIconSize + sideInset * 2) : std::max(kToolbarButtonMinWidth, baseHeight);
+        if (item.iconOnly) {
+            return base;
+        }
+        RECT textRect{0, 0, 0, 0};
+        DrawTextW(dc, item.text.c_str(), -1, &textRect, DT_LEFT | DT_SINGLELINE | DT_NOPREFIX | DT_CALCRECT);
+        int textWidth = std::max(0, static_cast<int>(textRect.right - textRect.left));
+        if (item.icon) {
+            textWidth += kToolbarIconSize + 8;
+        }
+        if (item.dropDown) {
+            textWidth += kToolbarArrowWidth + 6;
+        }
+        return std::max(base, textWidth + sideInset * 2);
+    }
+
+    int OverflowWidth() const {
+        return std::max(40, std::max(owner->theme_.toolbarHeight - 8, 34));
+    }
+
+    bool HasOverflow() const {
+        return !overflowIndices.empty();
     }
 
     void RebuildItemRects() {
         itemRects.clear();
         itemRects.resize(items.size());
+        itemVisible.assign(items.size(), true);
+        overflowIndices.clear();
+        overflowRect = RECT{0, 0, 0, 0};
         if (!owner->toolbarHwnd_) {
             layoutDirty = false;
             return;
@@ -114,12 +227,73 @@ struct Toolbar::Impl {
         HFONT oldFont = drawFont ? reinterpret_cast<HFONT>(SelectObject(dc, drawFont)) : nullptr;
 
         RECT client = ClientRect();
-        RECT rc{client.left + 8, client.top + 6, client.left + 8, client.bottom - 6};
+        const int top = client.top + 6;
+        const int bottom = client.bottom - 6;
+        const int leftStart = client.left + 8;
+        const int rightStart = client.right - 8;
+        int leftX = leftStart;
+        int rightX = rightStart;
+
+        std::vector<int> leftIndices;
+        std::vector<int> rightIndices;
         for (int i = 0; i < static_cast<int>(items.size()); ++i) {
-            const int width = ItemWidth(dc, items[i]);
-            rc.right = rc.left + width;
-            itemRects[i] = rc;
-            rc.left = rc.right + 6;
+            if (items[i].alignRight) {
+                rightIndices.push_back(i);
+            } else {
+                leftIndices.push_back(i);
+            }
+        }
+
+        // Lay out the right-aligned tool group first so the left group can use the
+        // remaining width and decide whether overflow is needed.
+        for (int index : rightIndices) {
+            const int width = ItemWidth(dc, items[index]);
+            rightX -= width;
+            itemRects[index] = RECT{rightX, top, rightX + width, bottom};
+            rightX -= kToolbarButtonGap;
+        }
+
+        const int maxLeftBoundary = std::max(leftStart, rightX);
+        for (int pos = 0; pos < static_cast<int>(leftIndices.size()); ++pos) {
+            const int index = leftIndices[pos];
+            const int width = ItemWidth(dc, items[index]);
+            const int nextRight = leftX + width;
+            if (nextRight <= maxLeftBoundary) {
+                itemRects[index] = RECT{leftX, top, nextRight, bottom};
+                leftX = nextRight + kToolbarButtonGap;
+                itemVisible[index] = true;
+                continue;
+            }
+
+            itemVisible[index] = false;
+            overflowIndices.push_back(index);
+        }
+
+        if (!overflowIndices.empty()) {
+            const int overflowWidth = OverflowWidth();
+            int overflowLeft = maxLeftBoundary - overflowWidth;
+            if (overflowLeft < leftStart) {
+                overflowLeft = leftStart;
+            }
+            overflowRect = RECT{overflowLeft, top, overflowLeft + overflowWidth, bottom};
+
+            while (!overflowIndices.empty() && overflowRect.right > rightX) {
+                int recovered = -1;
+                for (int pos = static_cast<int>(leftIndices.size()) - 1; pos >= 0; --pos) {
+                    const int index = leftIndices[pos];
+                    if (itemVisible[index]) {
+                        recovered = index;
+                        break;
+                    }
+                }
+                if (recovered < 0) {
+                    break;
+                }
+                itemVisible[recovered] = false;
+                overflowIndices.insert(overflowIndices.begin(), recovered);
+                overflowRect.left -= (itemRects[recovered].right - itemRects[recovered].left) + kToolbarButtonGap;
+                overflowRect.right = overflowRect.left + overflowWidth;
+            }
         }
 
         if (oldFont) {
@@ -146,6 +320,9 @@ struct Toolbar::Impl {
     int HitTest(POINT point) {
         EnsureLayout();
         for (int i = 0; i < static_cast<int>(items.size()); ++i) {
+            if (!itemVisible[i]) {
+                continue;
+            }
             if (items[i].separator || items[i].disabled) {
                 continue;
             }
@@ -154,7 +331,19 @@ struct Toolbar::Impl {
                 return i;
             }
         }
+        if (HasOverflow() && PtInRect(&overflowRect, point)) {
+            return kOverflowCommandId;
+        }
         return -1;
+    }
+
+    bool ArrowHit(int index, POINT point) {
+        if (index < 0 || index >= static_cast<int>(items.size()) || !items[index].dropDown || !itemVisible[index]) {
+            return false;
+        }
+        RECT rc = itemRects[index];
+        rc.left = std::max(rc.left, rc.right - kToolbarArrowWidth - owner->theme_.textPadding);
+        return PtInRect(&rc, point) != FALSE;
     }
 
     void NotifyClick(int index) {
@@ -166,6 +355,250 @@ struct Toolbar::Impl {
                      WM_COMMAND,
                      MAKEWPARAM(static_cast<UINT>(item.commandId), 0),
                      reinterpret_cast<LPARAM>(owner->toolbarHwnd_));
+    }
+
+    bool IsPopupVisible() const {
+        return owner->popupHost_ && IsWindowVisible(owner->popupHost_);
+    }
+
+    void HidePopup() {
+        if (owner->popupHost_) {
+            ShowWindow(owner->popupHost_, SW_HIDE);
+        }
+        popupEntries.clear();
+        popupSourceIndex = -1;
+        popupFromOverflow = false;
+        popupEntriesFromSubmenu = false;
+    }
+
+    void SuppressToggleForCurrentClick(int hitIndex) {
+        suppressPopupToggleIndex = hitIndex;
+        suppressPopupToggleOverflow = (hitIndex == kOverflowCommandId);
+        suppressHotIndex = hitIndex;
+        suppressHotOverflow = (hitIndex == kOverflowCommandId);
+    }
+
+    bool ConsumeToggleSuppression(int releasedIndex) {
+        const bool suppressed = suppressPopupToggleOverflow
+            ? (releasedIndex == kOverflowCommandId)
+            : (releasedIndex == suppressPopupToggleIndex);
+        suppressPopupToggleIndex = -2;
+        suppressPopupToggleOverflow = false;
+        return suppressed;
+    }
+
+    int FilterSuppressedHotIndex(int hitIndex) {
+        const bool suppressed = suppressHotOverflow
+            ? (hitIndex == kOverflowCommandId)
+            : (hitIndex == suppressHotIndex);
+        if (suppressed) {
+            return -1;
+        }
+        suppressHotIndex = -2;
+        suppressHotOverflow = false;
+        return hitIndex;
+    }
+
+    void SuppressToggleFromCursorIfNeeded() {
+        if (!owner->toolbarHwnd_) {
+            return;
+        }
+        POINT pt{};
+        if (!GetCursorPos(&pt)) {
+            return;
+        }
+        ScreenToClient(owner->toolbarHwnd_, &pt);
+        // If the popup is losing activation because the user clicked its owning
+        // toolbar trigger, remember that hit so the matching mouse-up does not reopen it.
+        const int hitIndex = HitTest(pt);
+        const bool sameOverflow = hitIndex == kOverflowCommandId && popupFromOverflow;
+        const bool sameDropdown = hitIndex >= 0 && !popupFromOverflow && popupSourceIndex == hitIndex;
+        if (sameOverflow || sameDropdown) {
+            SuppressToggleForCurrentClick(hitIndex);
+        }
+    }
+
+    std::vector<PopupEntry> BuildEntriesFromMenu(HMENU menu) {
+        std::vector<PopupEntry> entries;
+        if (!menu) {
+            return entries;
+        }
+        const int count = GetMenuItemCount(menu);
+        for (int i = 0; i < count; ++i) {
+            MENUITEMINFOW info{};
+            wchar_t buffer[256]{};
+            info.cbSize = sizeof(info);
+            info.fMask = MIIM_FTYPE | MIIM_STATE | MIIM_ID | MIIM_STRING;
+            info.dwTypeData = buffer;
+            info.cch = static_cast<UINT>(std::size(buffer));
+            if (!GetMenuItemInfoW(menu, i, TRUE, &info)) {
+                continue;
+            }
+            PopupEntry entry{};
+            entry.separator = (info.fType & MFT_SEPARATOR) != 0;
+            entry.checked = (info.fState & MFS_CHECKED) != 0;
+            entry.disabled = (info.fState & (MFS_DISABLED | MFS_GRAYED)) != 0;
+            entry.commandId = static_cast<int>(info.wID);
+            entry.popupMenu = nullptr;
+            entry.text = entry.separator ? L"" : buffer;
+            entries.push_back(entry);
+        }
+        return entries;
+    }
+
+    std::vector<PopupEntry> BuildOverflowEntries() {
+        std::vector<PopupEntry> entries;
+        for (int index : overflowIndices) {
+            const ToolbarItem& item = items[index];
+            if (item.separator) {
+                PopupEntry separator{};
+                separator.separator = true;
+                entries.push_back(separator);
+                continue;
+            }
+            if (item.dropDown && item.popupMenu) {
+                // Preserve drop-down hierarchy inside overflow instead of flattening
+                // all submenu commands into a single unstructured list.
+                PopupEntry entry{};
+                entry.text = item.text.empty() ? L"Menu" : item.text;
+                entry.sourceIndex = index;
+                entry.popupMenu = item.popupMenu;
+                entry.checked = item.checked;
+                entry.disabled = item.disabled;
+                entry.opensSubmenu = true;
+                entries.push_back(entry);
+                continue;
+            }
+            PopupEntry entry{};
+            entry.text = item.text;
+            entry.commandId = item.commandId;
+            entry.sourceIndex = index;
+            entry.checked = item.checked;
+            entry.disabled = item.disabled;
+            entries.push_back(entry);
+        }
+        return entries;
+    }
+
+    void ShowPopupEntries(const std::vector<PopupEntry>& entries, RECT anchorRectScreen, bool fromSubmenu = false) {
+        if (entries.empty() || !owner->popupHost_ || !owner->popupList_ || !owner->toolbarHwnd_) {
+            return;
+        }
+        popupEntries = entries;
+        popupEntriesFromSubmenu = fromSubmenu;
+        SendMessageW(owner->popupList_, LB_RESETCONTENT, 0, 0);
+        for (const auto& entry : popupEntries) {
+            SendMessageW(owner->popupList_, LB_ADDSTRING, 0, reinterpret_cast<LPARAM>(entry.text.c_str()));
+        }
+
+        HDC dc = GetDC(owner->toolbarHwnd_);
+        HFONT drawFont = font ? font : reinterpret_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
+        HFONT oldFont = drawFont ? reinterpret_cast<HFONT>(SelectObject(dc, drawFont)) : nullptr;
+        int width = kToolbarPopupMinWidth;
+        for (const auto& entry : popupEntries) {
+            if (entry.separator) {
+                continue;
+            }
+            RECT textRect{0, 0, 0, 0};
+            DrawTextW(dc, entry.text.c_str(), -1, &textRect, DT_LEFT | DT_SINGLELINE | DT_NOPREFIX | DT_CALCRECT);
+            int entryWidth = std::max(0, static_cast<int>(textRect.right - textRect.left)) + owner->theme_.textPadding * 2 + 16;
+            if (entry.checked) {
+                entryWidth += 12;
+            }
+            if (entry.opensSubmenu) {
+                entryWidth += kToolbarPopupArrowInset;
+            }
+            width = std::max(width, entryWidth);
+        }
+        if (oldFont) {
+            SelectObject(dc, oldFont);
+        }
+        ReleaseDC(owner->toolbarHwnd_, dc);
+
+        int height = 2;
+        for (const auto& entry : popupEntries) {
+            height += entry.separator ? 8 : owner->theme_.itemHeight;
+        }
+
+        // The popup host is a true popup window, not a child window, so it can extend
+        // beyond the toolbar client area like a standard menu while staying custom drawn.
+        const int x = anchorRectScreen.left;
+        const int y = anchorRectScreen.bottom + 4;
+        SetWindowPos(owner->popupHost_, HWND_TOPMOST, x, y, width, height, SWP_SHOWWINDOW);
+        MoveWindow(owner->popupList_, 1, 1, std::max(1, width - 2), std::max(1, height - 2), TRUE);
+        SendMessageW(owner->popupList_, LB_SETCURSEL, 0, 0);
+        SetFocus(owner->popupList_);
+        RedrawWindow(owner->popupHost_, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+    }
+
+    void ApplyPopupSelection() {
+        const int selected = static_cast<int>(SendMessageW(owner->popupList_, LB_GETCURSEL, 0, 0));
+        if (selected < 0 || selected >= static_cast<int>(popupEntries.size())) {
+            HidePopup();
+            return;
+        }
+        const PopupEntry entry = popupEntries[selected];
+        if (entry.separator || entry.disabled) {
+            return;
+        }
+        if (entry.opensSubmenu && entry.popupMenu) {
+            // Re-anchor nested submenu popups to the active row in the current popup.
+            RECT itemRect{};
+            SendMessageW(owner->popupList_, LB_GETITEMRECT, static_cast<WPARAM>(selected), reinterpret_cast<LPARAM>(&itemRect));
+            RECT popupRect{};
+            GetWindowRect(owner->popupHost_, &popupRect);
+            OffsetRect(&itemRect, popupRect.left + 1, popupRect.top + 1);
+            ShowPopupEntries(BuildEntriesFromMenu(entry.popupMenu), itemRect, true);
+            return;
+        }
+        HidePopup();
+        if (owner->parentHwnd_) {
+            SendMessageW(owner->parentHwnd_,
+                         WM_COMMAND,
+                         MAKEWPARAM(static_cast<UINT>(entry.commandId), 0),
+                         reinterpret_cast<LPARAM>(owner->toolbarHwnd_));
+        }
+    }
+
+    void CloseOnOutsideClick(short x, short y) {
+        if (!IsPopupVisible()) {
+            return;
+        }
+        POINT pt{x, y};
+        ClientToScreen(owner->parentHwnd_, &pt);
+        RECT popupRect{};
+        RECT toolbarRect{};
+        GetWindowRect(owner->popupHost_, &popupRect);
+        GetWindowRect(owner->toolbarHwnd_, &toolbarRect);
+        if (!PtInRect(&popupRect, pt) && !PtInRect(&toolbarRect, pt)) {
+            HidePopup();
+        }
+    }
+
+    void ShowItemDropDown(int index) {
+        if (index < 0 || index >= static_cast<int>(items.size())) {
+            return;
+        }
+        if (IsPopupVisible() && !popupFromOverflow && popupSourceIndex == index) {
+            HidePopup();
+            return;
+        }
+        popupSourceIndex = index;
+        popupFromOverflow = false;
+        ShowPopupEntries(BuildEntriesFromMenu(items[index].popupMenu), RectToScreen(owner->toolbarHwnd_, itemRects[index]));
+    }
+
+    void ShowOverflowMenu() {
+        if (!HasOverflow()) {
+            return;
+        }
+        if (IsPopupVisible() && popupFromOverflow) {
+            HidePopup();
+            return;
+        }
+        popupSourceIndex = -1;
+        popupFromOverflow = true;
+        ShowPopupEntries(BuildOverflowEntries(), RectToScreen(owner->toolbarHwnd_, overflowRect));
     }
 
     void StartMouseLeaveTracking() {
@@ -192,6 +625,9 @@ struct Toolbar::Impl {
 
         for (int i = 0; i < static_cast<int>(items.size()); ++i) {
             const ToolbarItem& item = items[i];
+            if (!itemVisible[i]) {
+                continue;
+            }
             RECT rc = itemRects[i];
 
             if (item.separator) {
@@ -208,7 +644,8 @@ struct Toolbar::Impl {
 
             HBRUSH fill = brushItem;
             COLORREF textColor = owner->theme_.toolbarText;
-            if (item.checked || i == pressedIndex) {
+            const bool popupOwnerActive = IsPopupVisible() && !popupFromOverflow && popupSourceIndex == i;
+            if (item.checked || i == pressedIndex || popupOwnerActive) {
                 fill = brushItemActive;
                 textColor = owner->theme_.toolbarTextActive;
             } else if (i == hotIndex) {
@@ -226,15 +663,131 @@ struct Toolbar::Impl {
             SelectObject(dc, oldPen);
             SelectObject(dc, oldBrush);
 
-            RECT textRect = rc;
-            textRect.left += owner->theme_.textPadding;
-            textRect.right -= owner->theme_.textPadding;
-            SetTextColor(dc, textColor);
-            DrawTextW(dc, item.text.c_str(), -1, &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+            RECT contentRect = rc;
+            contentRect.left += owner->theme_.textPadding;
+            contentRect.right -= owner->theme_.textPadding;
+            if (item.dropDown) {
+                contentRect.right -= kToolbarArrowWidth;
+            }
+
+            if (item.icon) {
+                const int iconX = item.iconOnly ? (rc.left + rc.right - kToolbarIconSize) / 2 : contentRect.left;
+                const int iconY = rc.top + std::max(0, static_cast<int>(((rc.bottom - rc.top) - kToolbarIconSize) / 2));
+                DrawIconEx(dc, iconX, iconY, item.icon, kToolbarIconSize, kToolbarIconSize, 0, nullptr, DI_NORMAL);
+                if (!item.iconOnly) {
+                    contentRect.left += kToolbarIconSize + 8;
+                }
+            }
+
+            if (!item.iconOnly) {
+                SetTextColor(dc, textColor);
+                DrawTextW(dc, item.text.c_str(), -1, &contentRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+            }
+
+            if (item.dropDown) {
+                RECT arrowRect = rc;
+                arrowRect.left = std::max(arrowRect.left, rc.right - kToolbarArrowWidth - owner->theme_.textPadding + 2);
+                arrowRect.right -= owner->theme_.textPadding / 2;
+                const int centerX = (arrowRect.left + arrowRect.right) / 2;
+                const int centerY = (arrowRect.top + arrowRect.bottom) / 2;
+                POINT pts[3]{
+                    {centerX - 4, centerY - 2},
+                    {centerX + 4, centerY - 2},
+                    {centerX, centerY + 3}
+                };
+                HGDIOBJ oldPen = SelectObject(dc, GetStockObject(NULL_PEN));
+                HBRUSH arrowBrush = CreateSolidBrush(textColor);
+                HGDIOBJ oldBrushArrow = SelectObject(dc, arrowBrush);
+                Polygon(dc, pts, 3);
+                SelectObject(dc, oldBrushArrow);
+                SelectObject(dc, oldPen);
+                DeleteObject(arrowBrush);
+            }
+        }
+
+        if (HasOverflow()) {
+            HBRUSH overflowFill = brushItem;
+            COLORREF overflowText = owner->theme_.toolbarText;
+            const bool popupOverflowActive = IsPopupVisible() && popupFromOverflow;
+            if (popupOverflowActive || hotIndex == kOverflowCommandId || pressedIndex == kOverflowCommandId) {
+                overflowFill = (pressedIndex == kOverflowCommandId || popupOverflowActive) ? brushItemActive : brushItemHot;
+                overflowText = (pressedIndex == kOverflowCommandId || popupOverflowActive) ? owner->theme_.toolbarTextActive : owner->theme_.toolbarText;
+            }
+            HGDIOBJ oldBrush = SelectObject(dc, overflowFill ? overflowFill : reinterpret_cast<HBRUSH>(GetStockObject(DKGRAY_BRUSH)));
+            HPEN oldPen = reinterpret_cast<HPEN>(SelectObject(dc, GetStockObject(NULL_PEN)));
+            RoundRect(dc, overflowRect.left, overflowRect.top, overflowRect.right, overflowRect.bottom, 12, 12);
+            SelectObject(dc, oldPen);
+            SelectObject(dc, oldBrush);
+
+            RECT dotsRect = overflowRect;
+            SetTextColor(dc, overflowText);
+            DrawTextW(dc, L"...", -1, &dotsRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
         }
 
         if (oldFont) {
             SelectObject(dc, oldFont);
+        }
+    }
+
+    void DrawPopupItem(const DRAWITEMSTRUCT* draw) {
+        if (draw->itemID == static_cast<UINT>(-1) || draw->itemID >= popupEntries.size()) {
+            return;
+        }
+        const PopupEntry& entry = popupEntries[draw->itemID];
+        RECT rc = draw->rcItem;
+        if (entry.separator) {
+            FillRect(draw->hDC, &rc, brushPopupPanel);
+            HPEN oldPen = penSeparator ? reinterpret_cast<HPEN>(SelectObject(draw->hDC, penSeparator)) : nullptr;
+            const int y = (rc.top + rc.bottom) / 2;
+            MoveToEx(draw->hDC, rc.left + 8, y, nullptr);
+            LineTo(draw->hDC, rc.right - 8, y);
+            if (oldPen) {
+                SelectObject(draw->hDC, oldPen);
+            }
+            return;
+        }
+
+        HBRUSH fill = entry.checked ? brushPopupItemChecked : brushPopupItem;
+        if ((draw->itemState & ODS_SELECTED) != 0) {
+            fill = brushPopupItemHot;
+        }
+        FillRect(draw->hDC, &rc, fill ? fill : brushPopupPanel);
+        HFONT oldFont = font ? reinterpret_cast<HFONT>(SelectObject(draw->hDC, font)) : nullptr;
+        SetBkMode(draw->hDC, TRANSPARENT);
+        SetTextColor(draw->hDC, entry.disabled ? owner->theme_.buttonDisabledText : owner->theme_.text);
+        rc.left += owner->theme_.textPadding;
+        rc.right -= owner->theme_.textPadding;
+        if (entry.checked) {
+            RECT markRect = rc;
+            markRect.right = markRect.left + 12;
+            DrawTextW(draw->hDC, L"✓", -1, &markRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+            rc.left = markRect.right + 6;
+        }
+        RECT textRect = rc;
+        if (entry.opensSubmenu) {
+            textRect.right -= kToolbarPopupArrowInset;
+        }
+        DrawTextW(draw->hDC, entry.text.c_str(), -1, &textRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+        if (entry.opensSubmenu) {
+            RECT arrowRect = rc;
+            arrowRect.left = arrowRect.right - kToolbarPopupArrowInset;
+            const int centerX = (arrowRect.left + arrowRect.right) / 2;
+            const int centerY = (arrowRect.top + arrowRect.bottom) / 2;
+            POINT pts[3]{
+                {centerX - 3, centerY - 4},
+                {centerX - 3, centerY + 4},
+                {centerX + 2, centerY}
+            };
+            HGDIOBJ oldPen = SelectObject(draw->hDC, GetStockObject(NULL_PEN));
+            HBRUSH arrowBrush = CreateSolidBrush(entry.disabled ? owner->theme_.buttonDisabledText : owner->theme_.text);
+            HGDIOBJ oldBrush = SelectObject(draw->hDC, arrowBrush);
+            Polygon(draw->hDC, pts, 3);
+            SelectObject(draw->hDC, oldBrush);
+            SelectObject(draw->hDC, oldPen);
+            DeleteObject(arrowBrush);
+        }
+        if (oldFont) {
+            SelectObject(draw->hDC, oldFont);
         }
     }
 
@@ -268,7 +821,7 @@ struct Toolbar::Impl {
             return 0;
         case WM_MOUSEMOVE: {
             POINT pt{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
-            const int index = self->HitTest(pt);
+            const int index = self->FilterSuppressedHotIndex(self->HitTest(pt));
             if (self->hotIndex != index) {
                 self->hotIndex = index;
                 InvalidateRect(window, nullptr, FALSE);
@@ -279,12 +832,26 @@ struct Toolbar::Impl {
         case WM_MOUSELEAVE:
             self->trackingMouseLeave = false;
             self->hotIndex = -1;
+            self->suppressHotIndex = -2;
+            self->suppressHotOverflow = false;
             InvalidateRect(window, nullptr, FALSE);
             return 0;
         case WM_LBUTTONDOWN: {
             SetFocus(window);
             POINT pt{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
             self->pressedIndex = self->HitTest(pt);
+            if (self->IsPopupVisible()) {
+                const bool sameOverflow = self->pressedIndex == kOverflowCommandId && self->popupFromOverflow;
+                const bool sameDropdown = self->pressedIndex >= 0 && !self->popupFromOverflow && self->popupSourceIndex == self->pressedIndex;
+                if (sameOverflow || sameDropdown) {
+                    self->SuppressToggleForCurrentClick(self->pressedIndex);
+                    self->pressedIndex = -1;
+                    self->hotIndex = -1;
+                    self->HidePopup();
+                    InvalidateRect(window, nullptr, FALSE);
+                    return 0;
+                }
+            }
             if (self->pressedIndex >= 0) {
                 SetCapture(window);
                 InvalidateRect(window, nullptr, FALSE);
@@ -299,8 +866,20 @@ struct Toolbar::Impl {
             if (GetCapture() == window) {
                 ReleaseCapture();
             }
+            if (self->ConsumeToggleSuppression(releasedIndex)) {
+                InvalidateRect(window, nullptr, FALSE);
+                return 0;
+            }
             InvalidateRect(window, nullptr, FALSE);
+            if (pressedIndex == kOverflowCommandId && releasedIndex == kOverflowCommandId) {
+                self->ShowOverflowMenu();
+                return 0;
+            }
             if (pressedIndex >= 0 && pressedIndex == releasedIndex) {
+                if (self->ArrowHit(pressedIndex, pt) || self->items[pressedIndex].dropDown) {
+                    self->ShowItemDropDown(pressedIndex);
+                    return 0;
+                }
                 self->NotifyClick(pressedIndex);
             }
             return 0;
@@ -324,6 +903,135 @@ struct Toolbar::Impl {
 
         return DefWindowProcW(window, message, wParam, lParam);
     }
+
+    static LRESULT CALLBACK PopupWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
+        auto* self = reinterpret_cast<Impl*>(GetWindowLongPtrW(window, GWLP_USERDATA));
+        if (!self) {
+            return DefWindowProcW(window, message, wParam, lParam);
+        }
+
+        switch (message) {
+        case WM_ERASEBKGND:
+            return 1;
+        case WM_PAINT: {
+            PAINTSTRUCT ps{};
+            HDC dc = BeginPaint(window, &ps);
+            RECT rect{};
+            GetClientRect(window, &rect);
+            FillRect(dc, &rect, self->brushPopupPanel);
+            HPEN oldPen = self->penPopupBorder ? reinterpret_cast<HPEN>(SelectObject(dc, self->penPopupBorder)) : nullptr;
+            HGDIOBJ oldBrush = SelectObject(dc, GetStockObject(NULL_BRUSH));
+            Rectangle(dc, rect.left, rect.top, rect.right, rect.bottom);
+            SelectObject(dc, oldBrush);
+            if (oldPen) {
+                SelectObject(dc, oldPen);
+            }
+            EndPaint(window, &ps);
+            return 0;
+        }
+        case WM_MEASUREITEM: {
+            auto* measure = reinterpret_cast<MEASUREITEMSTRUCT*>(lParam);
+            if (measure && measure->CtlID == kToolbarPopupListId) {
+                const UINT itemId = measure->itemID;
+                measure->itemHeight = (itemId < self->popupEntries.size() && self->popupEntries[itemId].separator)
+                    ? 8
+                    : self->owner->theme_.itemHeight;
+                return TRUE;
+            }
+            break;
+        }
+        case WM_DRAWITEM: {
+            auto* draw = reinterpret_cast<DRAWITEMSTRUCT*>(lParam);
+            if (draw && draw->hwndItem == self->owner->popupList_) {
+                self->DrawPopupItem(draw);
+                return TRUE;
+            }
+            break;
+        }
+        case WM_COMMAND:
+            if (LOWORD(wParam) == kToolbarPopupListId && HIWORD(wParam) == LBN_DBLCLK) {
+                self->ApplyPopupSelection();
+                return 0;
+            }
+            break;
+        case WM_ACTIVATE:
+            if (LOWORD(wParam) == WA_INACTIVE) {
+                self->SuppressToggleFromCursorIfNeeded();
+                self->HidePopup();
+                return 0;
+            }
+            break;
+        default:
+            break;
+        }
+
+        return DefWindowProcW(window, message, wParam, lParam);
+    }
+
+    static LRESULT CALLBACK PopupListSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR subclassId, DWORD_PTR refData) {
+        auto* self = reinterpret_cast<Impl*>(refData);
+        if (!self) {
+            return DefSubclassProc(window, message, wParam, lParam);
+        }
+
+        switch (message) {
+        case WM_LBUTTONUP: {
+            const LRESULT result = DefSubclassProc(window, message, wParam, lParam);
+            const LRESULT hit = SendMessageW(window, LB_ITEMFROMPOINT, 0, lParam);
+            if (HIWORD(hit) == 0) {
+                self->ApplyPopupSelection();
+            }
+            return result;
+        }
+        case WM_KEYDOWN:
+            if (wParam == VK_RETURN || wParam == VK_SPACE || wParam == VK_RIGHT) {
+                self->ApplyPopupSelection();
+                return 0;
+            }
+            if (wParam == VK_ESCAPE) {
+                self->HidePopup();
+                return 0;
+            }
+            break;
+        case WM_NCDESTROY:
+            RemoveWindowSubclass(window, PopupListSubclassProc, subclassId);
+            break;
+        default:
+            break;
+        }
+
+        return DefSubclassProc(window, message, wParam, lParam);
+    }
+
+    static LRESULT CALLBACK ParentSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR subclassId, DWORD_PTR refData) {
+        auto* self = reinterpret_cast<Impl*>(refData);
+        if (!self) {
+            return DefSubclassProc(window, message, wParam, lParam);
+        }
+
+        switch (message) {
+        case WM_LBUTTONDOWN:
+            self->CloseOnOutsideClick(static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam)));
+            break;
+        case WM_NCLBUTTONDOWN:
+        case WM_RBUTTONDOWN:
+        case WM_MBUTTONDOWN:
+            self->HidePopup();
+            break;
+        case WM_SIZE:
+        case WM_MOVE:
+        case WM_MOVING:
+            self->HidePopup();
+            break;
+        case WM_DESTROY:
+            RemoveWindowSubclass(window, ParentSubclassProc, subclassId);
+            break;
+        default:
+            break;
+        }
+
+        return DefSubclassProc(window, message, wParam, lParam);
+    }
 };
 
 namespace {
@@ -345,8 +1053,29 @@ ATOM EnsureToolbarClassRegistered(HINSTANCE instance) {
     return atom;
 }
 
+ATOM EnsureToolbarPopupClassRegistered(HINSTANCE instance) {
+    static ATOM atom = 0;
+    if (atom != 0) {
+        return atom;
+    }
+
+    WNDCLASSEXW wc{};
+    wc.cbSize = sizeof(wc);
+    wc.lpfnWndProc = ToolbarPopupWindowProcThunk;
+    wc.hInstance = instance;
+    wc.lpszClassName = kToolbarPopupClassName;
+    wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    wc.hbrBackground = nullptr;
+    atom = RegisterClassExW(&wc);
+    return atom;
+}
+
 LRESULT CALLBACK ToolbarWindowProcThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
     return Toolbar::Impl::ToolbarWindowProc(window, message, wParam, lParam);
+}
+
+LRESULT CALLBACK ToolbarPopupWindowProcThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
+    return Toolbar::Impl::PopupWindowProc(window, message, wParam, lParam);
 }
 
 }  // namespace
@@ -367,7 +1096,7 @@ bool Toolbar::Create(HWND parent, int controlId, const Theme& theme, DWORD style
         impl_->instance = GetModuleHandleW(nullptr);
     }
 
-    if (!EnsureToolbarClassRegistered(impl_->instance)) {
+    if (!EnsureToolbarClassRegistered(impl_->instance) || !EnsureToolbarPopupClassRegistered(impl_->instance)) {
         Destroy();
         return false;
     }
@@ -389,15 +1118,66 @@ bool Toolbar::Create(HWND parent, int controlId, const Theme& theme, DWORD style
         return false;
     }
 
-    impl_->UpdateThemeResources();
-    if (!impl_->brushBackground || !impl_->brushItem || !impl_->brushItemHot || !impl_->brushItemActive || !impl_->penSeparator || !impl_->font) {
+    popupHost_ = CreateWindowExW(0,
+                                 kToolbarPopupClassName,
+                                 nullptr,
+                                 WS_POPUP | WS_CLIPSIBLINGS | WS_BORDER,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 parent,
+                                 nullptr,
+                                 impl_->instance,
+                                 nullptr);
+    if (!popupHost_) {
         Destroy();
         return false;
     }
+    SetWindowLongPtrW(popupHost_, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(impl_.get()));
+
+    popupList_ = CreateWindowExW(0,
+                                 L"LISTBOX",
+                                 nullptr,
+                                 WS_CHILD | WS_VISIBLE | LBS_NOINTEGRALHEIGHT | LBS_NOTIFY | LBS_OWNERDRAWFIXED | LBS_HASSTRINGS,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 popupHost_,
+                                 reinterpret_cast<HMENU>(static_cast<INT_PTR>(kToolbarPopupListId)),
+                                 impl_->instance,
+                                 nullptr);
+    if (!popupList_) {
+        Destroy();
+        return false;
+    }
+    SetWindowSubclass(popupList_, Impl::PopupListSubclassProc, reinterpret_cast<UINT_PTR>(this), reinterpret_cast<DWORD_PTR>(impl_.get()));
+
+    if (!impl_->UpdateThemeResources() || !impl_->brushBackground || !impl_->brushItem || !impl_->brushItemHot ||
+        !impl_->brushItemActive || !impl_->brushPopupPanel || !impl_->brushPopupItem || !impl_->brushPopupItemHot ||
+        !impl_->brushPopupItemChecked || !impl_->penSeparator || !impl_->penPopupBorder || !impl_->font) {
+        Destroy();
+        return false;
+    }
+    SendMessageW(popupList_, WM_SETFONT, reinterpret_cast<WPARAM>(impl_->font), TRUE);
+    SetWindowSubclass(parentHwnd_, Impl::ParentSubclassProc, reinterpret_cast<UINT_PTR>(this), reinterpret_cast<DWORD_PTR>(impl_.get()));
     return true;
 }
 
 void Toolbar::Destroy() {
+    if (parentHwnd_) {
+        RemoveWindowSubclass(parentHwnd_, Impl::ParentSubclassProc, reinterpret_cast<UINT_PTR>(this));
+    }
+    if (popupList_) {
+        RemoveWindowSubclass(popupList_, Impl::PopupListSubclassProc, reinterpret_cast<UINT_PTR>(this));
+        DestroyWindow(popupList_);
+        popupList_ = nullptr;
+    }
+    if (popupHost_) {
+        DestroyWindow(popupHost_);
+        popupHost_ = nullptr;
+    }
     if (toolbarHwnd_) {
         if (GetCapture() == toolbarHwnd_) {
             ReleaseCapture();
@@ -409,6 +1189,16 @@ void Toolbar::Destroy() {
     controlId_ = 0;
     impl_->items.clear();
     impl_->itemRects.clear();
+    impl_->itemVisible.clear();
+    impl_->overflowIndices.clear();
+    impl_->overflowRect = RECT{0, 0, 0, 0};
+    impl_->popupEntries.clear();
+    impl_->popupSourceIndex = -1;
+    impl_->popupFromOverflow = false;
+    impl_->suppressPopupToggleIndex = -2;
+    impl_->suppressPopupToggleOverflow = false;
+    impl_->suppressHotIndex = -2;
+    impl_->suppressHotOverflow = false;
     impl_->hotIndex = -1;
     impl_->pressedIndex = -1;
     impl_->layoutDirty = true;
@@ -442,6 +1232,8 @@ void Toolbar::AddItem(const ToolbarItem& item) {
 void Toolbar::ClearItems() {
     impl_->items.clear();
     impl_->itemRects.clear();
+    impl_->itemVisible.clear();
+    impl_->overflowIndices.clear();
     impl_->layoutDirty = true;
     if (toolbarHwnd_) {
         InvalidateRect(toolbarHwnd_, nullptr, TRUE);

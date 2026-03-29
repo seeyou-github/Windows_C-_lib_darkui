@@ -1119,10 +1119,15 @@ build\darkui_tab_demo.exe
 struct ToolbarItem {
     std::wstring text;
     int commandId = 0;
+    HICON icon = nullptr;
+    HMENU popupMenu = nullptr;
     std::uintptr_t userData = 0;
     bool separator = false;
     bool checked = false;
     bool disabled = false;
+    bool alignRight = false;
+    bool iconOnly = false;
+    bool dropDown = false;
 };
 ```
 
@@ -1142,10 +1147,12 @@ theme.toolbarHeight = 44;
 darkui::Toolbar toolbar;
 toolbar.Create(hwnd, 8001, theme);
 toolbar.SetItems({
-    {L"New", 8101},
-    {L"Open", 8102},
-    {L"", 0, 0, true},
-    {L"Share", 8103},
+    {L"New", 8101, iconNew},
+    {L"Open", 8102, iconOpen},
+    {L"", 0, nullptr, nullptr, 0, true},
+    {L"", 8104, iconSearch, nullptr, 0, false, false, false, false, true},
+    {L"Share", 8103, iconShare, nullptr, 0, false, false, false, true},
+    {L"Layout", 8105, iconLayout, layoutMenu, 0, false, false, false, true, false, true},
 });
 ```
 
@@ -1156,8 +1163,15 @@ toolbar.SetTheme(theme);
 toolbar.AddItem({L"Export", 8104});
 toolbar.SetChecked(0, true);
 toolbar.SetDisabled(3, true);
+toolbar.SetItem(1, {L"Open", 8102, iconOpen});
 std::size_t count = toolbar.GetCount();
 ```
+
+Runtime notes:
+
+- `SetItems()` replaces the full toolbar model and closes any visible drop-down or overflow popup first.
+- `ClearItems()` also closes any visible popup before removing all items.
+- `SetTheme()` rebuilds internal brushes, pens, and fonts; if theme resource creation fails, the previous theme stays active.
 
 ### Parent Notification
 
@@ -1188,26 +1202,44 @@ case WM_COMMAND:
 - `textPadding`: horizontal item padding
 - `uiFont`: toolbar text font
 
+### Layout And Icons
+
+- `ToolbarItem::icon` draws a small left-side icon before the text.
+- `ToolbarItem::alignRight = true` places the item into the right-aligned tool group.
+- `ToolbarItem::iconOnly = true` draws a compact square icon button without text.
+- Even for `iconOnly` items, keep `text` populated so overflow popups can show a readable label.
+- `ToolbarItem::dropDown = true` draws a drop-down arrow and opens `popupMenu`.
+- Left-aligned and right-aligned groups are laid out independently, so secondary actions can stay pinned to the far edge.
+- When width is insufficient, hidden items move into an overflow `...` button.
+
+### Drop-Down And Overflow Behavior
+
+- Toolbar drop-downs and overflow menus use a custom dark popup instead of the native light `HMENU` UI.
+- Overflow preserves drop-down structure: a drop-down item remains a submenu entry inside overflow rather than flattening all child commands into one list.
+- Clicking the same drop-down trigger or the same overflow `...` trigger again closes the popup.
+- The currently open drop-down trigger stays visually active while its popup is visible.
+
 ### Current Scope
 
 - Clickable toolbar items
+- Optional small icons
+- Optional icon-only buttons
+- Optional drop-down buttons backed by `HMENU`
 - Hover and pressed visuals
 - Checked state
 - Disabled state
 - Separator items
+- Right-aligned item group
+- Automatic overflow handling
 - Standard `WM_COMMAND` parent notification
 
 Not included yet:
 
-- Item icons
-- Overflow handling
-- Right-aligned groups
-- Drop-down buttons
 - Keyboard navigation between items
 
 ### Toolbar Demo
 
-The toolbar demo shows grouped actions, one checked item, one disabled item, and a simple status line updated through `WM_COMMAND`.
+The toolbar demo shows icons, icon-only tools, a drop-down button, a right-aligned action group, overflow behavior when the window narrows, and a simple status line updated through `WM_COMMAND`.
 
 ```powershell
 .\build_demo_toolbar.bat

@@ -7,11 +7,25 @@
 namespace darkui {
 
 // Single item stored by darkui::Toolbar.
+// Notes:
+// - A separator item ignores most other fields and only draws a vertical divider.
+// - `iconOnly` hides the visible text in the toolbar itself, but `text` should still
+//   be populated so overflow popups can show a readable label.
+// - `dropDown` expects `popupMenu` to point to a valid application-owned `HMENU`.
 struct ToolbarItem {
     // Text shown inside the toolbar item.
     std::wstring text;
     // Command/control identifier reported to the parent window on click.
     int commandId = 0;
+    // Optional small icon drawn before the text.
+    HICON icon = nullptr;
+    // Optional popup menu shown when the item acts as a drop-down button.
+    // Usage:
+    // - Set `dropDown = true`.
+    // - Keep ownership of the menu in application code.
+    // - Toolbar reads menu items to build a custom dark popup instead of showing the
+    //   native light themed menu directly.
+    HMENU popupMenu = nullptr;
     // Optional application-owned payload value.
     std::uintptr_t userData = 0;
     // Marks the item as a separator instead of a clickable button when true.
@@ -20,6 +34,17 @@ struct ToolbarItem {
     bool checked = false;
     // Disables pointer and keyboard activation when true.
     bool disabled = false;
+    // Places the item in the right-aligned tool group when true.
+    // Right-aligned items are laid out from the far edge inward and keep their own
+    // spacing independent from the main left group.
+    bool alignRight = false;
+    // Draws the item as an icon-only square button when true.
+    // `text` is still recommended for overflow popup labels and future accessibility.
+    bool iconOnly = false;
+    // Draws a drop-down arrow and opens `popupMenu` on click when true.
+    // If width becomes insufficient, the item is preserved inside overflow as a
+    // submenu entry rather than being flattened into plain commands.
+    bool dropDown = false;
 };
 
 // Custom dark toolbar for Win32.
@@ -64,18 +89,31 @@ public:
     const Theme& theme() const { return theme_; }
 
     // Replaces the current theme and repaints the toolbar.
+    // Notes:
+    // - Theme resources are rebuilt internally.
+    // - If resource creation fails, the previous theme remains active.
     void SetTheme(const Theme& theme);
     // Replaces all toolbar items at once.
+    // Notes:
+    // - Existing popup UI is closed before the new items become active.
+    // - Use this when rebuilding the entire toolbar model.
     void SetItems(const std::vector<ToolbarItem>& items);
     // Appends a single toolbar item.
+    // Useful for incremental setup during initialization.
     void AddItem(const ToolbarItem& item);
     // Removes all toolbar items.
+    // Any visible drop-down or overflow popup is closed first.
     void ClearItems();
     // Replaces one item in place.
+    // Parameters:
+    // - index: Zero-based item index to overwrite.
+    // - item: Replacement toolbar item definition.
     void SetItem(int index, const ToolbarItem& item);
     // Updates the checked state of one item.
+    // This is typically used for mode toggles or active-tool highlighting.
     void SetChecked(int index, bool checked);
     // Updates the disabled state of one item.
+    // Disabled items stay visible but are skipped by pointer hit-testing.
     void SetDisabled(int index, bool disabled);
     // Returns the number of toolbar items currently stored.
     std::size_t GetCount() const;
@@ -89,6 +127,10 @@ private:
     HWND parentHwnd_ = nullptr;
     // Underlying toolbar window handle.
     HWND toolbarHwnd_ = nullptr;
+    // Popup host window used by drop-down and overflow menus.
+    HWND popupHost_ = nullptr;
+    // Popup list window used by drop-down and overflow menus.
+    HWND popupList_ = nullptr;
     // Child control ID.
     int controlId_ = 0;
     // Theme currently used by the control.
