@@ -616,3 +616,68 @@ Output:
 ```text
 build\darkui_table_demo.exe
 ```
+
+## Button Control
+
+`darkui::Button` is an owner-draw dark button for Win32. It keeps the standard `WM_COMMAND + BN_CLICKED` behavior while allowing full control over button, hover/pressed, border, and text colors through `darkui::Theme`.
+
+### Files
+
+- `src/button.cpp`
+- `demo/demo_button.cpp`
+- `build_demo_button.bat`
+
+### Create
+
+```cpp
+darkui::Theme theme;
+theme.button = RGB(52, 61, 72);
+theme.buttonHot = RGB(72, 86, 104);
+theme.border = RGB(84, 96, 112);
+theme.text = RGB(232, 236, 241);
+
+darkui::Button button;
+button.Create(hwnd, 3001, L"Run", theme);
+```
+
+### Runtime API
+
+```cpp
+button.SetText(L"Processing...");
+button.SetTheme(theme);
+std::wstring text = button.GetText();
+```
+
+### Click Handling
+
+The button uses the normal Win32 notification path:
+
+```cpp
+case WM_COMMAND:
+    if (LOWORD(wParam) == 3001 && HIWORD(wParam) == BN_CLICKED) {
+        // handle click
+        return 0;
+    }
+    break;
+```
+
+### Theme Fields Used By Button
+
+- `button`: normal background color
+- `buttonHot`: pressed background color
+- `border`: border color
+- `text`: button text color
+- `textPadding`: inner horizontal padding
+- `uiFont`: button font
+
+### Button Demo
+
+```powershell
+.\build_demo_button.bat
+```
+
+Output:
+
+```text
+build\darkui_button_demo.exe
+```

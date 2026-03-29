@@ -21,7 +21,10 @@ struct Theme {
     COLORREF background = RGB(34, 36, 40);
     COLORREF panel = RGB(44, 47, 52);
     COLORREF button = RGB(65, 72, 82);
+    COLORREF buttonHover = RGB(72, 80, 92);
     COLORREF buttonHot = RGB(78, 86, 98);
+    COLORREF buttonDisabled = RGB(50, 54, 60);
+    COLORREF buttonDisabledText = RGB(130, 136, 144);
     COLORREF border = RGB(61, 66, 74);
     COLORREF text = RGB(224, 227, 232);
     COLORREF mutedText = RGB(156, 164, 174);
@@ -53,6 +56,38 @@ struct ComboItem {
 };
 
 HFONT CreateFont(const FontSpec& spec);
+
+class Button {
+public:
+    Button();
+    ~Button();
+
+    Button(const Button&) = delete;
+    Button& operator=(const Button&) = delete;
+
+    bool Create(HWND parent, int controlId, const std::wstring& text, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, DWORD exStyle = 0);
+    void Destroy();
+
+    HWND hwnd() const { return buttonHwnd_; }
+    HWND parent() const { return parentHwnd_; }
+    int control_id() const { return controlId_; }
+    const Theme& theme() const { return theme_; }
+    int corner_radius() const { return cornerRadius_; }
+
+    void SetTheme(const Theme& theme);
+    void SetText(const std::wstring& text);
+    std::wstring GetText() const;
+    void SetCornerRadius(int radius);
+
+private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+    HWND parentHwnd_ = nullptr;
+    HWND buttonHwnd_ = nullptr;
+    int controlId_ = 0;
+    int cornerRadius_ = 8;
+    Theme theme_{};
+};
 
 class ComboBox {
 public:

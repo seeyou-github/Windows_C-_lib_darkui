@@ -1,6 +1,7 @@
 #include "darkui/table.h"
 
 #include <algorithm>
+#include <array>
 
 namespace darkui {
 namespace {
@@ -81,26 +82,27 @@ struct Table::Impl {
         return std::max(1, total);
     }
 
-    int ColumnLeft(const RECT& client, int index) const {
+    std::vector<int> BuildColumnEdges(const RECT& client) const {
+        const int count = ColumnCount();
+        std::vector<int> edges(static_cast<std::size_t>(count) + 1, client.left);
+        edges[0] = client.left;
+        if (count <= 0) {
+            return edges;
+        }
+
         const int width = static_cast<int>(client.right - client.left);
-        if (columns.empty() || index <= 0) {
-            return client.left;
-        }
-
-        int offset = 0;
         const int total = TotalColumnWeight();
-        const int count = std::min(index, static_cast<int>(columns.size()));
+        int offset = client.left;
         for (int i = 0; i < count; ++i) {
-            offset += (width * std::max(1, columns[i].width)) / total;
+            if (i == count - 1) {
+                edges[static_cast<std::size_t>(i + 1)] = client.right;
+            } else {
+                const int weight = (i < static_cast<int>(columns.size())) ? std::max(1, columns[i].width) : 1;
+                offset += (width * weight) / total;
+                edges[static_cast<std::size_t>(i + 1)] = offset;
+            }
         }
-        return client.left + offset;
-    }
-
-    int ColumnRight(const RECT& client, int index) const {
-        if (index >= static_cast<int>(columns.size()) - 1) {
-            return client.right;
-        }
-        return ColumnLeft(client, index + 1);
+        return edges;
     }
 
     int RowTop(int rowIndex) const {
@@ -151,12 +153,13 @@ struct Table::Impl {
         FillRect(memDc, &headerRect, brushHeaderBackground);
 
         const int columnCount = ColumnCount();
+        const std::vector<int> columnEdges = BuildColumnEdges(client);
 
         for (int col = 0; col < columnCount; ++col) {
             RECT cell{
-                ColumnLeft(client, col),
+                columnEdges[static_cast<std::size_t>(col)],
                 client.top,
-                ColumnRight(client, col),
+                columnEdges[static_cast<std::size_t>(col + 1)],
                 headerRect.bottom
             };
             Rectangle(memDc, cell.left, cell.top, cell.right, cell.bottom);
@@ -186,9 +189,9 @@ struct Table::Impl {
 
             for (int col = 0; col < columnCount; ++col) {
                 RECT cell{
-                    ColumnLeft(client, col),
+                    columnEdges[static_cast<std::size_t>(col)],
                     rowRect.top,
-                    ColumnRight(client, col),
+                    columnEdges[static_cast<std::size_t>(col + 1)],
                     rowRect.bottom
                 };
                 Rectangle(memDc, cell.left, cell.top, cell.right, cell.bottom);
@@ -203,7 +206,7 @@ struct Table::Impl {
         const int bodyStart = owner->theme_.tableHeaderHeight + rowsToPaint * owner->theme_.tableRowHeight;
         if (bodyStart < client.bottom) {
             for (int col = 0; col < columnCount; ++col) {
-                const int x = ColumnRight(client, col);
+                const int x = columnEdges[static_cast<std::size_t>(col + 1)];
                 MoveToEx(memDc, x - 1, owner->theme_.tableHeaderHeight, nullptr);
                 LineTo(memDc, x - 1, client.bottom);
             }
@@ -333,7 +336,7 @@ bool Table::Create(HWND parent, int controlId, const Theme& theme, DWORD style, 
         return false;
     }
 
-    headerHwnd_ = tableHwnd_;
+    headerHwnd_ = nullptr;
     impl_->UpdateThemeResources();
     return true;
 }
