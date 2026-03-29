@@ -48,6 +48,10 @@ struct Theme {
     COLORREF progressTrack = RGB(52, 56, 62);
     COLORREF progressFill = RGB(78, 120, 184);
     COLORREF progressText = RGB(232, 236, 241);
+    COLORREF scrollBarBackground = RGB(34, 36, 40);
+    COLORREF scrollBarTrack = RGB(52, 56, 62);
+    COLORREF scrollBarThumb = RGB(120, 128, 140);
+    COLORREF scrollBarThumbHot = RGB(150, 160, 174);
     FontSpec uiFont{};
     int itemHeight = 24;
     int arrowWidth = 12;
@@ -60,6 +64,8 @@ struct Theme {
     int sliderTrackHeight = 6;
     int sliderThumbRadius = 9;
     int progressHeight = 12;
+    int scrollBarThickness = 14;
+    int scrollBarMinThumbSize = 28;
 };
 
 struct ComboItem {

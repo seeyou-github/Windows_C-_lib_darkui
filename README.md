@@ -1,7 +1,6 @@
 # lib_darkui
 
-`lib_darkui` 是一个面向原生 Win32 的轻量级自定义控件库。当前正式提供的控件是 `darkui::ComboBox`，后续可以继续按同样模式扩展 `ListBox`、`Button`、`TreeView` 等独立控件类。
-
+`lib_darkui` 是一个面向原生 Win32 的轻量级自定义控件库。
 这个库的目标不是封装整套 GUI 框架，而是提供一组“可直接嵌入原生 Win32 工程”的暗黑风格自定义控件。
 
 ## 当前能力
@@ -859,4 +858,107 @@ Output:
 
 ```text
 build\darkui_progress_demo.exe
+```
+
+## ScrollBar Control
+
+`darkui::ScrollBar` is a custom dark scrollbar for Win32. It supports both horizontal and vertical modes, custom track and thumb colors, drag interaction, page jump, keyboard control, and standard scroll notifications.
+
+### Files
+
+- `include/darkui/scrollbar.h`
+- `src/scrollbar.cpp`
+- `demo/demo_scrollbar.cpp`
+- `build_demo_scrollbar.bat`
+
+### Create
+
+```cpp
+darkui::Theme theme;
+theme.scrollBarBackground = RGB(24, 27, 31);
+theme.scrollBarTrack = RGB(48, 53, 60);
+theme.scrollBarThumb = RGB(120, 128, 140);
+theme.scrollBarThumbHot = RGB(160, 170, 184);
+theme.scrollBarThickness = 14;
+theme.scrollBarMinThumbSize = 28;
+
+darkui::ScrollBar verticalBar;
+verticalBar.Create(hwnd, 6001, true, theme);
+verticalBar.SetRange(0, 100);
+verticalBar.SetPageSize(24);
+verticalBar.SetValue(56);
+
+// horizontal
+// scrollBar.Create(hwnd, 6002, false, theme);
+```
+
+### Runtime API
+
+```cpp
+scrollBar.SetTheme(theme);
+scrollBar.SetRange(0, 100);
+scrollBar.SetPageSize(20);
+scrollBar.SetValue(40);
+scrollBar.SetValue(48, true);
+```
+
+`SetValue(value, true)` sends a standard parent notification:
+- `WM_VSCROLL` for vertical scrollbars
+- `WM_HSCROLL` for horizontal scrollbars
+
+### Parent Notification
+
+```cpp
+case WM_VSCROLL:
+    if (reinterpret_cast<HWND>(lParam) == verticalBar.hwnd()) {
+        int value = verticalBar.GetValue();
+        return 0;
+    }
+    break;
+
+case WM_HSCROLL:
+    if (reinterpret_cast<HWND>(lParam) == horizontalBar.hwnd()) {
+        int value = horizontalBar.GetValue();
+        return 0;
+    }
+    break;
+```
+
+### Theme Fields Used By ScrollBar
+
+- `scrollBarBackground`: outer scrollbar background color
+- `scrollBarTrack`: inner track color
+- `scrollBarThumb`: thumb normal color
+- `scrollBarThumbHot`: thumb hover and drag color
+- `scrollBarThickness`: recommended control thickness
+- `scrollBarMinThumbSize`: minimum thumb length
+
+### Current Scope
+
+- Horizontal and vertical modes
+- Thumb drag
+- Click track for page movement
+- Keyboard arrows, `Home`, `End`
+- Standard `WM_HSCROLL` / `WM_VSCROLL` notifications
+
+Not included yet:
+
+- Arrow buttons
+- Rounded thumb
+- Disabled-state visuals
+- Auto-repeat on hold
+- Linked content container helper
+
+### ScrollBar Demo
+
+The demo shows one horizontal and one vertical scrollbar and prints the current values in real time.
+
+```powershell
+.\build_demo_scrollbar.bat
+```
+
+Output:
+
+```text
+build\darkui_scrollbar_demo.exe
 ```
