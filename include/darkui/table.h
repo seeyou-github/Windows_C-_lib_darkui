@@ -32,7 +32,6 @@ public:
     void Destroy();
 
     HWND hwnd() const { return tableHwnd_; }
-    HWND header() const { return headerHwnd_; }
     HWND parent() const { return parentHwnd_; }
     int control_id() const { return controlId_; }
     const Theme& theme() const { return theme_; }
@@ -49,7 +48,6 @@ private:
     std::unique_ptr<Impl> impl_;
     HWND parentHwnd_ = nullptr;
     HWND tableHwnd_ = nullptr;
-    HWND headerHwnd_ = nullptr;
     int controlId_ = 0;
     Theme theme_{};
 };

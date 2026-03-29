@@ -336,7 +336,6 @@ bool Table::Create(HWND parent, int controlId, const Theme& theme, DWORD style, 
         return false;
     }
 
-    headerHwnd_ = nullptr;
     impl_->UpdateThemeResources();
     return true;
 }
@@ -346,7 +345,6 @@ void Table::Destroy() {
         DestroyWindow(tableHwnd_);
         tableHwnd_ = nullptr;
     }
-    headerHwnd_ = nullptr;
     parentHwnd_ = nullptr;
     controlId_ = 0;
     impl_->selectedRow = -1;
