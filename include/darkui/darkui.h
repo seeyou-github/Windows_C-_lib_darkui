@@ -1,5 +1,6 @@
 #pragma once
 
+#include "darkui/button.h"
 #include "darkui/combobox.h"
 #include "darkui/edit.h"
 #include "darkui/progress.h"
