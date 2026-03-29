@@ -522,3 +522,97 @@ cmake --build build --target darkui_combobox_demo
 - 选中事件仍然遵循 Win32 标准消息机制，而不是自定义回调
 - 一个控件类对应一组独立源文件，后续新增控件建议继续保持这个结构
 - 当前 `Theme::background` 主要是给 demo 或宿主窗口参考，不等于控件按钮底色
+
+## Table Control
+
+`darkui::Table` is a custom dark table control for Win32. It is fully custom-painted, so the body background, header background, text, and grid colors remain consistent in dark themes.
+
+### Files
+
+- `include/darkui/table.h`
+- `src/table.cpp`
+- `demo/demo_table.cpp`
+- `build_demo_table.bat`
+
+### Public Types
+
+```cpp
+struct TableColumn {
+    std::wstring text;
+    int width = 120;
+    int format = LVCFMT_LEFT;
+};
+
+using TableRow = std::vector<std::wstring>;
+```
+
+### Create
+
+```cpp
+darkui::Theme theme;
+theme.tableBackground = RGB(25, 28, 33);
+theme.tableText = RGB(228, 232, 238);
+theme.tableHeaderBackground = RGB(38, 42, 48);
+theme.tableHeaderText = RGB(245, 247, 250);
+theme.tableGrid = RGB(69, 77, 89);
+theme.tableRowHeight = 30;
+theme.tableHeaderHeight = 34;
+
+darkui::Table table;
+table.Create(hwnd, 2001, theme);
+```
+
+### Columns And Rows
+
+`TableColumn::width` is used as a relative width weight. The control distributes the available width proportionally, and the last column absorbs the remaining pixels.
+
+```cpp
+table.SetColumns({
+    {L"Name", 180, LVCFMT_LEFT},
+    {L"Type", 120, LVCFMT_LEFT},
+    {L"State", 100, LVCFMT_CENTER},
+    {L"Notes", 260, LVCFMT_LEFT},
+});
+
+table.SetRows({
+    {L"ComboBox", L"Control", L"Ready", L"Dark popup and button"},
+    {L"Table", L"Control", L"Ready", L"Dark header, body and grid"},
+});
+```
+
+### Runtime API
+
+```cpp
+table.AddRow({L"Theme", L"Config", L"Live", L"Updated at runtime"});
+table.ClearRows();
+table.SetTheme(theme);
+```
+
+### Theme Fields Used By Table
+
+- `tableBackground`: body background color
+- `tableText`: body text color
+- `tableHeaderBackground`: header background color
+- `tableHeaderText`: header text color
+- `tableGrid`: grid and border color
+- `tableRowHeight`: body row height
+- `tableHeaderHeight`: header row height
+- `textPadding`: cell text left/right padding
+- `buttonHot`: selected row background color
+
+### Limitations
+
+- Current table behavior focuses on display and single-row selection.
+- It does not yet expose built-in scrolling, sorting, or in-place editing.
+
+### Table Demo
+
+```powershell
+.\build_demo_table.bat
+```
+
+Output:
+
+```text
+build\darkui_table_demo.exe
+```

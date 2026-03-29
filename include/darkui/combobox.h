@@ -30,6 +30,11 @@ struct Theme {
     COLORREF popupItemHot = RGB(65, 72, 82);
     COLORREF popupAccentItem = RGB(27, 47, 83);
     COLORREF popupAccentItemHot = RGB(39, 66, 116);
+    COLORREF tableBackground = RGB(34, 36, 40);
+    COLORREF tableText = RGB(224, 227, 232);
+    COLORREF tableHeaderBackground = RGB(44, 47, 52);
+    COLORREF tableHeaderText = RGB(224, 227, 232);
+    COLORREF tableGrid = RGB(61, 66, 74);
     FontSpec uiFont{};
     int itemHeight = 24;
     int arrowWidth = 12;
@@ -37,6 +42,8 @@ struct Theme {
     int textPadding = 8;
     int popupBorder = 1;
     int popupOffsetY = 2;
+    int tableRowHeight = 28;
+    int tableHeaderHeight = 30;
 };
 
 struct ComboItem {
