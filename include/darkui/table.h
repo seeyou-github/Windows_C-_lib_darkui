@@ -35,12 +35,14 @@ public:
     HWND parent() const { return parentHwnd_; }
     int control_id() const { return controlId_; }
     const Theme& theme() const { return theme_; }
+    bool draw_empty_grid() const { return drawEmptyGrid_; }
 
     void SetTheme(const Theme& theme);
     void SetColumns(const std::vector<TableColumn>& columns);
     void SetRows(const std::vector<TableRow>& rows);
     void AddRow(const TableRow& row);
     void ClearRows();
+    void SetDrawEmptyGrid(bool enabled);
     std::size_t GetRowCount() const;
     std::size_t GetColumnCount() const;
 
@@ -49,6 +51,7 @@ private:
     HWND parentHwnd_ = nullptr;
     HWND tableHwnd_ = nullptr;
     int controlId_ = 0;
+    bool drawEmptyGrid_ = true;
     Theme theme_{};
 };
 

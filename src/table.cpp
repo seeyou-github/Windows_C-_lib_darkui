@@ -204,7 +204,7 @@ struct Table::Impl {
         }
 
         const int bodyStart = owner->theme_.tableHeaderHeight + rowsToPaint * owner->theme_.tableRowHeight;
-        if (bodyStart < client.bottom) {
+        if (bodyStart < client.bottom && owner->drawEmptyGrid_) {
             for (int col = 0; col < columnCount; ++col) {
                 const int x = columnEdges[static_cast<std::size_t>(col + 1)];
                 MoveToEx(memDc, x - 1, owner->theme_.tableHeaderHeight, nullptr);
@@ -382,6 +382,13 @@ void Table::AddRow(const TableRow& row) {
 void Table::ClearRows() {
     impl_->rows.clear();
     impl_->selectedRow = -1;
+    if (tableHwnd_) {
+        InvalidateRect(tableHwnd_, nullptr, TRUE);
+    }
+}
+
+void Table::SetDrawEmptyGrid(bool enabled) {
+    drawEmptyGrid_ = enabled;
     if (tableHwnd_) {
         InvalidateRect(tableHwnd_, nullptr, TRUE);
     }

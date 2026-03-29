@@ -586,7 +586,14 @@ table.SetRows({
 table.AddRow({L"Theme", L"Config", L"Live", L"Updated at runtime"});
 table.ClearRows();
 table.SetTheme(theme);
+table.SetDrawEmptyGrid(false);
 ```
+
+`SetDrawEmptyGrid(bool enabled)` controls whether the empty expanded area below the last data row continues drawing grid lines.
+
+- `true`: keep drawing grid lines in the empty expanded area
+- `false`: leave the empty expanded area as plain `tableBackground`
+- default: `true`
 
 ### Theme Fields Used By Table
 
@@ -606,6 +613,8 @@ table.SetTheme(theme);
 - It does not yet expose built-in scrolling, sorting, or in-place editing.
 
 ### Table Demo
+
+The table demo includes a live checkbox named `Draw grid in empty expanded area` so you can switch this behavior at runtime.
 
 ```powershell
 .\build_demo_table.bat

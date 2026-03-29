@@ -31,6 +31,7 @@ enum ControlId {
     ID_PICK_HEADER_BG,
     ID_PICK_HEADER_TEXT,
     ID_PICK_GRID,
+    ID_TOGGLE_EMPTY_GRID,
     ID_RESET_THEME
 };
 
@@ -47,6 +48,7 @@ struct DemoState {
     HWND buttonHeaderBg = nullptr;
     HWND buttonHeaderText = nullptr;
     HWND buttonGrid = nullptr;
+    HWND checkEmptyGrid = nullptr;
     HWND buttonReset = nullptr;
 };
 
@@ -112,7 +114,9 @@ void Layout(DemoState* state) {
     MoveWindow(state->buttonHeaderText, kPanelX + 78, y, kPanelButtonWidth, kPanelButtonHeight, TRUE);
     y += kPanelButtonHeight + kPanelRowGap;
     MoveWindow(state->buttonGrid, kPanelX + 78, y, kPanelButtonWidth, kPanelButtonHeight, TRUE);
-    y += kPanelButtonHeight + 24;
+    y += kPanelButtonHeight + 18;
+    MoveWindow(state->checkEmptyGrid, kPanelX, y, kPanelWidth, 24, TRUE);
+    y += 34;
     MoveWindow(state->buttonReset, kPanelX, y, kPanelWidth - 8, 36, TRUE);
 }
 
@@ -177,11 +181,11 @@ void DrawStylePanel(HDC dc, DemoState* state) {
         y += kPanelButtonHeight + kPanelRowGap;
     }
 
-    RECT infoRect{kPanelX, y + 20, kPanelX + kPanelWidth, y + 88};
+    RECT infoRect{kPanelX, y + 58, kPanelX + kPanelWidth, y + 140};
     SetBkMode(dc, TRANSPARENT);
     SetTextColor(dc, state->theme.mutedText);
     DrawTextW(dc,
-              L"Customizable areas: body background, body text, header background, header text, and grid lines.",
+              L"Customizable areas: body background, body text, header background, header text, grid lines, and whether empty expanded space keeps drawing grid lines.",
               -1,
               &infoRect,
               DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
@@ -217,6 +221,8 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
                                                     0, 0, 0, 0, window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_PICK_HEADER_TEXT)), instance, nullptr);
         created->buttonGrid = CreateWindowExW(0, L"BUTTON", L"Pick Color", WS_CHILD | WS_VISIBLE | WS_TABSTOP,
                                               0, 0, 0, 0, window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_PICK_GRID)), instance, nullptr);
+        created->checkEmptyGrid = CreateWindowExW(0, L"BUTTON", L"Draw grid in empty expanded area", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX,
+                                                  0, 0, 0, 0, window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_TOGGLE_EMPTY_GRID)), instance, nullptr);
         created->buttonReset = CreateWindowExW(0, L"BUTTON", L"Reset Theme", WS_CHILD | WS_VISIBLE | WS_TABSTOP,
                                                0, 0, 0, 0, window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_RESET_THEME)), instance, nullptr);
 
@@ -225,7 +231,9 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         SendMessageW(created->buttonHeaderBg, WM_SETFONT, reinterpret_cast<WPARAM>(created->textFont), TRUE);
         SendMessageW(created->buttonHeaderText, WM_SETFONT, reinterpret_cast<WPARAM>(created->textFont), TRUE);
         SendMessageW(created->buttonGrid, WM_SETFONT, reinterpret_cast<WPARAM>(created->textFont), TRUE);
+        SendMessageW(created->checkEmptyGrid, WM_SETFONT, reinterpret_cast<WPARAM>(created->textFont), TRUE);
         SendMessageW(created->buttonReset, WM_SETFONT, reinterpret_cast<WPARAM>(created->textFont), TRUE);
+        SendMessageW(created->checkEmptyGrid, BM_SETCHECK, BST_CHECKED, 0);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(created);
@@ -266,9 +274,15 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
                 ApplyTheme(window, state);
             }
             return 0;
+        case ID_TOGGLE_EMPTY_GRID:
+            state->table.SetDrawEmptyGrid(SendMessageW(state->checkEmptyGrid, BM_GETCHECK, 0, 0) == BST_CHECKED);
+            InvalidateRect(window, nullptr, TRUE);
+            return 0;
         case ID_RESET_THEME:
             state->theme = state->defaultTheme;
             ApplyTheme(window, state);
+            state->table.SetDrawEmptyGrid(true);
+            SendMessageW(state->checkEmptyGrid, BM_SETCHECK, BST_CHECKED, 0);
             return 0;
         default:
             break;
