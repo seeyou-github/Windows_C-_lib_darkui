@@ -186,6 +186,8 @@ struct Button::Impl {
         }
 
         switch (message) {
+        case WM_ERASEBKGND:
+            return 1;
         case WM_MOUSEMOVE:
             if (!self->hot) {
                 self->hot = true;

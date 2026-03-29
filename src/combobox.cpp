@@ -243,6 +243,8 @@ struct ComboBox::Impl {
         }
 
         switch (message) {
+        case WM_ERASEBKGND:
+            return 1;
         case WM_LBUTTONDOWN:
             self->TogglePopup();
             return 0;

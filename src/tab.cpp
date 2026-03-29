@@ -133,9 +133,28 @@ struct Tab::Impl {
                        content.top,
                        std::max(0, static_cast<int>(content.right - content.left)),
                        std::max(0, static_cast<int>(content.bottom - content.top)),
-                       TRUE);
+                       FALSE);
             ShowWindow(page, i == selected ? SW_SHOW : SW_HIDE);
+            if (i == selected) {
+                RedrawWindow(page, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+            }
         }
+    }
+
+    void InvalidateStrip() {
+        if (!owner->tabHwnd_) {
+            return;
+        }
+        RECT strip = TabStripRect();
+        InvalidateRect(owner->tabHwnd_, &strip, FALSE);
+    }
+
+    void InvalidateItem(int index) {
+        if (!owner->tabHwnd_ || index < 0 || index >= static_cast<int>(items.size())) {
+            return;
+        }
+        RECT rc = ItemRect(index);
+        InvalidateRect(owner->tabHwnd_, &rc, FALSE);
     }
 
     void NotifySelectionChanged() {
@@ -231,22 +250,24 @@ struct Tab::Impl {
         }
         case WM_SIZE:
             self->UpdatePageVisibility();
-            InvalidateRect(window, nullptr, FALSE);
+            self->InvalidateStrip();
             return 0;
         case WM_MOUSEMOVE: {
             POINT pt{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
             const int index = self->HitTest(pt);
             if (self->hotIndex != index) {
+                const int previous = self->hotIndex;
                 self->hotIndex = index;
-                InvalidateRect(window, nullptr, FALSE);
+                self->InvalidateItem(previous);
+                self->InvalidateItem(index);
             }
             self->StartMouseLeaveTracking();
             return 0;
         }
         case WM_MOUSELEAVE:
             self->trackingMouseLeave = false;
+            self->InvalidateItem(self->hotIndex);
             self->hotIndex = -1;
-            InvalidateRect(window, nullptr, FALSE);
             return 0;
         case WM_LBUTTONDOWN: {
             SetFocus(window);
@@ -438,7 +459,7 @@ void Tab::SetSelection(int index, bool notify) {
     impl_->selection = clamped;
     impl_->UpdatePageVisibility();
     if (tabHwnd_) {
-        InvalidateRect(tabHwnd_, nullptr, FALSE);
+        impl_->InvalidateStrip();
     }
     if (notify) {
         impl_->NotifySelectionChanged();
