@@ -129,6 +129,11 @@ struct Button::Impl {
         }
 
         RECT buttonRect = draw->rcItem;
+
+        HBRUSH parentBrush = CreateSolidBrush(owner->theme_.background);
+        FillRect(draw->hDC, &buttonRect, parentBrush);
+        DeleteObject(parentBrush);
+
         OffsetRect(&buttonRect, 0, visualOffsetY);
 
         HPEN oldPen = reinterpret_cast<HPEN>(SelectObject(draw->hDC, penBorder));

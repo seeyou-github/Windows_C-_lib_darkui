@@ -38,6 +38,12 @@ struct Theme {
     COLORREF tableHeaderBackground = RGB(44, 47, 52);
     COLORREF tableHeaderText = RGB(224, 227, 232);
     COLORREF tableGrid = RGB(61, 66, 74);
+    COLORREF sliderBackground = RGB(34, 36, 40);
+    COLORREF sliderTrack = RGB(52, 56, 62);
+    COLORREF sliderFill = RGB(78, 120, 184);
+    COLORREF sliderThumb = RGB(224, 227, 232);
+    COLORREF sliderThumbHot = RGB(245, 247, 250);
+    COLORREF sliderTick = RGB(92, 100, 112);
     FontSpec uiFont{};
     int itemHeight = 24;
     int arrowWidth = 12;
@@ -47,6 +53,8 @@ struct Theme {
     int popupOffsetY = 2;
     int tableRowHeight = 28;
     int tableHeaderHeight = 30;
+    int sliderTrackHeight = 6;
+    int sliderThumbRadius = 9;
 };
 
 struct ComboItem {

@@ -690,3 +690,99 @@ Output:
 ```text
 build\darkui_button_demo.exe
 ```
+
+## Slider Control
+
+`darkui::Slider` is a custom horizontal dark slider for Win32. It is fully custom-painted and currently supports track, fill, thumb, outer background, and optional tick marks.
+
+### Files
+
+- `include/darkui/slider.h`
+- `src/slider.cpp`
+- `demo/demo_slider.cpp`
+- `build_demo_slider.bat`
+
+### Create
+
+```cpp
+darkui::Theme theme;
+theme.sliderBackground = RGB(28, 31, 36);
+theme.sliderTrack = RGB(52, 56, 62);
+theme.sliderFill = RGB(78, 120, 184);
+theme.sliderThumb = RGB(224, 227, 232);
+theme.sliderThumbHot = RGB(245, 247, 250);
+theme.sliderTick = RGB(102, 110, 122);
+theme.sliderTrackHeight = 6;
+theme.sliderThumbRadius = 10;
+
+darkui::Slider slider;
+slider.Create(hwnd, 4001, theme);
+slider.SetRange(0, 100);
+slider.SetValue(38);
+```
+
+### Runtime API
+
+```cpp
+slider.SetTheme(theme);
+slider.SetRange(0, 100);
+slider.SetValue(50);
+slider.SetValue(60, true);
+slider.SetShowTicks(true);
+slider.SetTickCount(11);
+```
+
+`SetValue(value, true)` sends `WM_HSCROLL` to the parent window with `SB_THUMBPOSITION`.
+
+### Parent Notification
+
+The slider uses the standard Win32 notification path through `WM_HSCROLL`:
+
+```cpp
+case WM_HSCROLL:
+    if (reinterpret_cast<HWND>(lParam) == slider.hwnd()) {
+        int value = slider.GetValue();
+        return 0;
+    }
+    break;
+```
+
+### Theme Fields Used By Slider
+
+- `sliderBackground`: outer control background color
+- `sliderTrack`: track background color
+- `sliderFill`: filled progress color
+- `sliderThumb`: thumb normal color
+- `sliderThumbHot`: thumb hover/drag color
+- `sliderTick`: tick mark color
+- `sliderTrackHeight`: track thickness
+- `sliderThumbRadius`: thumb radius
+
+### Current Scope
+
+- Horizontal slider only
+- Mouse click and drag
+- Keyboard arrows, `Home`, `End`
+- Optional tick marks
+- Standard `WM_HSCROLL` parent notification
+
+Not included yet:
+
+- Vertical slider
+- Disabled-state visuals
+- Value bubble / tooltip
+- Custom step size
+
+### Slider Demo
+
+The slider demo uses custom `darkui::Button` controls on the right side to modify slider colors and dimensions in real time.
+
+```powershell
+.\build_demo_slider.bat
+```
+
+Output:
+
+```text
+build\darkui_slider_demo.exe
+```
