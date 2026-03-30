@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <commctrl.h>
 
+#include <algorithm>
 #include <string>
 
 #include "darkui/button.h"
@@ -14,7 +15,9 @@ constexpr wchar_t kDemoTitle[] = L"lib_darkui edit demo";
 enum ControlId {
     ID_EDIT_PRIMARY = 9001,
     ID_EDIT_SECONDARY = 9002,
-    ID_BUTTON_APPLY = 9003
+    ID_BUTTON_APPLY = 9003,
+    ID_BUTTON_INCREASE = 9004,
+    ID_BUTTON_DECREASE = 9005
 };
 
 struct DemoState {
@@ -22,10 +25,13 @@ struct DemoState {
     darkui::Edit primaryEdit;
     darkui::Edit secondaryEdit;
     darkui::Button applyButton;
+    darkui::Button increaseButton;
+    darkui::Button decreaseButton;
     HBRUSH brushBackground = nullptr;
     HFONT titleFont = nullptr;
     HFONT textFont = nullptr;
     std::wstring status = L"Ready";
+    std::wstring debugInfo;
 };
 
 void CleanupState(DemoState* state) {
@@ -55,15 +61,39 @@ darkui::Theme MakeTheme() {
     return theme;
 }
 
+int GetEditPixelHeight(const DemoState* state) {
+    const int fontHeight = state ? -state->theme.uiFont.height : 20;
+    return std::max(42, fontHeight + 30);
+}
+
+void UpdateEditFont(DemoState* state, int newHeight) {
+    if (!state) return;
+    state->theme.uiFont.height = newHeight;
+    state->primaryEdit.SetTheme(state->theme);
+    state->secondaryEdit.SetTheme(state->theme);
+}
+
+void UpdateDebugInfo(DemoState* state) {
+    if (!state) return;
+    state->debugInfo = L"P: " + state->primaryEdit.DebugLayoutInfo() + L"\nS: " + state->secondaryEdit.DebugLayoutInfo();
+}
+
 void Layout(HWND window, DemoState* state) {
     RECT client{};
     GetClientRect(window, &client);
 
     const int left = 32;
     const int width = client.right - 64;
-    MoveWindow(state->primaryEdit.hwnd(), left, 104, width, 42, TRUE);
-    MoveWindow(state->secondaryEdit.hwnd(), left, 164, width, 42, TRUE);
-    MoveWindow(state->applyButton.hwnd(), left, 228, 132, 40, TRUE);
+    const int editHeight = GetEditPixelHeight(state);
+    const int secondTop = 104 + editHeight + 18;
+    const int buttonTop = secondTop + editHeight + 22;
+
+    MoveWindow(state->primaryEdit.hwnd(), left, 104, width, editHeight, TRUE);
+    MoveWindow(state->secondaryEdit.hwnd(), left, secondTop, width, editHeight, TRUE);
+    MoveWindow(state->increaseButton.hwnd(), left, buttonTop, 132, 40, TRUE);
+    MoveWindow(state->decreaseButton.hwnd(), left + 148, buttonTop, 132, 40, TRUE);
+    MoveWindow(state->applyButton.hwnd(), left + 296, buttonTop, 132, 40, TRUE);
+    UpdateDebugInfo(state);
 }
 
 void DrawLine(HDC dc, HFONT font, COLORREF color, RECT rect, const wchar_t* text, UINT format) {
@@ -95,6 +125,8 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
 
         if (!created->primaryEdit.Create(window, ID_EDIT_PRIMARY, L"A borderless dark edit control", created->theme) ||
             !created->secondaryEdit.Create(window, ID_EDIT_SECONDARY, L"", created->theme) ||
+            !created->increaseButton.Create(window, ID_BUTTON_INCREASE, L"Increase", created->theme) ||
+            !created->decreaseButton.Create(window, ID_BUTTON_DECREASE, L"Decrease", created->theme) ||
             !created->applyButton.Create(window, ID_BUTTON_APPLY, L"Apply", created->theme)) {
             CleanupState(created);
             return -1;
@@ -103,11 +135,16 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         created->secondaryEdit.SetCueBanner(L"Type here. No border line should be visible.");
         created->primaryEdit.SetCornerRadius(16);
         created->secondaryEdit.SetCornerRadius(16);
+        created->increaseButton.SetCornerRadius(14);
+        created->decreaseButton.SetCornerRadius(14);
         created->applyButton.SetCornerRadius(14);
+        created->increaseButton.SetSurfaceColor(created->theme.background);
+        created->decreaseButton.SetSurfaceColor(created->theme.background);
         created->applyButton.SetSurfaceColor(created->theme.background);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);
+        UpdateDebugInfo(created);
         return 0;
     }
     case WM_SIZE:
@@ -117,6 +154,24 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         return 0;
     case WM_COMMAND:
         if (!state) break;
+        if (LOWORD(wParam) == ID_BUTTON_INCREASE) {
+            const int nextHeight = std::max(-40, state->theme.uiFont.height - 2);
+            UpdateEditFont(state, nextHeight);
+            state->status = L"Edit font increased to " + std::to_wstring(-nextHeight) + L" px";
+            Layout(window, state);
+            UpdateDebugInfo(state);
+            InvalidateRect(window, nullptr, FALSE);
+            return 0;
+        }
+        if (LOWORD(wParam) == ID_BUTTON_DECREASE) {
+            const int nextHeight = std::min(-12, state->theme.uiFont.height + 2);
+            UpdateEditFont(state, nextHeight);
+            state->status = L"Edit font decreased to " + std::to_wstring(-nextHeight) + L" px";
+            Layout(window, state);
+            UpdateDebugInfo(state);
+            InvalidateRect(window, nullptr, FALSE);
+            return 0;
+        }
         if (LOWORD(wParam) == ID_BUTTON_APPLY) {
             state->status = L"Primary: " + state->primaryEdit.GetText() + L" | Secondary: " + state->secondaryEdit.GetText();
             InvalidateRect(window, nullptr, FALSE);
@@ -151,8 +206,9 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
 
             RECT titleRect{32, 24, client.right - 32, 58};
             RECT descRect{32, 60, client.right - 32, 90};
-            RECT noteRect{32, 288, client.right - 32, 350};
-            RECT statusRect{32, client.bottom - 56, client.right - 32, client.bottom - 28};
+            RECT noteRect{32, 288, client.right - 32, 340};
+            RECT statusRect{32, client.bottom - 96, client.right - 32, client.bottom - 68};
+            RECT debugRect{32, client.bottom - 64, client.right - 32, client.bottom - 16};
 
             DrawLine(dc, state->titleFont, state->theme.text, titleRect, L"Dark Edit Demo", DT_LEFT | DT_TOP | DT_SINGLELINE);
             DrawLine(dc, state->textFont, state->theme.mutedText, descRect, L"Two rounded dark input fields with no visible native border line. Placeholder text color is theme-driven and remains available through the custom fallback overlay.", DT_LEFT | DT_TOP | DT_WORDBREAK);
@@ -162,6 +218,11 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
                       &noteRect,
                       DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
             DrawLine(dc, state->textFont, state->theme.text, statusRect, state->status.c_str(), DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+            DrawTextW(dc,
+                      state->debugInfo.c_str(),
+                      -1,
+                      &debugRect,
+                      DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
 
             EndPaint(window, &ps);
             return 0;
