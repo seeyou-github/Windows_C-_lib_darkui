@@ -40,6 +40,7 @@ struct ToolbarItem {
     bool alignRight = false;
     bool iconOnly = false;
     bool dropDown = false;
+    int iconScalePercent = 0;
 };
 ```
 
@@ -57,6 +58,8 @@ theme.toolbarText = RGB(228, 232, 238);
 theme.toolbarTextActive = RGB(248, 250, 252);
 theme.toolbarSeparator = RGB(70, 76, 86);
 theme.toolbarHeight = 44;
+theme.uiFont.height = -19;
+theme.textPadding = 12;
 
 darkui::Toolbar toolbar;
 toolbar.Create(hwnd, 8001, theme);
@@ -68,7 +71,67 @@ toolbar.SetItems({
     {L"Share", 8103, iconShare, nullptr, 0, false, false, false, true},
     {L"Layout", 8105, iconLayout, layoutMenu, 0, false, false, false, true, false, true},
 });
-MoveWindow(toolbar.hwnd(), 0, 0, 900, 44, TRUE);
+MoveWindow(toolbar.hwnd(), 0, 0, 900, theme.toolbarHeight + 12, TRUE);
+```
+
+## Icon Sizing
+
+`ToolbarItem::iconScalePercent` controls icon size as a percentage of the button's
+main dimension.
+
+```cpp
+darkui::ToolbarItem openItem{L"Open", 8102, iconOpen};
+openItem.iconScalePercent = 72;
+
+darkui::ToolbarItem searchItem{L"Search", 8104, iconSearch, nullptr, 0, false, false, false, false, true};
+searchItem.iconScalePercent = 88;
+
+toolbar.SetItems({openItem, searchItem});
+```
+
+Notes:
+
+- `0` means use the default `80`
+- Values are clamped to `[1, 100]`
+- Icons preserve aspect ratio and are never stretched
+- The same percentage model is used by both icon-only buttons and icon-plus-text buttons
+
+## Height Model
+
+Toolbar height has three related layers:
+
+- `theme.toolbarHeight`: the intended button height used by layout and sizing logic
+- Toolbar window height: controlled by your `MoveWindow()` call
+- Actual button height: toolbar window client height minus internal top and bottom padding
+
+Current implementation expects:
+
+```cpp
+MoveWindow(toolbar.hwnd(), x, y, width, theme.toolbarHeight + 12, TRUE);
+```
+
+That matches the toolbar's internal layout:
+
+- top inset: `6`
+- bottom inset: `6`
+- button height: `window height - 12`
+
+So when `theme.toolbarHeight = 44`, the typical toolbar window height should be `56`,
+which produces buttons that are `44` pixels tall.
+
+## Font And Text Sizing
+
+- Button text size comes from `theme.uiFont`
+- Button text does not auto-scale from `toolbarHeight`
+- If you increase toolbar height and want larger text, also increase `theme.uiFont.height`
+- Button width is measured from the current font metrics, icon draw width, horizontal padding, and drop-down arrow width when present
+
+Typical paired setup:
+
+```cpp
+theme.uiFont.height = -19;
+theme.toolbarHeight = 44;
+MoveWindow(toolbar.hwnd(), 0, 0, 900, theme.toolbarHeight + 12, TRUE);
 ```
 
 ## Parent Message Handling
@@ -139,6 +202,11 @@ auto item = toolbar.GetItem(0);
 ## Usage Notes
 
 - When `iconOnly = true`, still provide `text` so overflow popups can show a readable label
+- Toolbar icons default to `80%` of the button's main dimension
+- `iconScalePercent` overrides that percentage per item
+- Icons always preserve aspect ratio and are never stretched
+- Button width is automatic; there is currently no per-item fixed-width field
+- Width calculation uses the actual toolbar control height so icon width reservation matches runtime drawing more closely
 - When `dropDown = true`, `popupMenu` must be a valid application-owned `HMENU`
 - `alignRight = true` is useful for secondary tools or far-edge actions
 - The same control can be used as a menu-bar style surface
@@ -156,6 +224,14 @@ For complete examples, see:
 - `../demo/src/demo_toolbar.cpp`
 - `../demo/src/demo_toolbar_menubar.cpp`
 - `../demo/src/demo_showcase.cpp`
+
+`demo_toolbar.cpp` currently shows:
+
+- The original toolbar layout with separators and right-aligned items
+- A comparison toolbar with the same actions but without separators or `alignRight`
+- A slider that changes `theme.uiFont.height`
+- A slider that changes `theme.toolbarHeight`
+- On-screen debug text for icon extent, measured text width, and button width calculations
 
 ## Current Limitations
 

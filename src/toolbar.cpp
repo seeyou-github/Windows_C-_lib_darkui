@@ -11,6 +11,7 @@ namespace {
 constexpr wchar_t kToolbarClassName[] = L"DarkUiToolbarControl";
 constexpr wchar_t kToolbarPopupClassName[] = L"DarkUiToolbarPopupHost";
 constexpr int kToolbarIconSize = 16;
+constexpr int kToolbarIconScalePercent = 80;
 constexpr int kToolbarArrowWidth = 14;
 constexpr int kOverflowCommandId = 0x7F41;
 constexpr int kToolbarPopupListId = 0x7F42;
@@ -27,9 +28,51 @@ ATOM EnsureToolbarPopupClassRegistered(HINSTANCE instance);
 LRESULT CALLBACK ToolbarWindowProcThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK ToolbarPopupWindowProcThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 
+SIZE QueryIconSize(HICON icon) {
+    SIZE size{kToolbarIconSize, kToolbarIconSize};
+    if (!icon) {
+        return size;
+    }
+
+    ICONINFO info{};
+    if (!GetIconInfo(icon, &info)) {
+        return size;
+    }
+
+    BITMAP bitmap{};
+    if (info.hbmColor && GetObjectW(info.hbmColor, sizeof(bitmap), &bitmap) == sizeof(bitmap)) {
+        size.cx = std::max(1L, bitmap.bmWidth);
+        size.cy = std::max(1L, bitmap.bmHeight);
+    } else if (info.hbmMask && GetObjectW(info.hbmMask, sizeof(bitmap), &bitmap) == sizeof(bitmap)) {
+        size.cx = std::max(1L, bitmap.bmWidth);
+        size.cy = std::max(1L, bitmap.bmHeight / 2);
+    }
+
+    if (info.hbmColor) {
+        DeleteObject(info.hbmColor);
+    }
+    if (info.hbmMask) {
+        DeleteObject(info.hbmMask);
+    }
+    return size;
+}
+
+int ClampIconScalePercent(int percent) {
+    if (percent <= 0) {
+        return kToolbarIconScalePercent;
+    }
+    return std::max(1, std::min(percent, 100));
+}
+
 }  // namespace
 
 struct Toolbar::Impl {
+    struct ResolvedIconLayout {
+        RECT bounds{0, 0, 0, 0};
+        int drawWidth = 0;
+        int drawHeight = 0;
+    };
+
     struct PopupEntry {
         std::wstring text;
         int commandId = 0;
@@ -182,15 +225,81 @@ struct Toolbar::Impl {
         return rect;
     }
 
+    ResolvedIconLayout ResolveIconLayout(const ToolbarItem& item, RECT rect) const {
+        ResolvedIconLayout layout{};
+        if (!item.icon) {
+            return layout;
+        }
+
+        if (rect.right <= rect.left || rect.bottom <= rect.top) {
+            return layout;
+        }
+
+        const int availableWidth = std::max(0, static_cast<int>(rect.right - rect.left));
+        const int availableHeight = std::max(0, static_cast<int>(rect.bottom - rect.top));
+        if (availableWidth <= 0 || availableHeight <= 0) {
+            return layout;
+        }
+
+        const SIZE sourceSize = QueryIconSize(item.icon);
+        const double sourceWidth = static_cast<double>(std::max(1, static_cast<int>(sourceSize.cx)));
+        const double sourceHeight = static_cast<double>(std::max(1, static_cast<int>(sourceSize.cy)));
+
+        const double scaleX = static_cast<double>(availableWidth) / sourceWidth;
+        const double scaleY = static_cast<double>(availableHeight) / sourceHeight;
+        const double scale = std::max(0.0, std::min(scaleX, scaleY));
+        layout.drawWidth = std::max(1, std::min(availableWidth, static_cast<int>(sourceWidth * scale + 0.5)));
+        layout.drawHeight = std::max(1, std::min(availableHeight, static_cast<int>(sourceHeight * scale + 0.5)));
+
+        layout.bounds = rect;
+        return layout;
+    }
+
+    int IconBoxExtent(const ToolbarItem& item, int baseHeight) const {
+        const int scalePercent = ClampIconScalePercent(item.iconScalePercent);
+        return std::max(1, (baseHeight * scalePercent + 50) / 100);
+    }
+
+    RECT IconBoundsForMeasurement(const ToolbarItem& item, int baseHeight) const {
+        RECT bounds{0, 0, 0, baseHeight};
+        const int iconExtent = IconBoxExtent(item, baseHeight);
+        if (item.iconOnly) {
+            bounds.top = (baseHeight - iconExtent) / 2;
+            bounds.bottom = bounds.top + iconExtent;
+            bounds.left = 0;
+            bounds.right = iconExtent;
+            return bounds;
+        }
+
+        bounds.top = (baseHeight - iconExtent) / 2;
+        bounds.bottom = bounds.top + iconExtent;
+        bounds.right = iconExtent;
+        return bounds;
+    }
+
+    int CurrentItemHeight() const {
+        if (!owner->toolbarHwnd_) {
+            return std::max(owner->theme_.toolbarHeight - 12, 28);
+        }
+        RECT client{};
+        GetClientRect(owner->toolbarHwnd_, &client);
+        return std::max(28, static_cast<int>(client.bottom - client.top) - 12);
+    }
+
     int ItemWidth(HDC dc, const ToolbarItem& item) const {
         if (item.separator) {
             return 14;
         }
         // Measure against the active font so icon/text/drop-down combinations scale
         // consistently across different DPI settings and font families.
-        const int baseHeight = std::max(owner->theme_.toolbarHeight - 12, 28);
+        const int baseHeight = CurrentItemHeight();
         const int sideInset = std::max(owner->theme_.textPadding, kToolbarButtonSideInset);
-        const int base = item.iconOnly ? std::max(baseHeight, kToolbarIconSize + sideInset * 2) : std::max(kToolbarButtonMinWidth, baseHeight);
+        int iconFootprintWidth = 0;
+        if (item.icon) {
+            ResolvedIconLayout iconLayout = ResolveIconLayout(item, IconBoundsForMeasurement(item, baseHeight));
+            iconFootprintWidth = iconLayout.drawWidth;
+        }
+        const int base = item.iconOnly ? std::max(baseHeight, iconFootprintWidth + sideInset * 2) : std::max(kToolbarButtonMinWidth, baseHeight);
         if (item.iconOnly) {
             return base;
         }
@@ -198,7 +307,7 @@ struct Toolbar::Impl {
         DrawTextW(dc, item.text.c_str(), -1, &textRect, DT_LEFT | DT_SINGLELINE | DT_NOPREFIX | DT_CALCRECT);
         int textWidth = std::max(0, static_cast<int>(textRect.right - textRect.left));
         if (item.icon) {
-            textWidth += kToolbarIconSize + 8;
+            textWidth += iconFootprintWidth + 8;
         }
         if (item.dropDown) {
             textWidth += kToolbarArrowWidth + 6;
@@ -818,11 +927,23 @@ struct Toolbar::Impl {
             }
 
             if (item.icon) {
-                const int iconX = item.iconOnly ? (rc.left + rc.right - kToolbarIconSize) / 2 : contentRect.left;
-                const int iconY = rc.top + std::max(0, static_cast<int>(((rc.bottom - rc.top) - kToolbarIconSize) / 2));
-                DrawIconEx(dc, iconX, iconY, item.icon, kToolbarIconSize, kToolbarIconSize, 0, nullptr, DI_NORMAL);
+                const int iconExtent = IconBoxExtent(item, static_cast<int>(rc.bottom - rc.top));
+                RECT iconRect = item.iconOnly
+                                    ? RECT{rc.left + (static_cast<int>(rc.right - rc.left) - iconExtent) / 2,
+                                           rc.top + (static_cast<int>(rc.bottom - rc.top) - iconExtent) / 2,
+                                           rc.left + (static_cast<int>(rc.right - rc.left) - iconExtent) / 2 + iconExtent,
+                                           rc.top + (static_cast<int>(rc.bottom - rc.top) - iconExtent) / 2 + iconExtent}
+                                    : RECT{contentRect.left,
+                                           rc.top + (static_cast<int>(rc.bottom - rc.top) - iconExtent) / 2,
+                                           contentRect.left + iconExtent,
+                                           rc.top + (static_cast<int>(rc.bottom - rc.top) - iconExtent) / 2 + iconExtent};
+                ResolvedIconLayout iconLayout = ResolveIconLayout(item, iconRect);
+                const int iconX = item.iconOnly ? (iconLayout.bounds.left + iconLayout.bounds.right - iconLayout.drawWidth) / 2 : iconLayout.bounds.left;
+                const int iconY = iconLayout.bounds.top +
+                                  std::max(0, static_cast<int>(iconLayout.bounds.bottom - iconLayout.bounds.top - iconLayout.drawHeight) / 2);
+                DrawIconEx(dc, iconX, iconY, item.icon, iconLayout.drawWidth, iconLayout.drawHeight, 0, nullptr, DI_NORMAL);
                 if (!item.iconOnly) {
-                    contentRect.left += kToolbarIconSize + 8;
+                    contentRect.left += iconLayout.drawWidth + 8;
                 }
             }
 

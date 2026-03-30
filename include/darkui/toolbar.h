@@ -47,6 +47,11 @@ struct ToolbarItem {
     // submenu entry rather than being flattened into plain commands.
     // Keyboard Enter/Space opens the custom popup as well.
     bool dropDown = false;
+    // Icon size as a percentage of the button's main dimension.
+    // - `0` means use the default `80`.
+    // - Values are clamped to `[1, 100]`.
+    // - Icons still preserve aspect ratio and are never stretched.
+    int iconScalePercent = 0;
 };
 
 // Custom dark toolbar for Win32.

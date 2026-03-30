@@ -87,6 +87,8 @@ See: [doc/table.md](doc/table.md)
 
 - Custom dark toolbar
 - Supports standard buttons, icon buttons, right-aligned items, separators, drop-downs, and overflow
+- Icon sizing uses `ToolbarItem::iconScalePercent` with a default of `80%`, preserving aspect ratio
+- Use `theme.toolbarHeight` together with `MoveWindow(..., theme.toolbarHeight + 12, ...)` for the intended button height
 - Preserves `WM_COMMAND`
 
 See: [doc/toolbar.md](doc/toolbar.md)
