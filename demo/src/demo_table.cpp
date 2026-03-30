@@ -85,6 +85,10 @@ void PopulateTable(DemoState* state) {
         {L"Theme", L"Text", L"Live", L"Body text and header text are separate"},
         {L"Demo", L"Layout", L"Fixed", L"Table size stays fixed while window resizes"},
         {L"Demo", L"Style", L"Editable", L"Use the right panel to test customization"},
+        {L"表格", L"表体", L"深色", L"自定义绘制中文内容与背景"},
+        {L"表格", L"表头", L"已启用", L"表头文字和颜色都可以单独配置"},
+        {L"主题", L"网格线", L"实时", L"修改主题后表格会立即刷新显示"},
+        {L"演示", L"说明", L"中文", L"用于验证中文字体与省略号绘制效果"},
     });
 }
 
