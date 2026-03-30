@@ -246,6 +246,7 @@ struct ComboBox::Impl {
         case WM_ERASEBKGND:
             return 1;
         case WM_LBUTTONDOWN:
+        case WM_LBUTTONDBLCLK:
             self->TogglePopup();
             return 0;
         case WM_KEYDOWN:
