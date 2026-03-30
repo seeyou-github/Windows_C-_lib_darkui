@@ -188,15 +188,16 @@ struct Edit::Impl {
 
     void PaintHost(HDC dc, HWND window) {
         RECT rect = ClientRect(window);
-        HGDIOBJ oldBrush = SelectObject(dc, brushBackground ? brushBackground : reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
-        HPEN oldPen = reinterpret_cast<HPEN>(SelectObject(dc, GetStockObject(NULL_PEN)));
+        HBRUSH fillBrush = brushBackground ? brushBackground : reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
         if (owner->cornerRadius_ > 0) {
+            HGDIOBJ oldBrush = SelectObject(dc, fillBrush);
+            HPEN oldPen = reinterpret_cast<HPEN>(SelectObject(dc, GetStockObject(NULL_PEN)));
             RoundRect(dc, rect.left, rect.top, rect.right + 1, rect.bottom + 1, owner->cornerRadius_ * 2, owner->cornerRadius_ * 2);
+            SelectObject(dc, oldPen);
+            SelectObject(dc, oldBrush);
         } else {
-            Rectangle(dc, rect.left, rect.top, rect.right, rect.bottom);
+            FillRect(dc, &rect, fillBrush);
         }
-        SelectObject(dc, oldPen);
-        SelectObject(dc, oldBrush);
     }
 
     static LRESULT CALLBACK HostWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
