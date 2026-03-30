@@ -165,25 +165,33 @@ struct ComboBox::Impl {
         }
         RECT comboRect{};
         GetWindowRect(owner->comboHwnd_, &comboRect);
-        RECT parentRect{};
-        GetWindowRect(owner->parentHwnd_, &parentRect);
+        MONITORINFO monitorInfo{};
+        monitorInfo.cbSize = sizeof(monitorInfo);
+        RECT workArea = comboRect;
+        if (const HMONITOR monitor = MonitorFromRect(&comboRect, MONITOR_DEFAULTTONEAREST);
+            monitor && GetMonitorInfoW(monitor, &monitorInfo)) {
+            workArea = monitorInfo.rcWork;
+        }
+
         POINT popupOrigin{comboRect.left, comboRect.bottom + owner->theme_.popupOffsetY};
-        ScreenToClient(owner->parentHwnd_, &popupOrigin);
         const int desiredRows = std::max(1, static_cast<int>(items.size()));
         const int desiredHeight = std::max(owner->theme_.itemHeight,
                                            desiredRows * owner->theme_.itemHeight + owner->theme_.popupBorder * 2);
-        const int availableHeight = static_cast<int>(parentRect.bottom - comboRect.bottom - 18);
+        const int availableHeight = std::max(owner->theme_.itemHeight,
+                                             static_cast<int>(workArea.bottom - popupOrigin.y - 8));
         const int hostHeight = std::max(owner->theme_.itemHeight,
                                         std::min(desiredHeight, std::max(owner->theme_.itemHeight, availableHeight)));
         const int width = comboRect.right - comboRect.left;
+        popupOrigin.x = std::max(workArea.left, std::min(popupOrigin.x, workArea.right - width));
+        popupOrigin.y = std::max(workArea.top, std::min(popupOrigin.y, workArea.bottom - hostHeight));
 
         SetWindowPos(owner->popupHost_,
-                     HWND_TOP,
+                     HWND_TOPMOST,
                      popupOrigin.x,
                      popupOrigin.y,
                      width,
                      hostHeight,
-                     SWP_SHOWWINDOW);
+                     SWP_SHOWWINDOW | SWP_NOACTIVATE);
         MoveWindow(owner->popupList_,
                    owner->theme_.popupBorder,
                    owner->theme_.popupBorder,
@@ -221,12 +229,10 @@ struct ComboBox::Impl {
         HidePopup();
     }
 
-    void CloseOnOutsideClick(short x, short y) {
+    void CloseOnOutsideClick(POINT pt) {
         if (!IsPopupVisible()) {
             return;
         }
-        POINT pt{x, y};
-        ClientToScreen(owner->parentHwnd_, &pt);
         RECT popupRect{};
         GetWindowRect(owner->popupHost_, &popupRect);
         RECT comboRect{};
@@ -317,12 +323,6 @@ struct ComboBox::Impl {
                 return 0;
             }
             break;
-        case WM_ACTIVATE:
-            if (self && LOWORD(wParam) == WA_INACTIVE) {
-                self->HidePopup();
-                return 0;
-            }
-            break;
         case WM_KEYDOWN:
             if (self) {
                 if (wParam == VK_RETURN) {
@@ -356,8 +356,28 @@ struct ComboBox::Impl {
             }
             break;
         }
-        case WM_LBUTTONDOWN:
-            self->CloseOnOutsideClick(static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam)));
+        case WM_LBUTTONDOWN: {
+            POINT pt{static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam))};
+            ClientToScreen(window, &pt);
+            self->CloseOnOutsideClick(pt);
+            break;
+        }
+        case WM_PARENTNOTIFY:
+            switch (LOWORD(wParam)) {
+            case WM_LBUTTONDOWN:
+            case WM_RBUTTONDOWN:
+            case WM_MBUTTONDOWN:
+            case WM_LBUTTONDBLCLK:
+            case WM_RBUTTONDBLCLK:
+            case WM_MBUTTONDBLCLK: {
+                const DWORD pos = GetMessagePos();
+                POINT pt{static_cast<short>(LOWORD(pos)), static_cast<short>(HIWORD(pos))};
+                self->CloseOnOutsideClick(pt);
+                break;
+            }
+            default:
+                break;
+            }
             break;
         case WM_NCLBUTTONDOWN:
         case WM_RBUTTONDOWN:
@@ -485,10 +505,10 @@ bool ComboBox::Create(HWND parent, int controlId, const Theme& theme, DWORD styl
     SendMessageW(comboHwnd_, WM_SETFONT, reinterpret_cast<WPARAM>(impl_->font), TRUE);
 
     EnsurePopupClassRegistered(impl_->instance, Impl::PopupWindowProc);
-    popupHost_ = CreateWindowExW(0,
+    popupHost_ = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
                                  kPopupClassName,
                                  nullptr,
-                                 WS_CHILD | WS_CLIPSIBLINGS,
+                                 WS_POPUP | WS_CLIPSIBLINGS | WS_BORDER,
                                  0,
                                  0,
                                  0,
