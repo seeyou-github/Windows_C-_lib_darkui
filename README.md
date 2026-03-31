@@ -34,9 +34,49 @@ See: [doc/combobox.md](doc/combobox.md)
 - Custom dark edit control
 - Dark host window plus inner native `EDIT`
 - Keeps native input, caret, selection, and IME behavior
-- Supports placeholder text, rounded shape, and read-only mode
+- Supports placeholder text, rounded shape, read-only mode, and multiline vertical scrolling
 
 See: [doc/edit.md](doc/edit.md)
+
+### Dialog
+
+- Modal dark popup dialog
+- Custom black title bar and dark background
+- Built-in confirm/cancel buttons and custom content host
+
+See: [doc/dialog.md](doc/dialog.md)
+
+### Static
+
+- Dark static display control
+- Supports text, icon, and bitmap presentation
+- Suitable for labels, titles, badges, and small previews
+
+See: [doc/static.md](doc/static.md)
+
+### ListBox
+
+- Dark list box
+- Rounded host surface plus native keyboard and scroll behavior
+- Supports single-select and multi-select usage
+
+See: [doc/listbox.md](doc/listbox.md)
+
+### CheckBox
+
+- Dark owner-drawn checkbox
+- Checked, unchecked, hover, and disabled states
+- Preserves `WM_COMMAND + BN_CLICKED`
+
+See: [doc/checkbox.md](doc/checkbox.md)
+
+### RadioButton
+
+- Dark owner-drawn radio button
+- Native auto-radio grouping behavior
+- Preserves `WM_COMMAND + BN_CLICKED`
+
+See: [doc/radiobutton.md](doc/radiobutton.md)
 
 ### ProgressBar
 
@@ -112,12 +152,17 @@ Unified include:
 Per-control includes:
 
 ```cpp
+#include "darkui/checkbox.h"
 #include "darkui/button.h"
 #include "darkui/combobox.h"
+#include "darkui/dialog.h"
 #include "darkui/edit.h"
+#include "darkui/listbox.h"
 #include "darkui/progress.h"
+#include "darkui/radiobutton.h"
 #include "darkui/scrollbar.h"
 #include "darkui/slider.h"
+#include "darkui/static.h"
 #include "darkui/tab.h"
 #include "darkui/table.h"
 #include "darkui/toolbar.h"
@@ -140,11 +185,16 @@ Windows_C++_lib_darkui/
     build_demo*.bat
   doc/
     button.md
+    checkbox.md
     combobox.md
+    dialog.md
     edit.md
+    listbox.md
     progress.md
+    radiobutton.md
     scrollbar.md
     slider.md
+    static.md
     tab.md
     table.md
     toolbar.md
@@ -162,11 +212,16 @@ If you only need the demo build scripts, the current `demo/build_demo*.bat` file
 ## Documentation Index
 
 - [Button](doc/button.md)
+- [CheckBox](doc/checkbox.md)
 - [ComboBox](doc/combobox.md)
+- [Dialog](doc/dialog.md)
 - [Edit](doc/edit.md)
+- [ListBox](doc/listbox.md)
 - [ProgressBar](doc/progress.md)
+- [RadioButton](doc/radiobutton.md)
 - [ScrollBar](doc/scrollbar.md)
 - [Slider](doc/slider.md)
+- [Static](doc/static.md)
 - [Tab](doc/tab.md)
 - [Table](doc/table.md)
 - [Toolbar](doc/toolbar.md)

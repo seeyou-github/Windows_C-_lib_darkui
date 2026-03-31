@@ -1,0 +1,131 @@
+# ListBox
+
+## Overview
+
+`darkui::ListBox` is a dark list box built from a themed host window plus an inner native `LISTBOX`. It keeps native keyboard navigation, scrolling, and selection behavior while removing the default light border and light item colors.
+
+## Files
+
+- `include/darkui/listbox.h`
+- `src/listbox.cpp`
+
+## Suitable Scenarios
+
+- Option lists in dark settings panels
+- Log category filters
+- Single-select or multi-select lists in tools and inspectors
+
+## Main Features
+
+- Rounded dark host surface
+- Native list box keyboard and scroll behavior
+- Owner-drawn dark item rendering
+- Supports both single-selection and multi-selection styles
+
+## Basic Usage
+
+```cpp
+#include "darkui/listbox.h"
+
+darkui::Theme theme;
+theme.listBoxBackground = RGB(18, 20, 24);
+theme.listBoxPanel = RGB(38, 42, 48);
+theme.listBoxText = RGB(232, 236, 241);
+theme.listBoxItemSelected = RGB(78, 120, 184);
+
+darkui::ListBox listBox;
+listBox.Create(hwnd, 2201, theme);
+listBox.SetCornerRadius(12);
+listBox.SetItems({
+    {L"All projects", 1},
+    {L"Queued exports", 2},
+    {L"Archived snapshots", 3}
+});
+listBox.SetSelection(0);
+MoveWindow(listBox.hwnd(), 20, 20, 280, 180, TRUE);
+```
+
+## Multi-Selection Example
+
+```cpp
+listBox.Create(hwnd,
+               2202,
+               theme,
+               WS_CHILD | WS_VISIBLE | WS_TABSTOP | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | LBS_EXTENDEDSEL);
+```
+
+## Parent Message Handling
+
+```cpp
+case WM_COMMAND:
+    if (LOWORD(wParam) == 2201 && HIWORD(wParam) == LBN_SELCHANGE) {
+        int index = listBox.GetSelection();
+        return 0;
+    }
+    break;
+```
+
+## Common API
+
+### `Create`
+
+```cpp
+bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL, DWORD exStyle = 0);
+```
+
+### `SetItems` / `AddItem` / `ClearItems`
+
+```cpp
+listBox.SetItems({{L"One", 1}, {L"Two", 2}});
+listBox.AddItem({L"Three", 3});
+listBox.ClearItems();
+```
+
+### `GetSelection` / `GetSelections`
+
+```cpp
+int selected = listBox.GetSelection();
+std::vector<int> selectedIndices = listBox.GetSelections();
+```
+
+### `SetSelection`
+
+```cpp
+listBox.SetSelection(2, true);
+```
+
+### `SetCornerRadius`
+
+```cpp
+listBox.SetCornerRadius(14);
+```
+
+## Theme Fields Used
+
+- `listBoxBackground`
+- `listBoxPanel`
+- `listBoxText`
+- `listBoxItemSelected`
+- `listBoxItemSelectedText`
+- `border`
+- `textPadding`
+- `listBoxItemHeight`
+- `uiFont`
+
+## Usage Notes
+
+- Move and size the host returned by `listBox.hwnd()`
+- Use `listBox.list_hwnd()` when you need direct access to the inner native `LISTBOX`
+- For multi-select mode, prefer `GetSelections()` instead of `GetSelection()`
+
+## Demo Reference
+
+For a complete example, see:
+
+- `../demo/src/demo_listbox.cpp`
+
+## Current Limitations
+
+- No per-item accent color yet
+- No drag reordering
+- No custom column layout

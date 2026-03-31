@@ -86,10 +86,11 @@ void Layout(HWND window, DemoState* state) {
     const int width = client.right - 64;
     const int editHeight = GetEditPixelHeight(state);
     const int secondTop = 104 + editHeight + 18;
-    const int buttonTop = secondTop + editHeight + 22;
+    const int multilineHeight = std::max(110, editHeight + 74);
+    const int buttonTop = secondTop + multilineHeight + 22;
 
     MoveWindow(state->primaryEdit.hwnd(), left, 104, width, editHeight, TRUE);
-    MoveWindow(state->secondaryEdit.hwnd(), left, secondTop, width, editHeight, TRUE);
+    MoveWindow(state->secondaryEdit.hwnd(), left, secondTop, width, multilineHeight, TRUE);
     MoveWindow(state->increaseButton.hwnd(), left, buttonTop, 132, 40, TRUE);
     MoveWindow(state->decreaseButton.hwnd(), left + 148, buttonTop, 132, 40, TRUE);
     MoveWindow(state->applyButton.hwnd(), left + 296, buttonTop, 132, 40, TRUE);
@@ -124,7 +125,11 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         }
 
         if (!created->primaryEdit.Create(window, ID_EDIT_PRIMARY, L"A borderless dark edit control", created->theme) ||
-            !created->secondaryEdit.Create(window, ID_EDIT_SECONDARY, L"", created->theme) ||
+            !created->secondaryEdit.Create(window,
+                                           ID_EDIT_SECONDARY,
+                                           L"First note line\r\nSecond note line\r\nThird note line",
+                                           created->theme,
+                                           WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL) ||
             !created->increaseButton.Create(window, ID_BUTTON_INCREASE, L"Increase", created->theme) ||
             !created->decreaseButton.Create(window, ID_BUTTON_DECREASE, L"Decrease", created->theme) ||
             !created->applyButton.Create(window, ID_BUTTON_APPLY, L"Apply", created->theme)) {
@@ -132,7 +137,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             return -1;
         }
 
-        created->secondaryEdit.SetCueBanner(L"Type here. No border line should be visible.");
+        created->secondaryEdit.SetCueBanner(L"Type here. Multiline and vertical scrolling stay dark.");
         created->primaryEdit.SetCornerRadius(16);
         created->secondaryEdit.SetCornerRadius(16);
         created->increaseButton.SetCornerRadius(14);
@@ -206,14 +211,14 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
 
             RECT titleRect{32, 24, client.right - 32, 58};
             RECT descRect{32, 60, client.right - 32, 90};
-            RECT noteRect{32, 288, client.right - 32, 340};
+            RECT noteRect{32, 364, client.right - 32, 430};
             RECT statusRect{32, client.bottom - 96, client.right - 32, client.bottom - 68};
             RECT debugRect{32, client.bottom - 64, client.right - 32, client.bottom - 16};
 
             DrawLine(dc, state->titleFont, state->theme.text, titleRect, L"Dark Edit Demo", DT_LEFT | DT_TOP | DT_SINGLELINE);
-            DrawLine(dc, state->textFont, state->theme.mutedText, descRect, L"Two rounded dark input fields with no visible native border line. Placeholder text color is theme-driven and remains available through the custom fallback overlay.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+            DrawLine(dc, state->textFont, state->theme.mutedText, descRect, L"Single-line and multiline rounded dark edits with no visible native border line. Placeholder text color is theme-driven and remains available through the custom fallback overlay.", DT_LEFT | DT_TOP | DT_WORDBREAK);
             DrawTextW(dc,
-                      L"Try focus changes, typing, selection, and IME input.\nThe control keeps native text behavior while removing the thin system border and showing a custom placeholder when empty.",
+                      L"Try focus changes, typing, selection, IME input, and multiline scrolling.\nThe lower edit uses ES_MULTILINE + ES_AUTOVSCROLL + WS_VSCROLL while keeping the same dark host surface.",
                       -1,
                       &noteRect,
                       DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
@@ -264,7 +269,7 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                                   CW_USEDEFAULT,
                                   CW_USEDEFAULT,
                                   820,
-                                  420,
+                                  560,
                                   nullptr,
                                   nullptr,
                                   instance,

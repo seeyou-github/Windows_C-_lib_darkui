@@ -1,11 +1,16 @@
 #pragma once
 
+#include "darkui/checkbox.h"
 #include "darkui/button.h"
 #include "darkui/combobox.h"
+#include "darkui/dialog.h"
 #include "darkui/edit.h"
+#include "darkui/listbox.h"
 #include "darkui/progress.h"
+#include "darkui/radiobutton.h"
 #include "darkui/scrollbar.h"
 #include "darkui/slider.h"
+#include "darkui/static.h"
 #include "darkui/tab.h"
 #include "darkui/table.h"
 #include "darkui/toolbar.h"

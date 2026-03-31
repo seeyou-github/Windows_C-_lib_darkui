@@ -14,11 +14,11 @@ set "CXX=g++"
 set "CXXFLAGS=-std=c++17 -DUNICODE -D_UNICODE -DNOMINMAX -DWIN32_LEAN_AND_MEAN -I"%INCLUDE_DIR%""
 set "LDFLAGS=-municode -mwindows -lcomctl32 -ldwmapi -luxtheme -lgdi32"
 
-echo Building lib_darkui edit demo...
-%CXX% "%DEMO_SRC_DIR%\demo_edit.cpp" "%LIB_SRC_DIR%\edit.cpp" "%LIB_SRC_DIR%\scrollbar.cpp" "%LIB_SRC_DIR%\button.cpp" "%LIB_SRC_DIR%\combobox.cpp" %CXXFLAGS% -o "%BUILD_DIR%\darkui_edit_demo.exe" %LDFLAGS%
+echo Building lib_darkui listbox demo...
+%CXX% "%DEMO_SRC_DIR%\demo_listbox.cpp" "%LIB_SRC_DIR%\listbox.cpp" "%LIB_SRC_DIR%\combobox.cpp" %CXXFLAGS% -o "%BUILD_DIR%\darkui_listbox_demo.exe" %LDFLAGS%
 if errorlevel 1 goto error
 
-echo Build succeeded: "%BUILD_DIR%\darkui_edit_demo.exe"
+echo Build succeeded: "%BUILD_DIR%\darkui_listbox_demo.exe"
 goto end
 
 :error

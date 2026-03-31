@@ -71,6 +71,44 @@ struct Theme {
     COLORREF editText = RGB(224, 227, 232);
     // Edit control placeholder text color.
     COLORREF editPlaceholder = RGB(142, 149, 160);
+    // Static control background color.
+    COLORREF staticBackground = RGB(34, 36, 40);
+    // Static control text color.
+    COLORREF staticText = RGB(224, 227, 232);
+    // ListBox outer background color.
+    COLORREF listBoxBackground = RGB(34, 36, 40);
+    // ListBox inner surface color.
+    COLORREF listBoxPanel = RGB(44, 47, 52);
+    // ListBox text color.
+    COLORREF listBoxText = RGB(224, 227, 232);
+    // ListBox selected item background color.
+    COLORREF listBoxItemSelected = RGB(78, 120, 184);
+    // ListBox selected item text color.
+    COLORREF listBoxItemSelectedText = RGB(245, 247, 250);
+    // Checkbox box background color.
+    COLORREF checkBackground = RGB(44, 47, 52);
+    // Checkbox box hover background color.
+    COLORREF checkBackgroundHot = RGB(52, 56, 62);
+    // Checkbox checked fill color.
+    COLORREF checkAccent = RGB(78, 120, 184);
+    // Checkbox border color.
+    COLORREF checkBorder = RGB(61, 66, 74);
+    // Checkbox text color.
+    COLORREF checkText = RGB(224, 227, 232);
+    // Checkbox disabled text color.
+    COLORREF checkDisabledText = RGB(130, 136, 144);
+    // Radio button outer circle background color.
+    COLORREF radioBackground = RGB(44, 47, 52);
+    // Radio button hover background color.
+    COLORREF radioBackgroundHot = RGB(52, 56, 62);
+    // Radio button selected dot color.
+    COLORREF radioAccent = RGB(78, 120, 184);
+    // Radio button border color.
+    COLORREF radioBorder = RGB(61, 66, 74);
+    // Radio button text color.
+    COLORREF radioText = RGB(224, 227, 232);
+    // Radio button disabled text color.
+    COLORREF radioDisabledText = RGB(130, 136, 144);
     // Table body background color.
     COLORREF tableBackground = RGB(34, 36, 40);
     // Table body text color.
@@ -143,6 +181,8 @@ struct Theme {
     int arrowRightPadding = 10;
     // Generic horizontal text padding used by several controls.
     int textPadding = 8;
+    // Default ListBox item height.
+    int listBoxItemHeight = 26;
     // Combo-box popup border thickness.
     int popupBorder = 1;
     // Vertical popup offset relative to the combo-box button.

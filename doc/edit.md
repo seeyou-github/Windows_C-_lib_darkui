@@ -21,6 +21,7 @@
 - Custom placeholder color
 - Rounded outer shape
 - Read-only mode
+- Supports multiline input with `ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL`
 - Standard forwarded `EN_*` notifications
 
 ## Basic Usage
@@ -90,6 +91,20 @@ edit.SetCornerRadius(16);
 edit.SetReadOnly(true);
 ```
 
+## Multiline Example
+
+```cpp
+darkui::Edit notes;
+notes.Create(hwnd,
+             9002,
+             L"Line 1\r\nLine 2\r\nLine 3",
+             theme,
+             WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL);
+notes.SetCueBanner(L"Write notes here");
+notes.SetCornerRadius(16);
+MoveWindow(notes.hwnd(), 20, 72, 320, 140, TRUE);
+```
+
 ### `hwnd` / `edit_hwnd`
 
 ```cpp
@@ -109,6 +124,7 @@ HWND nativeEdit = edit.edit_hwnd();
 - Move and size the host returned by `edit.hwnd()`
 - Use `edit.edit_hwnd()` when you need direct access to the inner native `EDIT`
 - Read-only mode keeps the same dark appearance
+- Multiline mode is enabled by passing the normal Win32 edit styles to `Create()`
 
 ## Demo Reference
 
