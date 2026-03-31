@@ -270,6 +270,13 @@ Theme ResolveTheme(const Theme& theme);
 // - Listen for CBN_SELCHANGE in the parent window.
 class ComboBox {
 public:
+    struct Options {
+        std::vector<ComboItem> items;
+        int selection = -1;
+        DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW;
+        DWORD exStyle = 0;
+    };
+
     // Constructs an empty combo-box wrapper.
     ComboBox();
     // Destroys the main control and popup windows if they still exist.
@@ -291,6 +298,19 @@ public:
     // Notes:
     // - Position and size are still controlled by your layout code.
     bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, DWORD exStyle = 0);
+    // Creates the combo box from an options structure.
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
+        if (!Create(parent, controlId, theme, options.style, options.exStyle)) {
+            return false;
+        }
+        if (!options.items.empty()) {
+            SetItems(options.items);
+        }
+        if (options.selection >= 0) {
+            SetSelection(options.selection);
+        }
+        return true;
+    }
     // Destroys the button, popup host, and popup list windows.
     void Destroy();
 

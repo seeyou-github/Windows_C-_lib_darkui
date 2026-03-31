@@ -14,6 +14,15 @@ namespace darkui {
 class Slider {
 public:
     struct Impl;
+    struct Options {
+        int minimum = 0;
+        int maximum = 100;
+        int value = 0;
+        bool showTicks = false;
+        int tickCount = 0;
+        DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP;
+        DWORD exStyle = 0;
+    };
 
     // Constructs an empty slider wrapper.
     Slider();
@@ -36,6 +45,17 @@ public:
     // Notes:
     // - Position and size are controlled by your own layout code.
     bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP, DWORD exStyle = 0);
+    // Creates the slider from an options structure.
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
+        if (!Create(parent, controlId, theme, options.style, options.exStyle)) {
+            return false;
+        }
+        SetRange(options.minimum, options.maximum);
+        SetValue(options.value);
+        SetShowTicks(options.showTicks);
+        SetTickCount(options.tickCount);
+        return true;
+    }
     // Destroys the slider window and resets wrapper state.
     void Destroy();
 

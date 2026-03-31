@@ -63,6 +63,11 @@ struct ToolbarItem {
 class Toolbar {
 public:
     struct Impl;
+    struct Options {
+        std::vector<ToolbarItem> items;
+        DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP;
+        DWORD exStyle = 0;
+    };
 
     // Constructs an empty toolbar wrapper.
     Toolbar();
@@ -83,6 +88,16 @@ public:
     // - true on success.
     // - false if the window or drawing resources could not be created.
     bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP, DWORD exStyle = 0);
+    // Creates the toolbar from an options structure.
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
+        if (!Create(parent, controlId, theme, options.style, options.exStyle)) {
+            return false;
+        }
+        if (!options.items.empty()) {
+            SetItems(options.items);
+        }
+        return true;
+    }
     // Destroys the toolbar window and resets wrapper state.
     void Destroy();
 

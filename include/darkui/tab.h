@@ -23,6 +23,13 @@ struct TabItem {
 class Tab {
 public:
     struct Impl;
+    struct Options {
+        bool vertical = false;
+        std::vector<TabItem> items;
+        int selection = -1;
+        DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP;
+        DWORD exStyle = 0;
+    };
 
     // Constructs an empty tab wrapper.
     Tab();
@@ -43,6 +50,20 @@ public:
     // - true on success.
     // - false if the window or resources could not be created.
     bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP, DWORD exStyle = 0);
+    // Creates the tab control from an options structure.
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
+        if (!Create(parent, controlId, theme, options.style, options.exStyle)) {
+            return false;
+        }
+        SetVertical(options.vertical);
+        if (!options.items.empty()) {
+            SetItems(options.items);
+        }
+        if (options.selection >= 0) {
+            SetSelection(options.selection);
+        }
+        return true;
+    }
     // Destroys the tab window and resets wrapper state.
     void Destroy();
 

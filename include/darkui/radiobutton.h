@@ -16,6 +16,14 @@ namespace darkui {
 // - Native auto-radio grouping is preserved by using BS_AUTORADIOBUTTON internally.
 class RadioButton {
 public:
+    struct Options {
+        std::wstring text{};
+        bool checked = false;
+        COLORREF surfaceColor = CLR_INVALID;
+        DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP;
+        DWORD exStyle = 0;
+    };
+
     RadioButton();
     ~RadioButton();
 
@@ -31,6 +39,19 @@ public:
     // - style: Standard child-button style flags. BS_OWNERDRAW and BS_AUTORADIOBUTTON are added internally.
     // - exStyle: Optional extended window style.
     bool Create(HWND parent, int controlId, const std::wstring& text, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP, DWORD exStyle = 0);
+    // Creates the radio button from an options structure.
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
+        if (!Create(parent, controlId, options.text, theme, options.style, options.exStyle)) {
+            return false;
+        }
+        if (options.surfaceColor != CLR_INVALID) {
+            SetSurfaceColor(options.surfaceColor);
+        }
+        if (options.checked) {
+            SetChecked(true);
+        }
+        return true;
+    }
     // Destroys the underlying radio button window.
     void Destroy();
 

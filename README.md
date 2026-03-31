@@ -170,6 +170,45 @@ Notes:
 
 If the calling side should stay as short as possible, use the helper layer in `darkui/quick.h`.
 
+## Options-Based Creation
+
+Every custom control now provides an `Options` structure plus an overload shaped like:
+
+```cpp
+control.Create(parent, controlId, theme, options);
+```
+
+This is available for:
+
+- `Button::Options`
+- `CheckBox::Options`
+- `ComboBox::Options`
+- `Dialog::Options`
+- `Edit::Options`
+- `ListBox::Options`
+- `ProgressBar::Options`
+- `RadioButton::Options`
+- `ScrollBar::Options`
+- `Slider::Options`
+- `Static::Options`
+- `Tab::Options`
+- `Table::Options`
+- `Toolbar::Options`
+
+Example:
+
+```cpp
+darkui::Button button;
+darkui::Button::Options options;
+options.text = L"Refresh";
+options.cornerRadius = 14;
+options.surfaceColor = theme.panel;
+
+button.Create(hwnd, 1001, theme, options);
+```
+
+Old `Create(...)` overloads remain valid for compatibility.
+
 Ready-made preset theme:
 
 ```cpp

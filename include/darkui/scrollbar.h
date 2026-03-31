@@ -14,6 +14,15 @@ namespace darkui {
 class ScrollBar {
 public:
     struct Impl;
+    struct Options {
+        bool vertical = true;
+        int minimum = 0;
+        int maximum = 100;
+        int pageSize = 10;
+        int value = 0;
+        DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP;
+        DWORD exStyle = 0;
+    };
 
     // Constructs an empty scrollbar wrapper.
     ScrollBar();
@@ -37,6 +46,16 @@ public:
     // Notes:
     // - Position and size are controlled by your layout code.
     bool Create(HWND parent, int controlId, bool vertical, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP, DWORD exStyle = 0);
+    // Creates the scrollbar from an options structure.
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
+        if (!Create(parent, controlId, options.vertical, theme, options.style, options.exStyle)) {
+            return false;
+        }
+        SetRange(options.minimum, options.maximum);
+        SetPageSize(options.pageSize);
+        SetValue(options.value);
+        return true;
+    }
     // Destroys the scrollbar window and resets wrapper state.
     void Destroy();
 

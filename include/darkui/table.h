@@ -32,6 +32,13 @@ using TableRow = std::vector<std::wstring>;
 class Table {
 public:
     struct Impl;
+    struct Options {
+        std::vector<TableColumn> columns;
+        std::vector<TableRow> rows;
+        bool drawEmptyGrid = true;
+        DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | LVS_REPORT | LVS_SINGLESEL;
+        DWORD exStyle = 0;
+    };
 
     // Constructs an empty table wrapper.
     Table();
@@ -54,6 +61,20 @@ public:
     // Notes:
     // - Position and size are controlled by your layout code.
     bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | LVS_REPORT | LVS_SINGLESEL, DWORD exStyle = 0);
+    // Creates the table from an options structure.
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
+        if (!Create(parent, controlId, theme, options.style, options.exStyle)) {
+            return false;
+        }
+        SetDrawEmptyGrid(options.drawEmptyGrid);
+        if (!options.columns.empty()) {
+            SetColumns(options.columns);
+        }
+        if (!options.rows.empty()) {
+            SetRows(options.rows);
+        }
+        return true;
+    }
     // Destroys the table window and resets wrapper state.
     void Destroy();
 

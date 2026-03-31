@@ -14,6 +14,15 @@ namespace darkui {
 class ProgressBar {
 public:
     struct Impl;
+    struct Options {
+        int minimum = 0;
+        int maximum = 100;
+        int value = 0;
+        bool showPercentage = true;
+        COLORREF surfaceColor = CLR_INVALID;
+        DWORD style = WS_CHILD | WS_VISIBLE;
+        DWORD exStyle = 0;
+    };
 
     // Constructs an empty progress-bar wrapper.
     ProgressBar();
@@ -36,6 +45,19 @@ public:
     // Notes:
     // - Position and size are controlled by your layout code.
     bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE, DWORD exStyle = 0);
+    // Creates the progress bar from an options structure.
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
+        if (!Create(parent, controlId, theme, options.style, options.exStyle)) {
+            return false;
+        }
+        SetRange(options.minimum, options.maximum);
+        SetValue(options.value);
+        SetShowPercentage(options.showPercentage);
+        if (options.surfaceColor != CLR_INVALID) {
+            SetSurfaceColor(options.surfaceColor);
+        }
+        return true;
+    }
     // Destroys the progress-bar window and resets wrapper state.
     void Destroy();
 

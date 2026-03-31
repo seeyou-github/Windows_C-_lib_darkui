@@ -22,6 +22,16 @@ public:
         Icon,
         Bitmap
     };
+    struct Options {
+        std::wstring text{};
+        HICON icon = nullptr;
+        HBITMAP bitmap = nullptr;
+        COLORREF backgroundColor = CLR_INVALID;
+        UINT textFormat = DT_LEFT;
+        bool ellipsis = true;
+        DWORD style = WS_CHILD | WS_VISIBLE | SS_LEFT;
+        DWORD exStyle = 0;
+    };
 
     Static();
     ~Static();
@@ -41,6 +51,23 @@ public:
     // - true on success.
     // - false on failure.
     bool Create(HWND parent, int controlId, const std::wstring& text = L"", const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | SS_LEFT, DWORD exStyle = 0);
+    // Creates the static control from an options structure.
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
+        if (!Create(parent, controlId, options.text, theme, options.style, options.exStyle)) {
+            return false;
+        }
+        SetTextFormat(options.textFormat);
+        SetEllipsis(options.ellipsis);
+        if (options.backgroundColor != CLR_INVALID) {
+            SetBackgroundColor(options.backgroundColor);
+        }
+        if (options.bitmap) {
+            SetBitmap(options.bitmap);
+        } else if (options.icon) {
+            SetIcon(options.icon);
+        }
+        return true;
+    }
     // Destroys the underlying window and resets wrapper state.
     void Destroy();
 

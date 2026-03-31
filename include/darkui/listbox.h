@@ -30,6 +30,13 @@ struct ListBoxItem {
 class ListBox {
 public:
     struct Impl;
+    struct Options {
+        std::vector<ListBoxItem> items;
+        int selection = -1;
+        int cornerRadius = -1;
+        DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL;
+        DWORD exStyle = 0;
+    };
 
     ListBox();
     ~ListBox();
@@ -48,6 +55,22 @@ public:
     // - true on success.
     // - false on failure.
     bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL, DWORD exStyle = 0);
+    // Creates the list box from an options structure.
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
+        if (!Create(parent, controlId, theme, options.style, options.exStyle)) {
+            return false;
+        }
+        if (options.cornerRadius >= 0) {
+            SetCornerRadius(options.cornerRadius);
+        }
+        if (!options.items.empty()) {
+            SetItems(options.items);
+        }
+        if (options.selection >= 0) {
+            SetSelection(options.selection);
+        }
+        return true;
+    }
     // Destroys the host and inner list-box windows.
     void Destroy();
 

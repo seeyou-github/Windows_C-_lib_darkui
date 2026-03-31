@@ -19,6 +19,17 @@ namespace darkui {
 // - The built-in message label can be hidden when you want a fully custom body.
 class Dialog {
 public:
+    struct Options {
+        std::wstring title = L"Dialog";
+        std::wstring message{};
+        std::wstring confirmText = L"Confirm";
+        std::wstring cancelText = L"Cancel";
+        int width = 480;
+        int height = 280;
+        bool messageVisible = true;
+        bool cancelVisible = true;
+    };
+
     enum class Result {
         None = 0,
         Confirm = 1,
@@ -45,6 +56,19 @@ public:
     // - true on success.
     // - false on failure.
     bool Create(HWND owner, int controlId, const std::wstring& title, const Theme& theme = Theme{}, int width = 480, int height = 280);
+    // Creates the dialog from an options structure.
+    bool Create(HWND owner, int controlId, const Theme& theme, const Options& options) {
+        if (!Create(owner, controlId, options.title, theme, options.width, options.height)) {
+            return false;
+        }
+        SetTitle(options.title);
+        SetMessage(options.message);
+        SetConfirmText(options.confirmText);
+        SetCancelText(options.cancelText);
+        SetMessageVisible(options.messageVisible);
+        SetCancelVisible(options.cancelVisible);
+        return true;
+    }
     // Destroys the popup window and all built-in child controls.
     void Destroy();
 

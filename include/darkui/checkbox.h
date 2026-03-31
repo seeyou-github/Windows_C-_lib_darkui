@@ -14,6 +14,14 @@ namespace darkui {
 // - Handle state changes through WM_COMMAND / BN_CLICKED in the parent window.
 class CheckBox {
 public:
+    struct Options {
+        std::wstring text{};
+        bool checked = false;
+        COLORREF surfaceColor = CLR_INVALID;
+        DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP;
+        DWORD exStyle = 0;
+    };
+
     CheckBox();
     ~CheckBox();
 
@@ -29,6 +37,19 @@ public:
     // - style: Standard child-button style flags. BS_OWNERDRAW and BS_AUTOCHECKBOX are added internally.
     // - exStyle: Optional extended window style.
     bool Create(HWND parent, int controlId, const std::wstring& text, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP, DWORD exStyle = 0);
+    // Creates the checkbox from an options structure.
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
+        if (!Create(parent, controlId, options.text, theme, options.style, options.exStyle)) {
+            return false;
+        }
+        if (options.surfaceColor != CLR_INVALID) {
+            SetSurfaceColor(options.surfaceColor);
+        }
+        if (options.checked) {
+            SetChecked(true);
+        }
+        return true;
+    }
     // Destroys the underlying checkbox window.
     void Destroy();
 

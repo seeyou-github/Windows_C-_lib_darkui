@@ -14,6 +14,14 @@ namespace darkui {
 // - Handle clicks through WM_COMMAND / BN_CLICKED in the parent window.
 class Button {
 public:
+    struct Options {
+        std::wstring text{};
+        int cornerRadius = -1;
+        COLORREF surfaceColor = CLR_INVALID;
+        DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW;
+        DWORD exStyle = 0;
+    };
+
     // Constructs an empty button wrapper.
     Button();
     // Destroys the underlying window if it still exists.
@@ -36,6 +44,19 @@ public:
     // Notes:
     // - After creation you still need to set size and position with MoveWindow.
     bool Create(HWND parent, int controlId, const std::wstring& text, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, DWORD exStyle = 0);
+    // Creates the button from an options structure.
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
+        if (!Create(parent, controlId, options.text, theme, options.style, options.exStyle)) {
+            return false;
+        }
+        if (options.cornerRadius >= 0) {
+            SetCornerRadius(options.cornerRadius);
+        }
+        if (options.surfaceColor != CLR_INVALID) {
+            SetSurfaceColor(options.surfaceColor);
+        }
+        return true;
+    }
     // Destroys the underlying button window and resets the wrapper state.
     void Destroy();
 

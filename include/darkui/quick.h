@@ -15,17 +15,6 @@ enum class ThemePreset {
     Mono = 4
 };
 
-// One-shot options for the built-in dark message dialog helpers.
-struct DialogOptions {
-    std::wstring title = L"Message";
-    std::wstring message{};
-    std::wstring confirmText = L"Confirm";
-    std::wstring cancelText = L"Cancel";
-    int width = 480;
-    int height = 280;
-    bool showCancel = true;
-};
-
 // Creates a semantic dark theme from a compact set of palette tokens.
 inline Theme MakeSemanticTheme(COLORREF background,
                                COLORREF panel,
@@ -74,16 +63,14 @@ void ApplyTheme(const Theme& theme, Controls&... controls) {
 }
 
 // Opens a simple dark message dialog with one helper call.
-inline Dialog::Result ShowMessageDialog(HWND owner, int controlId, const Theme& theme, const DialogOptions& options) {
+using DialogOptions = Dialog::Options;
+using QuickDialogOptions = Dialog::Options;
+
+inline Dialog::Result ShowMessageDialog(HWND owner, int controlId, const Theme& theme, const Dialog::Options& options) {
     Dialog dialog;
-    if (!dialog.Create(owner, controlId, options.title, theme, options.width, options.height)) {
+    if (!dialog.Create(owner, controlId, theme, options)) {
         return Dialog::Result::None;
     }
-    dialog.SetTitle(options.title);
-    dialog.SetMessage(options.message);
-    dialog.SetConfirmText(options.confirmText);
-    dialog.SetCancelText(options.cancelText);
-    dialog.SetCancelVisible(options.showCancel);
     return dialog.ShowModal();
 }
 
@@ -95,12 +82,12 @@ inline Dialog::Result ShowConfirmDialog(HWND owner,
                                         const std::wstring& message,
                                         const std::wstring& confirmText = L"Confirm",
                                         const std::wstring& cancelText = L"Cancel") {
-    DialogOptions options;
+    Dialog::Options options;
     options.title = title;
     options.message = message;
     options.confirmText = confirmText;
     options.cancelText = cancelText;
-    options.showCancel = true;
+    options.cancelVisible = true;
     return ShowMessageDialog(owner, controlId, theme, options);
 }
 
@@ -111,12 +98,12 @@ inline Dialog::Result ShowInfoDialog(HWND owner,
                                      const std::wstring& title,
                                      const std::wstring& message,
                                      const std::wstring& confirmText = L"OK") {
-    DialogOptions options;
+    Dialog::Options options;
     options.title = title;
     options.message = message;
     options.confirmText = confirmText;
     options.cancelText = L"";
-    options.showCancel = false;
+    options.cancelVisible = false;
     return ShowMessageDialog(owner, controlId, theme, options);
 }
 

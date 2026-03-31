@@ -9,6 +9,23 @@
 - applying one theme to multiple controls
 - opening a dark message dialog with one function call
 
+This helper layer works well together with the new per-control `Options` structs:
+
+- `Button::Options`
+- `CheckBox::Options`
+- `ComboBox::Options`
+- `Dialog::Options`
+- `Edit::Options`
+- `ListBox::Options`
+- `ProgressBar::Options`
+- `RadioButton::Options`
+- `ScrollBar::Options`
+- `Slider::Options`
+- `Static::Options`
+- `Tab::Options`
+- `Table::Options`
+- `Toolbar::Options`
+
 ## Files
 
 - `include/darkui/quick.h`
@@ -21,6 +38,18 @@ Use `ThemePreset` when you want a ready-to-use palette without filling a long `T
 #include "darkui/darkui.h"
 
 darkui::Theme theme = darkui::MakePresetTheme(darkui::ThemePreset::Graphite);
+```
+
+## Options-Based Control Creation
+
+```cpp
+darkui::Button button;
+darkui::Button::Options options;
+options.text = L"Apply";
+options.cornerRadius = 14;
+options.surfaceColor = theme.panel;
+
+button.Create(hwnd, 4101, theme, options);
 ```
 
 Available presets:

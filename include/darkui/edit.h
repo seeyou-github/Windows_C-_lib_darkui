@@ -20,6 +20,14 @@ namespace darkui {
 class Edit {
 public:
     struct Impl;
+    struct Options {
+        std::wstring text{};
+        std::wstring cueBanner{};
+        int cornerRadius = -1;
+        bool readOnly = false;
+        DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL;
+        DWORD exStyle = 0;
+    };
 
     // Constructs an empty edit wrapper.
     Edit();
@@ -41,6 +49,22 @@ public:
     // - true on success.
     // - false if the host/edit window or theme resources could not be created.
     bool Create(HWND parent, int controlId, const std::wstring& text = L"", const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, DWORD exStyle = 0);
+    // Creates the edit control from an options structure.
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
+        if (!Create(parent, controlId, options.text, theme, options.style, options.exStyle)) {
+            return false;
+        }
+        if (!options.cueBanner.empty()) {
+            SetCueBanner(options.cueBanner);
+        }
+        if (options.cornerRadius >= 0) {
+            SetCornerRadius(options.cornerRadius);
+        }
+        if (options.readOnly) {
+            SetReadOnly(true);
+        }
+        return true;
+    }
     // Destroys the control window hierarchy and resets wrapper state.
     void Destroy();
 
