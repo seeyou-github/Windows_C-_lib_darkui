@@ -1,12 +1,11 @@
 #include <windows.h>
 #include <commctrl.h>
+#include <dwmapi.h>
 
 #include <algorithm>
-#include <array>
 #include <string>
 #include <vector>
 
-#include "darkui/button.h"
 #include "darkui/darkui.h"
 
 namespace {
@@ -15,50 +14,68 @@ constexpr wchar_t kDemoClassName[] = L"DarkUiShowcaseWindow";
 constexpr wchar_t kPageClassName[] = L"DarkUiShowcasePage";
 constexpr wchar_t kDemoTitle[] = L"lib_darkui showcase";
 
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+#ifndef DWMWA_CAPTION_COLOR
+#define DWMWA_CAPTION_COLOR 35
+#endif
+#ifndef DWMWA_TEXT_COLOR
+#define DWMWA_TEXT_COLOR 36
+#endif
+
 enum ControlId {
     ID_THEME_GRAPHITE = 9001,
-    ID_THEME_OBSIDIAN,
-    ID_THEME_NOCTURNE,
+    ID_THEME_EMBER,
+    ID_THEME_GLACIER,
+    ID_THEME_MOSS,
+    ID_THEME_MONO,
     ID_MAIN_TAB,
 
     ID_OVERVIEW_PROFILE = 9101,
-    ID_OVERVIEW_SURFACE,
     ID_OVERVIEW_PRIMARY,
     ID_OVERVIEW_SECONDARY,
-    ID_OVERVIEW_DISABLED,
-    ID_OVERVIEW_STORAGE,
-    ID_OVERVIEW_INDEX,
+    ID_OVERVIEW_STATUS,
+    ID_OVERVIEW_SYNC,
+    ID_OVERVIEW_CPU,
 
     ID_CONTROLS_EXPOSURE = 9201,
     ID_CONTROLS_BALANCE,
     ID_CONTROLS_SCROLL_H,
     ID_CONTROLS_SCROLL_V,
-    ID_CONTROLS_PREVIEW,
+    ID_CONTROLS_SEARCH,
+    ID_CONTROLS_NOTES,
 
     ID_DATA_FILTER = 9301,
     ID_DATA_REFRESH,
-    ID_DATA_ARCHIVE,
     ID_DATA_TABLE,
+    ID_DATA_QUEUE,
 
-    ID_PAGE_OVERVIEW = 9401,
+    ID_EXPANDED_STATIC_TITLE = 9401,
+    ID_EXPANDED_STATIC_HELPER,
+    ID_EXPANDED_CHECK_AUTOSAVE,
+    ID_EXPANDED_CHECK_COMPACT,
+    ID_EXPANDED_RADIO_GRID,
+    ID_EXPANDED_RADIO_FOCUS,
+    ID_EXPANDED_RADIO_FLOW,
+    ID_EXPANDED_DIALOG,
+    ID_EXPANDED_RESULT,
+
+    ID_PAGE_OVERVIEW = 9501,
     ID_PAGE_CONTROLS,
-    ID_PAGE_DATA
+    ID_PAGE_DATA,
+    ID_PAGE_EXPANDED
 };
 
-enum class PageKind {
-    Overview,
-    Controls,
-    Data
-};
+enum class PageKind { Overview, Controls, Data, Expanded };
 
-struct OverviewControls {
+struct OverviewPanel {
     darkui::ComboBox profile;
-    darkui::ComboBox surface;
     darkui::Button primary;
     darkui::Button secondary;
-    darkui::Button disabled;
-    darkui::ProgressBar storage;
-    darkui::ProgressBar index;
+    darkui::Static status;
+    darkui::ProgressBar sync;
+    darkui::ProgressBar cpu;
 };
 
 struct ControlsPanel {
@@ -66,14 +83,27 @@ struct ControlsPanel {
     darkui::Slider balance;
     darkui::ScrollBar timeline;
     darkui::ScrollBar navigator;
-    darkui::ProgressBar preview;
+    darkui::Edit search;
+    darkui::Edit notes;
 };
 
 struct DataPanel {
     darkui::ComboBox filter;
     darkui::Button refresh;
-    darkui::Button archive;
     darkui::Table table;
+    darkui::ListBox queue;
+};
+
+struct ExpandedPanel {
+    darkui::Static headline;
+    darkui::Static helper;
+    darkui::CheckBox autoSave;
+    darkui::CheckBox compact;
+    darkui::RadioButton grid;
+    darkui::RadioButton focus;
+    darkui::RadioButton flow;
+    darkui::Button dialogButton;
+    darkui::Static result;
 };
 
 struct AppState {
@@ -82,16 +112,20 @@ struct AppState {
 
     darkui::Tab tab;
     darkui::Button themeGraphite;
-    darkui::Button themeObsidian;
-    darkui::Button themeNocturne;
+    darkui::Button themeEmber;
+    darkui::Button themeGlacier;
+    darkui::Button themeMoss;
+    darkui::Button themeMono;
 
     HWND overviewPage = nullptr;
     HWND controlsPage = nullptr;
     HWND dataPage = nullptr;
+    HWND expandedPage = nullptr;
 
-    OverviewControls overview;
+    OverviewPanel overview;
     ControlsPanel controls;
     DataPanel data;
+    ExpandedPanel expanded;
 
     HBRUSH windowBrush = nullptr;
     HFONT titleFont = nullptr;
@@ -105,144 +139,11 @@ struct PageState {
     PageKind kind = PageKind::Overview;
 };
 
-darkui::Theme MakeGraphiteTheme();
-darkui::Theme MakeObsidianTheme();
-darkui::Theme MakeNocturneTheme();
-darkui::Theme MakeThemeByIndex(int index);
-
-void CleanupAppState(AppState* state);
-void RecreateWindowBrush(AppState* state);
-void ApplyTheme(AppState* state, int themeIndex);
-void LayoutMainWindow(HWND window, AppState* state);
-void LayoutOverviewPage(HWND page, AppState* state);
-void LayoutControlsPage(HWND page, AppState* state);
-void LayoutDataPage(HWND page, AppState* state);
-void LayoutPage(HWND page, AppState* state, PageKind kind);
-void PaintMainWindow(HWND window, HDC dc, AppState* state);
-void PaintPage(HWND page, HDC dc, PageState* state);
-void UpdateControlPreview(AppState* state);
-void RefreshDataRows(AppState* state);
-
-RECT InsetRectCopy(const RECT& rect, int dx, int dy);
-RECT SliceTop(const RECT& rect, int height);
-RECT SliceLeft(const RECT& rect, int width);
-RECT SliceRight(const RECT& rect, int width);
-void FillRoundedRect(HDC dc, const RECT& rect, int radius, COLORREF fill, COLORREF border);
-void DrawLabel(HDC dc, HFONT font, COLORREF color, const RECT& rect, const wchar_t* text, UINT format);
-
-LRESULT CALLBACK ShowcaseWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
-LRESULT CALLBACK ShowcasePageProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
-
-darkui::Theme MakeGraphiteTheme() {
-    darkui::Theme theme;
-    theme.background = RGB(18, 20, 24);
-    theme.panel = RGB(32, 35, 40);
-    theme.button = RGB(56, 62, 71);
-    theme.buttonHover = RGB(70, 77, 88);
-    theme.buttonHot = RGB(82, 90, 102);
-    theme.buttonDisabled = RGB(43, 46, 52);
-    theme.buttonDisabledText = RGB(118, 126, 136);
-    theme.border = RGB(60, 66, 76);
-    theme.text = RGB(236, 239, 244);
-    theme.mutedText = RGB(142, 149, 160);
-    theme.arrow = RGB(176, 181, 190);
-    theme.popupItem = RGB(36, 39, 44);
-    theme.popupItemHot = RGB(57, 64, 74);
-    theme.popupAccentItem = RGB(42, 68, 114);
-    theme.popupAccentItemHot = RGB(55, 86, 144);
-    theme.tableBackground = RGB(25, 28, 32);
-    theme.tableText = RGB(232, 236, 241);
-    theme.tableHeaderBackground = RGB(37, 41, 47);
-    theme.tableHeaderText = RGB(244, 247, 250);
-    theme.tableGrid = RGB(58, 63, 72);
-    theme.sliderBackground = RGB(29, 32, 37);
-    theme.sliderTrack = RGB(58, 64, 72);
-    theme.sliderFill = RGB(104, 142, 214);
-    theme.sliderThumb = RGB(244, 247, 250);
-    theme.sliderThumbHot = RGB(255, 255, 255);
-    theme.sliderTick = RGB(98, 108, 122);
-    theme.progressBackground = RGB(25, 28, 32);
-    theme.progressTrack = RGB(50, 56, 64);
-    theme.progressFill = RGB(104, 142, 214);
-    theme.progressText = RGB(248, 250, 252);
-    theme.scrollBarBackground = RGB(25, 28, 32);
-    theme.scrollBarTrack = RGB(54, 59, 67);
-    theme.scrollBarThumb = RGB(139, 149, 163);
-    theme.scrollBarThumbHot = RGB(174, 183, 196);
-    theme.tabBackground = RGB(22, 25, 29);
-    theme.tabItem = RGB(36, 40, 46);
-    theme.tabItemActive = RGB(67, 92, 140);
-    theme.tabText = RGB(205, 211, 219);
-    theme.tabTextActive = RGB(248, 250, 252);
-    theme.uiFont.family = L"Segoe UI";
-    theme.uiFont.height = -19;
-    theme.textPadding = 12;
-    theme.itemHeight = 30;
-    theme.tableRowHeight = 32;
-    theme.tableHeaderHeight = 34;
-    theme.sliderTrackHeight = 8;
-    theme.sliderThumbRadius = 10;
-    theme.progressHeight = 14;
-    theme.scrollBarThickness = 16;
-    theme.scrollBarMinThumbSize = 36;
-    theme.tabHeight = 48;
-    theme.tabWidth = 196;
-    return theme;
-}
-
-darkui::Theme MakeObsidianTheme() {
-    darkui::Theme theme = MakeGraphiteTheme();
-    theme.background = RGB(14, 15, 19);
-    theme.panel = RGB(26, 28, 34);
-    theme.button = RGB(60, 52, 74);
-    theme.buttonHover = RGB(76, 65, 94);
-    theme.buttonHot = RGB(91, 78, 112);
-    theme.border = RGB(74, 70, 86);
-    theme.popupAccentItem = RGB(76, 53, 126);
-    theme.popupAccentItemHot = RGB(96, 67, 153);
-    theme.sliderFill = RGB(147, 108, 218);
-    theme.progressFill = RGB(147, 108, 218);
-    theme.tabItemActive = RGB(94, 72, 144);
-    theme.scrollBarThumb = RGB(148, 137, 165);
-    theme.scrollBarThumbHot = RGB(183, 170, 202);
-    return theme;
-}
-
-darkui::Theme MakeNocturneTheme() {
-    darkui::Theme theme = MakeGraphiteTheme();
-    theme.background = RGB(16, 22, 26);
-    theme.panel = RGB(24, 32, 38);
-    theme.button = RGB(38, 82, 86);
-    theme.buttonHover = RGB(46, 99, 103);
-    theme.buttonHot = RGB(54, 119, 123);
-    theme.border = RGB(46, 78, 82);
-    theme.popupAccentItem = RGB(25, 92, 96);
-    theme.popupAccentItemHot = RGB(31, 116, 121);
-    theme.sliderFill = RGB(58, 185, 172);
-    theme.progressFill = RGB(58, 185, 172);
-    theme.tabItemActive = RGB(32, 103, 109);
-    theme.scrollBarThumb = RGB(91, 153, 153);
-    theme.scrollBarThumbHot = RGB(116, 185, 184);
-    return theme;
-}
-
-darkui::Theme MakeThemeByIndex(int index) {
-    switch (index) {
-    case 1:
-        return MakeObsidianTheme();
-    case 2:
-        return MakeNocturneTheme();
-    default:
-        return MakeGraphiteTheme();
-    }
-}
+void ApplyThemeToControls(AppState* state);
 
 RECT InsetRectCopy(const RECT& rect, int dx, int dy) {
     RECT rc = rect;
-    rc.left += dx;
-    rc.top += dy;
-    rc.right -= dx;
-    rc.bottom -= dy;
+    rc.left += dx; rc.top += dy; rc.right -= dx; rc.bottom -= dy;
     return rc;
 }
 
@@ -258,10 +159,12 @@ RECT SliceLeft(const RECT& rect, int width) {
     return rc;
 }
 
-RECT SliceRight(const RECT& rect, int width) {
-    RECT rc = rect;
-    rc.left = std::max(rect.left, rect.right - width);
-    return rc;
+void DrawLabel(HDC dc, HFONT font, COLORREF color, const RECT& rect, const wchar_t* text, UINT format) {
+    HFONT oldFont = font ? reinterpret_cast<HFONT>(SelectObject(dc, font)) : nullptr;
+    SetBkMode(dc, TRANSPARENT);
+    SetTextColor(dc, color);
+    DrawTextW(dc, text, -1, const_cast<RECT*>(&rect), format | DT_NOPREFIX);
+    if (oldFont) SelectObject(dc, oldFont);
 }
 
 void FillRoundedRect(HDC dc, const RECT& rect, int radius, COLORREF fill, COLORREF border) {
@@ -272,24 +175,141 @@ void FillRoundedRect(HDC dc, const RECT& rect, int radius, COLORREF fill, COLORR
     RoundRect(dc, rect.left, rect.top, rect.right, rect.bottom, radius, radius);
     SelectObject(dc, oldPen);
     SelectObject(dc, oldBrush);
-    DeleteObject(pen);
     DeleteObject(brush);
+    DeleteObject(pen);
 }
 
-void DrawLabel(HDC dc, HFONT font, COLORREF color, const RECT& rect, const wchar_t* text, UINT format) {
-    HFONT oldFont = font ? reinterpret_cast<HFONT>(SelectObject(dc, font)) : nullptr;
-    SetBkMode(dc, TRANSPARENT);
-    SetTextColor(dc, color);
-    DrawTextW(dc, text, -1, const_cast<RECT*>(&rect), format | DT_NOPREFIX);
-    if (oldFont) {
-        SelectObject(dc, oldFont);
+darkui::Theme MakeSemanticTheme(COLORREF bg, COLORREF panel, COLORREF text, COLORREF hi, COLORREF accent, COLORREF accent2) {
+    darkui::Theme theme;
+    theme.useSemanticPalette = true;
+    theme.primaryBackground = bg;
+    theme.secondaryBackground = panel;
+    theme.primaryText = text;
+    theme.highlightText = hi;
+    theme.accent = accent;
+    theme.accentSecondary = accent2;
+    theme.fontFamily = L"Segoe UI";
+    theme.fontSize = 19;
+    theme.secondaryFontSize = 17;
+    theme.textPadding = 12;
+    theme.itemHeight = 30;
+    theme.listBoxItemHeight = 28;
+    theme.tableRowHeight = 32;
+    theme.tableHeaderHeight = 34;
+    theme.sliderTrackHeight = 8;
+    theme.sliderThumbRadius = 10;
+    theme.progressHeight = 14;
+    theme.scrollBarThickness = 16;
+    theme.scrollBarMinThumbSize = 34;
+    theme.tabHeight = 48;
+    theme.tabWidth = 190;
+    return darkui::ResolveTheme(theme);
+}
+
+darkui::Theme MakeThemeByIndex(int index) {
+    switch (index) {
+    case 1: return MakeSemanticTheme(RGB(22, 16, 15), RGB(38, 27, 24), RGB(244, 232, 224), RGB(255, 247, 240), RGB(226, 112, 74), RGB(146, 69, 48));
+    case 2: return MakeSemanticTheme(RGB(14, 21, 28), RGB(24, 38, 48), RGB(226, 238, 244), RGB(247, 251, 255), RGB(96, 188, 224), RGB(51, 110, 146));
+    case 3: return MakeSemanticTheme(RGB(16, 22, 18), RGB(28, 38, 30), RGB(230, 238, 226), RGB(248, 252, 246), RGB(108, 176, 118), RGB(58, 108, 66));
+    case 4: return MakeSemanticTheme(RGB(10, 10, 10), RGB(22, 22, 22), RGB(230, 230, 230), RGB(252, 252, 252), RGB(190, 190, 190), RGB(110, 110, 110));
+    default: return MakeSemanticTheme(RGB(16, 18, 22), RGB(28, 32, 38), RGB(232, 236, 241), RGB(248, 250, 252), RGB(92, 137, 210), RGB(58, 88, 144));
     }
+}
+
+const wchar_t* ThemeName(int index) {
+    switch (index) {
+    case 1: return L"Ember";
+    case 2: return L"Glacier";
+    case 3: return L"Moss";
+    case 4: return L"Mono";
+    default: return L"Graphite";
+    }
+}
+
+void ApplyWindowCaptionTheme(HWND window) {
+    const BOOL immersive = TRUE;
+    const COLORREF black = RGB(0, 0, 0);
+    const COLORREF white = RGB(255, 255, 255);
+    DwmSetWindowAttribute(window, DWMWA_USE_IMMERSIVE_DARK_MODE, &immersive, sizeof(immersive));
+    DwmSetWindowAttribute(window, DWMWA_CAPTION_COLOR, &black, sizeof(black));
+    DwmSetWindowAttribute(window, DWMWA_TEXT_COLOR, &white, sizeof(white));
+}
+
+void RecreateWindowBrush(AppState* state) {
+    if (state->windowBrush) DeleteObject(state->windowBrush);
+    state->windowBrush = CreateSolidBrush(state->theme.background);
+}
+
+bool RecreateFonts(AppState* state) {
+    if (state->titleFont) DeleteObject(state->titleFont);
+    if (state->subtitleFont) DeleteObject(state->subtitleFont);
+    if (state->sectionFont) DeleteObject(state->sectionFont);
+    if (state->bodyFont) DeleteObject(state->bodyFont);
+    state->titleFont = nullptr;
+    state->subtitleFont = nullptr;
+    state->sectionFont = nullptr;
+    state->bodyFont = nullptr;
+
+    darkui::FontSpec titleSpec = state->theme.uiFont;
+    titleSpec.height -= 12;
+    titleSpec.weight = FW_SEMIBOLD;
+
+    darkui::FontSpec subtitleSpec = state->theme.uiFont;
+    subtitleSpec.height += 2;
+
+    darkui::FontSpec sectionSpec = state->theme.uiFont;
+    sectionSpec.height -= 2;
+    sectionSpec.weight = FW_SEMIBOLD;
+
+    state->titleFont = darkui::CreateFont(titleSpec);
+    state->subtitleFont = darkui::CreateFont(subtitleSpec);
+    state->sectionFont = darkui::CreateFont(sectionSpec);
+    state->bodyFont = darkui::CreateFont(state->theme.uiFont);
+    return state->titleFont && state->subtitleFont && state->sectionFont && state->bodyFont;
+}
+
+void UpdateExpandedSummary(AppState* state) {
+    std::wstring text = L"Theme: ";
+    text += ThemeName(state->themeIndex);
+    text += L"\nLayout: ";
+    if (state->expanded.grid.GetChecked()) text += L"Grid";
+    else if (state->expanded.focus.GetChecked()) text += L"Focus";
+    else text += L"Flow";
+    text += L"\nAutosave: ";
+    text += state->expanded.autoSave.GetChecked() ? L"On" : L"Off";
+    text += L"\nCompact Rails: ";
+    text += state->expanded.compact.GetChecked() ? L"On" : L"Off";
+    state->expanded.result.SetText(text);
+}
+
+void RefreshDataRows(AppState* state) {
+    const int filter = state->data.filter.GetSelection();
+    std::vector<darkui::TableRow> rows{
+        {L"Campaign Boards", L"Cloud", L"Ready", L"4.2 GB", L"12:44"},
+        {L"Studio Takes", L"Local", L"Queued", L"2.1 GB", L"11:02"},
+        {L"Audio Stems", L"NAS", L"Ready", L"918 MB", L"09:31"},
+        {L"Launch Review", L"Archive", L"Locked", L"690 MB", L"Yesterday"},
+        {L"Proxy Drafts", L"Cloud", L"Syncing", L"6.8 GB", L"Now"},
+        {L"Final Captures", L"SSD", L"Ready", L"1.7 GB", L"14:08"}
+    };
+    if (filter == 1) rows.erase(std::remove_if(rows.begin(), rows.end(), [](const darkui::TableRow& r) { return r[2] != L"Ready"; }), rows.end());
+    if (filter == 2) rows.erase(std::remove_if(rows.begin(), rows.end(), [](const darkui::TableRow& r) { return r[1] != L"Cloud"; }), rows.end());
+    state->data.table.SetRows(rows);
+}
+
+void ShowExpandedDialog(HWND ownerWindow, AppState* state) {
+    darkui::Dialog dialog;
+    if (!dialog.Create(ownerWindow, 9701, L"Publish Session", state->theme, 460, 236)) return;
+    dialog.SetTitle(L"Publish Session");
+    dialog.SetMessage(L"Apply the current expanded controls profile to every editing station in the workspace?");
+    dialog.SetConfirmText(L"Publish");
+    dialog.SetCancelText(L"Cancel");
+    const auto result = dialog.ShowModal();
+    state->expanded.result.SetText(result == darkui::Dialog::Result::Confirm ? L"Dialog result: Published" : L"Dialog result: Cancelled");
 }
 
 void CleanupAppState(AppState* state) {
-    if (!state) {
-        return;
-    }
+    if (!state) return;
     if (state->windowBrush) DeleteObject(state->windowBrush);
     if (state->titleFont) DeleteObject(state->titleFont);
     if (state->subtitleFont) DeleteObject(state->subtitleFont);
@@ -298,321 +318,254 @@ void CleanupAppState(AppState* state) {
     delete state;
 }
 
-void RecreateWindowBrush(AppState* state) {
-    if (state->windowBrush) {
-        DeleteObject(state->windowBrush);
-    }
-    state->windowBrush = CreateSolidBrush(state->theme.background);
-}
-
-void RefreshDataRows(AppState* state) {
-    const int filter = state->data.filter.GetSelection();
-    std::vector<darkui::TableRow> rows{
-        {L"Studio render", L"Local", L"Queued", L"4.8 GB", L"02:14"},
-        {L"Client review", L"Cloud", L"Syncing", L"1.2 GB", L"Live"},
-        {L"Product clips", L"SSD", L"Ready", L"864 MB", L"11:07"},
-        {L"Marketing pack", L"Archive", L"Indexed", L"12.4 GB", L"Yesterday"},
-        {L"Audio stems", L"NAS", L"Ready", L"2.1 GB", L"08:42"},
-        {L"Shot selects", L"Cloud", L"Rendering", L"6.3 GB", L"Now"},
-        {L"Motion boards", L"Local", L"Ready", L"742 MB", L"13:55"},
-        {L"Launch deck", L"Archive", L"Locked", L"318 MB", L"Mon"}
-    };
-
-    if (filter == 1) {
-        rows.erase(std::remove_if(rows.begin(), rows.end(), [](const darkui::TableRow& row) { return row[2] != L"Ready"; }), rows.end());
-    } else if (filter == 2) {
-        rows.erase(std::remove_if(rows.begin(), rows.end(), [](const darkui::TableRow& row) { return row[1] != L"Cloud"; }), rows.end());
-    } else if (filter == 3) {
-        rows.erase(std::remove_if(rows.begin(), rows.end(), [](const darkui::TableRow& row) { return row[3].find(L"GB") == std::wstring::npos; }), rows.end());
-    }
-
-    state->data.table.SetRows(rows);
-}
-
-void UpdateControlPreview(AppState* state) {
-    const int exposure = state->controls.exposure.GetValue();
-    const int balance = state->controls.balance.GetValue();
-    const int timeline = state->controls.timeline.GetValue();
-    const int navigator = state->controls.navigator.GetValue();
-    const int composed = std::clamp((exposure + balance + (timeline / 2) + navigator) / 3, 0, 100);
-    state->controls.preview.SetValue(composed);
-}
-
-void ApplyTheme(AppState* state, int themeIndex) {
+void ApplyTheme(AppState* state, HWND window, int themeIndex) {
     state->themeIndex = themeIndex;
     state->theme = MakeThemeByIndex(themeIndex);
     RecreateWindowBrush(state);
+    RecreateFonts(state);
+    ApplyWindowCaptionTheme(window);
+    ApplyThemeToControls(state);
+    InvalidateRect(window, nullptr, TRUE);
+    if (state->overviewPage) InvalidateRect(state->overviewPage, nullptr, TRUE);
+    if (state->controlsPage) InvalidateRect(state->controlsPage, nullptr, TRUE);
+    if (state->dataPage) InvalidateRect(state->dataPage, nullptr, TRUE);
+    if (state->expandedPage) InvalidateRect(state->expandedPage, nullptr, TRUE);
+}
 
+void ApplyThemeToControls(AppState* state) {
     state->tab.SetTheme(state->theme);
-    state->themeGraphite.SetTheme(state->theme);
-    state->themeObsidian.SetTheme(state->theme);
-    state->themeNocturne.SetTheme(state->theme);
-    state->themeGraphite.SetSurfaceColor(state->theme.background);
-    state->themeObsidian.SetSurfaceColor(state->theme.background);
-    state->themeNocturne.SetSurfaceColor(state->theme.background);
+    state->themeGraphite.SetTheme(state->theme); state->themeGraphite.SetSurfaceColor(state->themeIndex == 0 ? state->theme.panel : state->theme.background);
+    state->themeEmber.SetTheme(state->theme); state->themeEmber.SetSurfaceColor(state->themeIndex == 1 ? state->theme.panel : state->theme.background);
+    state->themeGlacier.SetTheme(state->theme); state->themeGlacier.SetSurfaceColor(state->themeIndex == 2 ? state->theme.panel : state->theme.background);
+    state->themeMoss.SetTheme(state->theme); state->themeMoss.SetSurfaceColor(state->themeIndex == 3 ? state->theme.panel : state->theme.background);
+    state->themeMono.SetTheme(state->theme); state->themeMono.SetSurfaceColor(state->themeIndex == 4 ? state->theme.panel : state->theme.background);
 
     state->overview.profile.SetTheme(state->theme);
-    state->overview.surface.SetTheme(state->theme);
-    state->overview.primary.SetTheme(state->theme);
-    state->overview.secondary.SetTheme(state->theme);
-    state->overview.disabled.SetTheme(state->theme);
-    state->overview.primary.SetSurfaceColor(state->theme.panel);
-    state->overview.secondary.SetSurfaceColor(state->theme.panel);
-    state->overview.disabled.SetSurfaceColor(state->theme.panel);
-    state->overview.storage.SetTheme(state->theme);
-    state->overview.index.SetTheme(state->theme);
-    state->overview.storage.SetSurfaceColor(state->theme.panel);
-    state->overview.index.SetSurfaceColor(state->theme.panel);
+    state->overview.primary.SetTheme(state->theme); state->overview.primary.SetSurfaceColor(state->theme.panel);
+    state->overview.secondary.SetTheme(state->theme); state->overview.secondary.SetSurfaceColor(state->theme.panel);
+    state->overview.status.SetTheme(state->theme); state->overview.status.SetBackgroundColor(state->theme.panel);
+    state->overview.sync.SetTheme(state->theme); state->overview.sync.SetSurfaceColor(state->theme.panel);
+    state->overview.cpu.SetTheme(state->theme); state->overview.cpu.SetSurfaceColor(state->theme.panel);
 
     state->controls.exposure.SetTheme(state->theme);
     state->controls.balance.SetTheme(state->theme);
     state->controls.timeline.SetTheme(state->theme);
     state->controls.navigator.SetTheme(state->theme);
-    state->controls.preview.SetTheme(state->theme);
-    state->controls.preview.SetSurfaceColor(state->theme.panel);
+    state->controls.search.SetTheme(state->theme);
+    state->controls.notes.SetTheme(state->theme);
 
     state->data.filter.SetTheme(state->theme);
-    state->data.refresh.SetTheme(state->theme);
-    state->data.archive.SetTheme(state->theme);
-    state->data.refresh.SetSurfaceColor(state->theme.panel);
-    state->data.archive.SetSurfaceColor(state->theme.panel);
+    state->data.refresh.SetTheme(state->theme); state->data.refresh.SetSurfaceColor(state->theme.background);
     state->data.table.SetTheme(state->theme);
+    state->data.queue.SetTheme(state->theme);
 
-    InvalidateRect(state->overviewPage, nullptr, TRUE);
-    InvalidateRect(state->controlsPage, nullptr, TRUE);
-    InvalidateRect(state->dataPage, nullptr, TRUE);
+    state->expanded.headline.SetTheme(state->theme); state->expanded.headline.SetBackgroundColor(state->theme.panel);
+    state->expanded.helper.SetTheme(state->theme); state->expanded.helper.SetBackgroundColor(state->theme.panel);
+    state->expanded.autoSave.SetTheme(state->theme); state->expanded.autoSave.SetSurfaceColor(state->theme.panel);
+    state->expanded.compact.SetTheme(state->theme); state->expanded.compact.SetSurfaceColor(state->theme.panel);
+    state->expanded.grid.SetTheme(state->theme); state->expanded.grid.SetSurfaceColor(state->theme.panel);
+    state->expanded.focus.SetTheme(state->theme); state->expanded.focus.SetSurfaceColor(state->theme.panel);
+    state->expanded.flow.SetTheme(state->theme); state->expanded.flow.SetSurfaceColor(state->theme.panel);
+    state->expanded.dialogButton.SetTheme(state->theme); state->expanded.dialogButton.SetSurfaceColor(state->theme.panel);
+    state->expanded.result.SetTheme(state->theme); state->expanded.result.SetBackgroundColor(state->theme.panel);
+    UpdateExpandedSummary(state);
 }
 
 void LayoutMainWindow(HWND window, AppState* state) {
     RECT client{};
     GetClientRect(window, &client);
-
     const int outer = 28;
-    const int headerHeight = 96;
-    const int buttonWidth = 118;
+    const int headerHeight = 104;
+    const int buttonWidth = 102;
     const int buttonHeight = 36;
-    const int buttonGap = 12;
+    const int gap = 10;
+    const int right = client.right - outer;
+    const int top = outer + 10;
 
-    const int rightEdge = client.right - outer;
-    const int topY = outer + 10;
-
-    MoveWindow(state->themeNocturne.hwnd(), rightEdge - buttonWidth, topY, buttonWidth, buttonHeight, TRUE);
-    MoveWindow(state->themeObsidian.hwnd(), rightEdge - (buttonWidth * 2) - buttonGap, topY, buttonWidth, buttonHeight, TRUE);
-    MoveWindow(state->themeGraphite.hwnd(), rightEdge - (buttonWidth * 3) - (buttonGap * 2), topY, buttonWidth, buttonHeight, TRUE);
+    MoveWindow(state->themeMono.hwnd(), right - buttonWidth, top, buttonWidth, buttonHeight, TRUE);
+    MoveWindow(state->themeMoss.hwnd(), right - buttonWidth * 2 - gap, top, buttonWidth, buttonHeight, TRUE);
+    MoveWindow(state->themeGlacier.hwnd(), right - buttonWidth * 3 - gap * 2, top, buttonWidth, buttonHeight, TRUE);
+    MoveWindow(state->themeEmber.hwnd(), right - buttonWidth * 4 - gap * 3, top, buttonWidth, buttonHeight, TRUE);
+    MoveWindow(state->themeGraphite.hwnd(), right - buttonWidth * 5 - gap * 4, top, buttonWidth, buttonHeight, TRUE);
 
     MoveWindow(state->tab.hwnd(),
                outer,
                outer + headerHeight,
-               std::max(420, static_cast<int>(client.right - outer * 2)),
-               std::max(420, static_cast<int>(client.bottom - outer * 2 - headerHeight)),
+               std::max<LONG>(460, client.right - outer * 2),
+               std::max<LONG>(460, client.bottom - outer * 2 - headerHeight),
                TRUE);
 }
 
 void LayoutOverviewPage(HWND page, AppState* state) {
-    RECT client{};
-    GetClientRect(page, &client);
+    RECT client{}; GetClientRect(page, &client);
     RECT content = InsetRectCopy(client, 28, 28);
+    RECT top = SliceTop(content, 258);
+    RECT bottom{content.left, top.bottom + 20, content.right, content.bottom};
+    RECT left = SliceLeft(top, ((top.right - top.left) - 20) / 2);
+    RECT right{left.right + 20, top.top, top.right, top.bottom};
+    RECT li = InsetRectCopy(left, 24, 24);
+    RECT ri = InsetRectCopy(right, 24, 24);
+    RECT bi = InsetRectCopy(bottom, 24, 24);
 
-    const bool compact = (content.right - content.left) < 920;
-    const int gap = 20;
-
-    RECT topArea = SliceTop(content, compact ? 336 : 250);
-    RECT bottomArea{content.left, topArea.bottom + gap, content.right, content.bottom};
-
-    RECT leftCard = compact ? SliceTop(topArea, 162) : SliceLeft(topArea, ((topArea.right - topArea.left) - gap) / 2);
-    RECT rightCard = compact ? RECT{topArea.left, leftCard.bottom + gap, topArea.right, topArea.bottom}
-                             : RECT{leftCard.right + gap, topArea.top, topArea.right, topArea.bottom};
-
-    RECT leftInner = InsetRectCopy(leftCard, 24, 24);
-    RECT rightInner = InsetRectCopy(rightCard, 24, 24);
-    RECT bottomInner = InsetRectCopy(bottomArea, 24, 24);
-
-    MoveWindow(state->overview.profile.hwnd(), leftInner.left, leftInner.top + 54, leftInner.right - leftInner.left, 34, TRUE);
-    MoveWindow(state->overview.surface.hwnd(), leftInner.left, leftInner.top + 116, leftInner.right - leftInner.left, 34, TRUE);
-
-    const int actionWidth = compact ? (rightInner.right - rightInner.left - gap) / 2 : 168;
-    MoveWindow(state->overview.primary.hwnd(), rightInner.left, rightInner.top + 56, actionWidth, 38, TRUE);
-    MoveWindow(state->overview.secondary.hwnd(), rightInner.left + actionWidth + gap, rightInner.top + 56, actionWidth, 38, TRUE);
-    MoveWindow(state->overview.disabled.hwnd(), rightInner.left, rightInner.top + 110, rightInner.right - rightInner.left, 38, TRUE);
-
-    MoveWindow(state->overview.storage.hwnd(), bottomInner.left, bottomInner.top + 58, bottomInner.right - bottomInner.left, 34, TRUE);
-    MoveWindow(state->overview.index.hwnd(), bottomInner.left, bottomInner.top + 134, bottomInner.right - bottomInner.left, 30, TRUE);
+    MoveWindow(state->overview.profile.hwnd(), li.left, li.top + 54, li.right - li.left, 34, TRUE);
+    MoveWindow(state->overview.primary.hwnd(), ri.left, ri.top + 58, 168, 38, TRUE);
+    MoveWindow(state->overview.secondary.hwnd(), ri.left + 184, ri.top + 58, 168, 38, TRUE);
+    MoveWindow(state->overview.status.hwnd(), ri.left, ri.top + 120, ri.right - ri.left, 48, TRUE);
+    MoveWindow(state->overview.sync.hwnd(), bi.left, bi.top + 56, bi.right - bi.left, 34, TRUE);
+    MoveWindow(state->overview.cpu.hwnd(), bi.left, bi.top + 128, bi.right - bi.left, 34, TRUE);
 }
 
 void LayoutControlsPage(HWND page, AppState* state) {
-    RECT client{};
-    GetClientRect(page, &client);
+    RECT client{}; GetClientRect(page, &client);
     RECT content = InsetRectCopy(client, 28, 28);
-    const bool compact = (content.right - content.left) < 960;
-    const int gap = 20;
+    RECT top = SliceTop(content, 260);
+    RECT bottom{content.left, top.bottom + 20, content.right, content.bottom};
+    RECT left = SliceLeft(bottom, ((bottom.right - bottom.left) - 20) / 2);
+    RECT right{left.right + 20, bottom.top, bottom.right, bottom.bottom};
+    RECT ti = InsetRectCopy(top, 24, 24);
+    RECT li = InsetRectCopy(left, 24, 24);
+    RECT ri = InsetRectCopy(right, 24, 24);
 
-    RECT topCard = SliceTop(content, 264);
-    RECT bottomArea{content.left, topCard.bottom + gap, content.right, content.bottom};
-    RECT leftBottom = compact ? SliceTop(bottomArea, 170) : SliceLeft(bottomArea, ((bottomArea.right - bottomArea.left) - gap) / 2);
-    RECT rightBottom = compact ? RECT{bottomArea.left, leftBottom.bottom + gap, bottomArea.right, bottomArea.bottom}
-                               : RECT{leftBottom.right + gap, bottomArea.top, bottomArea.right, bottomArea.bottom};
-
-    RECT topInner = InsetRectCopy(topCard, 24, 24);
-    RECT leftInner = InsetRectCopy(leftBottom, 24, 24);
-    RECT rightInner = InsetRectCopy(rightBottom, 24, 24);
-
-    MoveWindow(state->controls.exposure.hwnd(), topInner.left, topInner.top + 64, topInner.right - topInner.left, 42, TRUE);
-    MoveWindow(state->controls.balance.hwnd(), topInner.left, topInner.top + 156, topInner.right - topInner.left, 42, TRUE);
-
-    MoveWindow(state->controls.timeline.hwnd(), leftInner.left, leftInner.top + 74, leftInner.right - leftInner.left, state->theme.scrollBarThickness + 14, TRUE);
-    MoveWindow(state->controls.navigator.hwnd(), leftInner.right - 24, leftInner.top + 124, 20, std::max(96, static_cast<int>(leftInner.bottom - leftInner.top - 136)), TRUE);
-
-    MoveWindow(state->controls.preview.hwnd(), rightInner.left, rightInner.top + 78, rightInner.right - rightInner.left, 40, TRUE);
+    MoveWindow(state->controls.exposure.hwnd(), ti.left, ti.top + 62, ti.right - ti.left, 42, TRUE);
+    MoveWindow(state->controls.balance.hwnd(), ti.left, ti.top + 156, ti.right - ti.left, 42, TRUE);
+    MoveWindow(state->controls.timeline.hwnd(), li.left, li.top + 78, li.right - li.left, state->theme.scrollBarThickness + 12, TRUE);
+    MoveWindow(state->controls.navigator.hwnd(), li.right - 22, li.top + 126, 18, std::max(100L, li.bottom - li.top - 144), TRUE);
+    MoveWindow(state->controls.search.hwnd(), ri.left, ri.top + 62, ri.right - ri.left, 40, TRUE);
+    MoveWindow(state->controls.notes.hwnd(), ri.left, ri.top + 122, ri.right - ri.left, std::max(118L, ri.bottom - ri.top - 136), TRUE);
 }
 
 void LayoutDataPage(HWND page, AppState* state) {
-    RECT client{};
-    GetClientRect(page, &client);
+    RECT client{}; GetClientRect(page, &client);
     RECT content = InsetRectCopy(client, 28, 28);
-    const int gap = 12;
+    RECT bar = SliceTop(content, 42);
+    RECT bottom{content.left, bar.bottom + 20, content.right, content.bottom};
+    RECT left = SliceLeft(bottom, ((bottom.right - bottom.left) - 20) / 2);
+    RECT right{left.right + 20, bottom.top, bottom.right, bottom.bottom};
 
-    RECT toolbar = SliceTop(content, 42);
-    RECT tableArea{content.left, toolbar.bottom + 20, content.right, content.bottom};
+    MoveWindow(state->data.filter.hwnd(), bar.left, bar.top, 240, 42, TRUE);
+    MoveWindow(state->data.refresh.hwnd(), bar.right - 146, bar.top, 146, 42, TRUE);
+    MoveWindow(state->data.table.hwnd(), left.left, left.top, left.right - left.left, left.bottom - left.top, TRUE);
+    MoveWindow(state->data.queue.hwnd(), right.left, right.top, right.right - right.left, right.bottom - right.top, TRUE);
+}
 
-    const int rightButtons = 150;
-    RECT filterRect = SliceLeft(toolbar, std::max(220, static_cast<int>((toolbar.right - toolbar.left) / 2)));
-    RECT archiveRect = SliceRight(toolbar, rightButtons);
-    RECT refreshRect{archiveRect.left - gap - rightButtons, toolbar.top, archiveRect.left - gap, toolbar.bottom};
+void LayoutExpandedPage(HWND page, AppState* state) {
+    RECT client{}; GetClientRect(page, &client);
+    RECT content = InsetRectCopy(client, 28, 28);
+    RECT left = SliceLeft(content, ((content.right - content.left) - 20) / 2);
+    RECT right{left.right + 20, content.top, content.right, content.bottom};
+    RECT li = InsetRectCopy(left, 24, 24);
+    RECT ri = InsetRectCopy(right, 24, 24);
 
-    MoveWindow(state->data.filter.hwnd(), filterRect.left, filterRect.top, filterRect.right - filterRect.left, filterRect.bottom - filterRect.top, TRUE);
-    MoveWindow(state->data.refresh.hwnd(), refreshRect.left, refreshRect.top, refreshRect.right - refreshRect.left, refreshRect.bottom - refreshRect.top, TRUE);
-    MoveWindow(state->data.archive.hwnd(), archiveRect.left, archiveRect.top, archiveRect.right - archiveRect.left, archiveRect.bottom - archiveRect.top, TRUE);
-    MoveWindow(state->data.table.hwnd(), tableArea.left, tableArea.top, tableArea.right - tableArea.left, tableArea.bottom - tableArea.top, TRUE);
+    MoveWindow(state->expanded.headline.hwnd(), li.left, li.top + 12, li.right - li.left, 28, TRUE);
+    MoveWindow(state->expanded.helper.hwnd(), li.left, li.top + 52, li.right - li.left, 62, TRUE);
+    MoveWindow(state->expanded.autoSave.hwnd(), li.left, li.top + 138, li.right - li.left, 28, TRUE);
+    MoveWindow(state->expanded.compact.hwnd(), li.left, li.top + 176, li.right - li.left, 28, TRUE);
+    MoveWindow(state->expanded.grid.hwnd(), li.left, li.top + 232, li.right - li.left, 28, TRUE);
+    MoveWindow(state->expanded.focus.hwnd(), li.left, li.top + 268, li.right - li.left, 28, TRUE);
+    MoveWindow(state->expanded.flow.hwnd(), li.left, li.top + 304, li.right - li.left, 28, TRUE);
+    MoveWindow(state->expanded.dialogButton.hwnd(), ri.left, ri.top + 56, 196, 40, TRUE);
+    MoveWindow(state->expanded.result.hwnd(), ri.left, ri.top + 124, ri.right - ri.left, 92, TRUE);
 }
 
 void LayoutPage(HWND page, AppState* state, PageKind kind) {
     switch (kind) {
-    case PageKind::Overview:
-        LayoutOverviewPage(page, state);
-        break;
-    case PageKind::Controls:
-        LayoutControlsPage(page, state);
-        break;
-    case PageKind::Data:
-        LayoutDataPage(page, state);
-        break;
+    case PageKind::Overview: LayoutOverviewPage(page, state); break;
+    case PageKind::Controls: LayoutControlsPage(page, state); break;
+    case PageKind::Data: LayoutDataPage(page, state); break;
+    case PageKind::Expanded: LayoutExpandedPage(page, state); break;
     }
 }
 
 void PaintMainWindow(HWND window, HDC dc, AppState* state) {
-    RECT client{};
-    GetClientRect(window, &client);
+    RECT client{}; GetClientRect(window, &client);
     FillRect(dc, &client, state->windowBrush);
-
-    RECT hero{28, 26, client.right - 28, 90};
-    RECT titleRect = hero;
-    titleRect.bottom = titleRect.top + 34;
-    RECT subtitleRect{hero.left, hero.top + 40, client.right - 380, hero.bottom + 18};
-
-    DrawLabel(dc, state->titleFont, state->theme.text, titleRect, L"DarkUI Studio Showcase", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->titleFont, state->theme.text, RECT{28, 24, client.right - 28, 58}, L"DarkUI Semantic Showcase", DT_LEFT | DT_TOP | DT_SINGLELINE);
     DrawLabel(dc,
               state->subtitleFont,
               state->theme.mutedText,
-              subtitleRect,
-              L"A unified dark workspace that exercises every custom control with live themes, sample content, and adaptive layout.",
+              RECT{28, 62, client.right - 560, 92},
+              L"Five semantic palettes drive every control from one theme entry. The new controls live in the Expanded page, and the window title bar stays black.",
               DT_LEFT | DT_TOP | DT_WORDBREAK);
 }
 
 void PaintOverviewPage(HWND page, HDC dc, PageState* state) {
-    RECT client{};
-    GetClientRect(page, &client);
-    FillRect(dc, &client, state->app->windowBrush);
-
+    RECT client{}; GetClientRect(page, &client); FillRect(dc, &client, state->app->windowBrush);
     RECT content = InsetRectCopy(client, 28, 28);
-    const bool compact = (content.right - content.left) < 920;
-    const int gap = 20;
-    RECT topArea = SliceTop(content, compact ? 336 : 250);
-    RECT bottomArea{content.left, topArea.bottom + gap, content.right, content.bottom};
-    RECT leftCard = compact ? SliceTop(topArea, 162) : SliceLeft(topArea, ((topArea.right - topArea.left) - gap) / 2);
-    RECT rightCard = compact ? RECT{topArea.left, leftCard.bottom + gap, topArea.right, topArea.bottom}
-                             : RECT{leftCard.right + gap, topArea.top, topArea.right, topArea.bottom};
-
-    FillRoundedRect(dc, leftCard, 24, state->app->theme.panel, state->app->theme.border);
-    FillRoundedRect(dc, rightCard, 24, state->app->theme.panel, state->app->theme.border);
-    FillRoundedRect(dc, bottomArea, 24, state->app->theme.panel, state->app->theme.border);
-
-    RECT leftInner = InsetRectCopy(leftCard, 24, 24);
-    RECT rightInner = InsetRectCopy(rightCard, 24, 24);
-    RECT bottomInner = InsetRectCopy(bottomArea, 24, 24);
-
-    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(leftInner, 26), L"Workspace Profile", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{leftInner.left, leftInner.top + 30, leftInner.right, leftInner.top + 48}, L"Choose a polished starting point for cards, density, and data presentation.", DT_LEFT | DT_TOP | DT_WORDBREAK);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{leftInner.left, leftInner.top + 58, leftInner.right, leftInner.top + 76}, L"Profile", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{leftInner.left, leftInner.top + 120, leftInner.right, leftInner.top + 138}, L"Surface style", DT_LEFT | DT_TOP | DT_SINGLELINE);
-
-    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(rightInner, 26), L"Quick Actions", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{rightInner.left, rightInner.top + 30, rightInner.right, rightInner.top + 48}, L"Buttons showcase corner radius, hover, disabled styling, and compact toolbar placement.", DT_LEFT | DT_TOP | DT_WORDBREAK);
-
-    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(bottomInner, 26), L"Operational Health", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{bottomInner.left, bottomInner.top + 32, bottomInner.right, bottomInner.top + 50}, L"Storage pool", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{bottomInner.left, bottomInner.top + 108, bottomInner.right, bottomInner.top + 126}, L"Search indexing", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    RECT top = SliceTop(content, 258);
+    RECT bottom{content.left, top.bottom + 20, content.right, content.bottom};
+    RECT left = SliceLeft(top, ((top.right - top.left) - 20) / 2);
+    RECT right{left.right + 20, top.top, top.right, top.bottom};
+    FillRoundedRect(dc, left, 24, state->app->theme.panel, state->app->theme.border);
+    FillRoundedRect(dc, right, 24, state->app->theme.panel, state->app->theme.border);
+    FillRoundedRect(dc, bottom, 24, state->app->theme.panel, state->app->theme.border);
+    RECT li = InsetRectCopy(left, 24, 24);
+    RECT ri = InsetRectCopy(right, 24, 24);
+    RECT bi = InsetRectCopy(bottom, 24, 24);
+    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(li, 26), L"Theme Inputs", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{li.left, li.top + 30, li.right, li.top + 52}, L"Latest semantic theme entry through one shared Theme object.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(ri, 26), L"Actions And Status", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{ri.left, ri.top + 30, ri.right, ri.top + 52}, L"Buttons, static text, and progress cards all follow the same palette.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(bi, 26), L"Live Progress", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{bi.left, bi.top + 32, bi.right, bi.top + 50}, L"Background sync", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{bi.left, bi.top + 104, bi.right, bi.top + 122}, L"Render capacity", DT_LEFT | DT_TOP | DT_SINGLELINE);
 }
 
 void PaintControlsPage(HWND page, HDC dc, PageState* state) {
-    RECT client{};
-    GetClientRect(page, &client);
-    FillRect(dc, &client, state->app->windowBrush);
-
+    RECT client{}; GetClientRect(page, &client); FillRect(dc, &client, state->app->windowBrush);
     RECT content = InsetRectCopy(client, 28, 28);
-    const bool compact = (content.right - content.left) < 960;
-    const int gap = 20;
-    RECT topCard = SliceTop(content, 264);
-    RECT bottomArea{content.left, topCard.bottom + gap, content.right, content.bottom};
-    RECT leftBottom = compact ? SliceTop(bottomArea, 170) : SliceLeft(bottomArea, ((bottomArea.right - bottomArea.left) - gap) / 2);
-    RECT rightBottom = compact ? RECT{bottomArea.left, leftBottom.bottom + gap, bottomArea.right, bottomArea.bottom}
-                               : RECT{leftBottom.right + gap, bottomArea.top, bottomArea.right, bottomArea.bottom};
-
-    FillRoundedRect(dc, topCard, 24, state->app->theme.panel, state->app->theme.border);
-    FillRoundedRect(dc, leftBottom, 24, state->app->theme.panel, state->app->theme.border);
-    FillRoundedRect(dc, rightBottom, 24, state->app->theme.panel, state->app->theme.border);
-
-    RECT topInner = InsetRectCopy(topCard, 24, 24);
-    RECT leftInner = InsetRectCopy(leftBottom, 24, 24);
-    RECT rightInner = InsetRectCopy(rightBottom, 24, 24);
-
-    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(topInner, 26), L"Tuning Sliders", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{topInner.left, topInner.top + 32, topInner.right, topInner.top + 50}, L"Exposure", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{topInner.left, topInner.top + 124, topInner.right, topInner.top + 142}, L"Balance", DT_LEFT | DT_TOP | DT_SINGLELINE);
-
-    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(leftInner, 26), L"Navigation Scrollbars", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{leftInner.left, leftInner.top + 34, leftInner.right, leftInner.top + 56}, L"Horizontal storyboard scrub and a compact vertical inspector rail.", DT_LEFT | DT_TOP | DT_WORDBREAK);
-
-    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(rightInner, 26), L"Composite Preview", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{rightInner.left, rightInner.top + 34, rightInner.right, rightInner.top + 56}, L"Preview level updates from the combined sliders and scrollbar position.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+    RECT top = SliceTop(content, 260);
+    RECT bottom{content.left, top.bottom + 20, content.right, content.bottom};
+    RECT left = SliceLeft(bottom, ((bottom.right - bottom.left) - 20) / 2);
+    RECT right{left.right + 20, bottom.top, bottom.right, bottom.bottom};
+    FillRoundedRect(dc, top, 24, state->app->theme.panel, state->app->theme.border);
+    FillRoundedRect(dc, left, 24, state->app->theme.panel, state->app->theme.border);
+    FillRoundedRect(dc, right, 24, state->app->theme.panel, state->app->theme.border);
+    RECT ti = InsetRectCopy(top, 24, 24);
+    RECT li = InsetRectCopy(left, 24, 24);
+    RECT ri = InsetRectCopy(right, 24, 24);
+    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(ti, 26), L"Sliders And Motion", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{ti.left, ti.top + 34, ti.right, ti.top + 52}, L"Exposure", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{ti.left, ti.top + 128, ti.right, ti.top + 146}, L"Balance", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(li, 26), L"Custom Scrollbars", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{li.left, li.top + 34, li.right, li.top + 56}, L"Horizontal timeline and vertical navigation rail.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(ri, 26), L"Dark Edit Surfaces", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{ri.left, ri.top + 34, ri.right, ri.top + 56}, L"Single-line search plus multiline notes.", DT_LEFT | DT_TOP | DT_WORDBREAK);
 }
 
 void PaintDataPage(HWND page, HDC dc, PageState* state) {
-    RECT client{};
-    GetClientRect(page, &client);
-    FillRect(dc, &client, state->app->windowBrush);
-
+    RECT client{}; GetClientRect(page, &client); FillRect(dc, &client, state->app->windowBrush);
     RECT content = InsetRectCopy(client, 28, 28);
-    RECT toolbar = SliceTop(content, 42);
-    RECT tableArea{content.left, toolbar.bottom + 20, content.right, content.bottom};
+    RECT bar = SliceTop(content, 42);
+    RECT bottom{content.left, bar.bottom + 20, content.right, content.bottom};
+    RECT left = SliceLeft(bottom, ((bottom.right - bottom.left) - 20) / 2);
+    RECT right{left.right + 20, bottom.top, bottom.right, bottom.bottom};
+    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, RECT{content.left, content.top - 4, content.right, content.top + 22}, L"Data Density", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{content.left, content.top + 24, content.right, content.top + 46}, L"Custom table and list box using the same semantic palette and font system.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+    FillRoundedRect(dc, left, 24, state->app->theme.panel, state->app->theme.border);
+    FillRoundedRect(dc, right, 24, state->app->theme.panel, state->app->theme.border);
+}
 
-    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, RECT{content.left, content.top - 4, content.right, content.top + 22}, L"Content Library", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{content.left, content.top + 24, content.right, content.top + 46}, L"Filter presets, action buttons, and a custom dark table with balanced sample data.", DT_LEFT | DT_TOP | DT_WORDBREAK);
-
-    RECT tableCard = tableArea;
-    FillRoundedRect(dc, tableCard, 24, state->app->theme.panel, state->app->theme.border);
+void PaintExpandedPage(HWND page, HDC dc, PageState* state) {
+    RECT client{}; GetClientRect(page, &client); FillRect(dc, &client, state->app->windowBrush);
+    RECT content = InsetRectCopy(client, 28, 28);
+    RECT left = SliceLeft(content, ((content.right - content.left) - 20) / 2);
+    RECT right{left.right + 20, content.top, content.right, content.bottom};
+    FillRoundedRect(dc, left, 24, state->app->theme.panel, state->app->theme.border);
+    FillRoundedRect(dc, right, 24, state->app->theme.panel, state->app->theme.border);
+    RECT li = InsetRectCopy(left, 24, 24);
+    RECT ri = InsetRectCopy(right, 24, 24);
+    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(li, 26), L"New Controls", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{li.left, li.top + 34, li.right, li.top + 56}, L"Static, CheckBox, RadioButton, and a semantic-state summary.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(ri, 26), L"Dialog Trigger", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{ri.left, ri.top + 34, ri.right, ri.top + 56}, L"Open the custom dark dialog without leaving the showcase.", DT_LEFT | DT_TOP | DT_WORDBREAK);
 }
 
 void PaintPage(HWND page, HDC dc, PageState* state) {
     switch (state->kind) {
-    case PageKind::Overview:
-        PaintOverviewPage(page, dc, state);
-        break;
-    case PageKind::Controls:
-        PaintControlsPage(page, dc, state);
-        break;
-    case PageKind::Data:
-        PaintDataPage(page, dc, state);
-        break;
+    case PageKind::Overview: PaintOverviewPage(page, dc, state); break;
+    case PageKind::Controls: PaintControlsPage(page, dc, state); break;
+    case PageKind::Data: PaintDataPage(page, dc, state); break;
+    case PageKind::Expanded: PaintExpandedPage(page, dc, state); break;
     }
 }
 
@@ -620,64 +573,26 @@ bool CreatePageWindow(HWND parent, int controlId, PageKind kind, AppState* app, 
     auto* pageState = new PageState();
     pageState->app = app;
     pageState->kind = kind;
-
-    HWND page = CreateWindowExW(0,
-                                kPageClassName,
-                                L"",
-                                WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
-                                0,
-                                0,
-                                0,
-                                0,
-                                parent,
-                                reinterpret_cast<HMENU>(static_cast<INT_PTR>(controlId)),
-                                reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE)),
-                                pageState);
-    if (!page) {
-        delete pageState;
-        return false;
-    }
+    HWND page = CreateWindowExW(0, kPageClassName, L"", WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, 0, 0, 0, 0, parent, reinterpret_cast<HMENU>(static_cast<INT_PTR>(controlId)), reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE)), pageState);
+    if (!page) { delete pageState; return false; }
     *outPage = page;
     return true;
 }
 
 bool CreateOverviewControls(AppState* app) {
     if (!app->overview.profile.Create(app->overviewPage, ID_OVERVIEW_PROFILE, app->theme)) return false;
-    if (!app->overview.surface.Create(app->overviewPage, ID_OVERVIEW_SURFACE, app->theme)) return false;
-    if (!app->overview.primary.Create(app->overviewPage, ID_OVERVIEW_PRIMARY, L"Sync Assets", app->theme)) return false;
-    if (!app->overview.secondary.Create(app->overviewPage, ID_OVERVIEW_SECONDARY, L"Share Review", app->theme)) return false;
-    if (!app->overview.disabled.Create(app->overviewPage, ID_OVERVIEW_DISABLED, L"Approve Build", app->theme)) return false;
-    if (!app->overview.storage.Create(app->overviewPage, ID_OVERVIEW_STORAGE, app->theme)) return false;
-    if (!app->overview.index.Create(app->overviewPage, ID_OVERVIEW_INDEX, app->theme)) return false;
-
-    app->overview.primary.SetCornerRadius(14);
-    app->overview.secondary.SetCornerRadius(14);
-    app->overview.disabled.SetCornerRadius(14);
-    app->overview.primary.SetSurfaceColor(app->theme.panel);
-    app->overview.secondary.SetSurfaceColor(app->theme.panel);
-    app->overview.disabled.SetSurfaceColor(app->theme.panel);
-    EnableWindow(app->overview.disabled.hwnd(), FALSE);
-
-    app->overview.profile.SetItems({
-        {L"Studio Executive", 1, true},
-        {L"Production Grid", 2, false},
-        {L"Minimal Review", 3, false}
-    });
+    if (!app->overview.primary.Create(app->overviewPage, ID_OVERVIEW_PRIMARY, L"Sync Cluster", app->theme)) return false;
+    if (!app->overview.secondary.Create(app->overviewPage, ID_OVERVIEW_SECONDARY, L"Share Preview", app->theme)) return false;
+    if (!app->overview.status.Create(app->overviewPage, ID_OVERVIEW_STATUS, L"Semantic palette active across every page", app->theme, WS_CHILD | WS_VISIBLE | SS_LEFT)) return false;
+    if (!app->overview.sync.Create(app->overviewPage, ID_OVERVIEW_SYNC, app->theme)) return false;
+    if (!app->overview.cpu.Create(app->overviewPage, ID_OVERVIEW_CPU, app->theme)) return false;
+    app->overview.primary.SetCornerRadius(14); app->overview.primary.SetSurfaceColor(app->theme.panel);
+    app->overview.secondary.SetCornerRadius(14); app->overview.secondary.SetSurfaceColor(app->theme.panel);
+    app->overview.status.SetBackgroundColor(app->theme.panel); app->overview.status.SetTextFormat(DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+    app->overview.profile.SetItems({{L"Studio Executive", 1, true}, {L"Asset Review", 2, false}, {L"Broadcast Board", 3, false}});
     app->overview.profile.SetSelection(0);
-    app->overview.surface.SetItems({
-        {L"Frosted Graphite", 1, true},
-        {L"Soft Obsidian", 2, false},
-        {L"Teal Nocturne", 3, false}
-    });
-    app->overview.surface.SetSelection(0);
-
-    app->overview.storage.SetRange(0, 100);
-    app->overview.storage.SetSurfaceColor(app->theme.panel);
-    app->overview.storage.SetValue(74);
-    app->overview.index.SetRange(0, 100);
-    app->overview.index.SetSurfaceColor(app->theme.panel);
-    app->overview.index.SetValue(61);
-    app->overview.index.SetShowPercentage(false);
+    app->overview.sync.SetRange(0, 100); app->overview.sync.SetValue(74); app->overview.sync.SetSurfaceColor(app->theme.panel);
+    app->overview.cpu.SetRange(0, 100); app->overview.cpu.SetValue(61); app->overview.cpu.SetSurfaceColor(app->theme.panel); app->overview.cpu.SetShowPercentage(false);
     return true;
 }
 
@@ -686,83 +601,107 @@ bool CreateControlsPanel(AppState* app) {
     if (!app->controls.balance.Create(app->controlsPage, ID_CONTROLS_BALANCE, app->theme)) return false;
     if (!app->controls.timeline.Create(app->controlsPage, ID_CONTROLS_SCROLL_H, false, app->theme)) return false;
     if (!app->controls.navigator.Create(app->controlsPage, ID_CONTROLS_SCROLL_V, true, app->theme)) return false;
-    if (!app->controls.preview.Create(app->controlsPage, ID_CONTROLS_PREVIEW, app->theme)) return false;
-
-    app->controls.exposure.SetRange(0, 100);
-    app->controls.exposure.SetValue(68);
-    app->controls.exposure.SetShowTicks(true);
-    app->controls.exposure.SetTickCount(9);
-
-    app->controls.balance.SetRange(0, 100);
-    app->controls.balance.SetValue(42);
-    app->controls.balance.SetShowTicks(true);
-    app->controls.balance.SetTickCount(7);
-
-    app->controls.timeline.SetRange(0, 100);
-    app->controls.timeline.SetPageSize(20);
-    app->controls.timeline.SetValue(38);
-
-    app->controls.navigator.SetRange(0, 100);
-    app->controls.navigator.SetPageSize(18);
-    app->controls.navigator.SetValue(26);
-
-    app->controls.preview.SetRange(0, 100);
-    app->controls.preview.SetSurfaceColor(app->theme.panel);
-    UpdateControlPreview(app);
+    if (!app->controls.search.Create(app->controlsPage, ID_CONTROLS_SEARCH, L"", app->theme)) return false;
+    if (!app->controls.notes.Create(app->controlsPage, ID_CONTROLS_NOTES, L"Dark multiline edit\nwith the custom dark vertical scrollbar\nlinked to the shared theme.", app->theme, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL)) return false;
+    app->controls.exposure.SetRange(0, 100); app->controls.exposure.SetValue(68); app->controls.exposure.SetShowTicks(true); app->controls.exposure.SetTickCount(9);
+    app->controls.balance.SetRange(0, 100); app->controls.balance.SetValue(42); app->controls.balance.SetShowTicks(true); app->controls.balance.SetTickCount(7);
+    app->controls.timeline.SetRange(0, 100); app->controls.timeline.SetPageSize(20); app->controls.timeline.SetValue(34);
+    app->controls.navigator.SetRange(0, 100); app->controls.navigator.SetPageSize(18); app->controls.navigator.SetValue(26);
+    app->controls.search.SetCueBanner(L"Search sessions"); app->controls.search.SetCornerRadius(14);
+    app->controls.notes.SetCueBanner(L"Write notes here"); app->controls.notes.SetCornerRadius(16);
     return true;
 }
 
 bool CreateDataPanel(AppState* app) {
     if (!app->data.filter.Create(app->dataPage, ID_DATA_FILTER, app->theme)) return false;
     if (!app->data.refresh.Create(app->dataPage, ID_DATA_REFRESH, L"Refresh", app->theme)) return false;
-    if (!app->data.archive.Create(app->dataPage, ID_DATA_ARCHIVE, L"Archive", app->theme)) return false;
     if (!app->data.table.Create(app->dataPage, ID_DATA_TABLE, app->theme)) return false;
-
-    app->data.refresh.SetCornerRadius(14);
-    app->data.archive.SetCornerRadius(14);
-    app->data.refresh.SetSurfaceColor(app->theme.panel);
-    app->data.archive.SetSurfaceColor(app->theme.panel);
-
-    app->data.filter.SetItems({
-        {L"All assets", 0, true},
-        {L"Ready only", 1, false},
-        {L"Cloud synced", 2, false},
-        {L"Large transfers", 3, false}
-    });
-    app->data.filter.SetSelection(0);
-
-    app->data.table.SetColumns({
-        {L"Collection", 240, LVCFMT_LEFT},
-        {L"Source", 110, LVCFMT_LEFT},
-        {L"State", 120, LVCFMT_LEFT},
-        {L"Size", 120, LVCFMT_RIGHT},
-        {L"Updated", 120, LVCFMT_LEFT}
-    });
+    if (!app->data.queue.Create(app->dataPage, ID_DATA_QUEUE, app->theme)) return false;
+    app->data.refresh.SetCornerRadius(14); app->data.refresh.SetSurfaceColor(app->theme.background);
+    app->data.filter.SetItems({{L"All transfers", 0, true}, {L"Ready only", 1, false}, {L"Cloud only", 2, false}}); app->data.filter.SetSelection(0);
+    app->data.table.SetColumns({{L"Collection", 220, LVCFMT_LEFT}, {L"Source", 100, LVCFMT_LEFT}, {L"State", 110, LVCFMT_LEFT}, {L"Size", 100, LVCFMT_RIGHT}, {L"Updated", 110, LVCFMT_LEFT}});
     app->data.table.SetDrawEmptyGrid(true);
+    app->data.queue.SetCornerRadius(18);
+    app->data.queue.SetItems({{L"Queued color pass", 1}, {L"Archive sync", 2}, {L"Proxy rebuild", 3}, {L"Review package", 4}, {L"Audio conform", 5}});
+    app->data.queue.SetSelection(0);
     RefreshDataRows(app);
+    return true;
+}
+
+bool CreateExpandedPanel(AppState* app) {
+    if (!app->expanded.headline.Create(app->expandedPage, ID_EXPANDED_STATIC_TITLE, L"Extended Components", app->theme, WS_CHILD | WS_VISIBLE | SS_LEFT)) return false;
+    if (!app->expanded.helper.Create(app->expandedPage, ID_EXPANDED_STATIC_HELPER, L"These controls were added after the original showcase and now participate in the same semantic theme system.", app->theme, WS_CHILD | WS_VISIBLE | SS_LEFT)) return false;
+    if (!app->expanded.autoSave.Create(app->expandedPage, ID_EXPANDED_CHECK_AUTOSAVE, L"Enable automatic recovery snapshots", app->theme)) return false;
+    if (!app->expanded.compact.Create(app->expandedPage, ID_EXPANDED_CHECK_COMPACT, L"Compact side rails", app->theme)) return false;
+    if (!app->expanded.grid.Create(app->expandedPage, ID_EXPANDED_RADIO_GRID, L"Grid layout", app->theme, WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_GROUP)) return false;
+    if (!app->expanded.focus.Create(app->expandedPage, ID_EXPANDED_RADIO_FOCUS, L"Focus layout", app->theme)) return false;
+    if (!app->expanded.flow.Create(app->expandedPage, ID_EXPANDED_RADIO_FLOW, L"Flow layout", app->theme)) return false;
+    if (!app->expanded.dialogButton.Create(app->expandedPage, ID_EXPANDED_DIALOG, L"Open Dialog", app->theme)) return false;
+    if (!app->expanded.result.Create(app->expandedPage, ID_EXPANDED_RESULT, L"", app->theme, WS_CHILD | WS_VISIBLE | SS_LEFT)) return false;
+    app->expanded.headline.SetBackgroundColor(app->theme.panel); app->expanded.headline.SetTextFormat(DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+    app->expanded.helper.SetBackgroundColor(app->theme.panel); app->expanded.helper.SetTextFormat(DT_LEFT | DT_TOP);
+    app->expanded.autoSave.SetSurfaceColor(app->theme.panel); app->expanded.compact.SetSurfaceColor(app->theme.panel);
+    app->expanded.grid.SetSurfaceColor(app->theme.panel); app->expanded.focus.SetSurfaceColor(app->theme.panel); app->expanded.flow.SetSurfaceColor(app->theme.panel);
+    app->expanded.dialogButton.SetCornerRadius(14); app->expanded.dialogButton.SetSurfaceColor(app->theme.panel);
+    app->expanded.result.SetBackgroundColor(app->theme.panel); app->expanded.result.SetTextFormat(DT_LEFT | DT_WORDBREAK);
+    app->expanded.autoSave.SetChecked(true); app->expanded.grid.SetChecked(true); UpdateExpandedSummary(app);
+    return true;
+}
+
+bool CreateShowcase(AppState* state, HWND window) {
+    if (!state->themeGraphite.Create(window, ID_THEME_GRAPHITE, L"Graphite", state->theme)) return false;
+    if (!state->themeEmber.Create(window, ID_THEME_EMBER, L"Ember", state->theme)) return false;
+    if (!state->themeGlacier.Create(window, ID_THEME_GLACIER, L"Glacier", state->theme)) return false;
+    if (!state->themeMoss.Create(window, ID_THEME_MOSS, L"Moss", state->theme)) return false;
+    if (!state->themeMono.Create(window, ID_THEME_MONO, L"Mono", state->theme)) return false;
+    if (!state->tab.Create(window, ID_MAIN_TAB, state->theme)) return false;
+
+    state->themeGraphite.SetCornerRadius(14);
+    state->themeEmber.SetCornerRadius(14);
+    state->themeGlacier.SetCornerRadius(14);
+    state->themeMoss.SetCornerRadius(14);
+    state->themeMono.SetCornerRadius(14);
+
+    state->tab.SetItems({{L"Overview", 1}, {L"Controls", 2}, {L"Data", 3}, {L"Expanded", 4}});
+
+    if (!CreatePageWindow(state->tab.hwnd(), ID_PAGE_OVERVIEW, PageKind::Overview, state, &state->overviewPage)) return false;
+    if (!CreatePageWindow(state->tab.hwnd(), ID_PAGE_CONTROLS, PageKind::Controls, state, &state->controlsPage)) return false;
+    if (!CreatePageWindow(state->tab.hwnd(), ID_PAGE_DATA, PageKind::Data, state, &state->dataPage)) return false;
+    if (!CreatePageWindow(state->tab.hwnd(), ID_PAGE_EXPANDED, PageKind::Expanded, state, &state->expandedPage)) return false;
+
+    state->tab.AttachPage(0, state->overviewPage);
+    state->tab.AttachPage(1, state->controlsPage);
+    state->tab.AttachPage(2, state->dataPage);
+    state->tab.AttachPage(3, state->expandedPage);
+    state->tab.SetSelection(0, false);
+
+    if (!CreateOverviewControls(state)) return false;
+    if (!CreateControlsPanel(state)) return false;
+    if (!CreateDataPanel(state)) return false;
+    if (!CreateExpandedPanel(state)) return false;
+
+    ApplyThemeToControls(state);
+    LayoutMainWindow(window, state);
     return true;
 }
 
 LRESULT CALLBACK ShowcasePageProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
     auto* state = reinterpret_cast<PageState*>(GetWindowLongPtrW(window, GWLP_USERDATA));
 
-    if (message == WM_NCCREATE) {
+    switch (message) {
+    case WM_CREATE: {
         auto* create = reinterpret_cast<CREATESTRUCTW*>(lParam);
         auto* created = reinterpret_cast<PageState*>(create->lpCreateParams);
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
-        return TRUE;
+        return 0;
     }
-
-    switch (message) {
     case WM_SIZE:
-        if (state) {
-            LayoutPage(window, state->app, state->kind);
-        }
+        if (state && state->app) LayoutPage(window, state->app, state->kind);
         return 0;
     case WM_ERASEBKGND:
         return 1;
     case WM_PAINT:
-        if (state) {
+        if (state && state->app) {
             PAINTSTRUCT ps{};
             HDC dc = BeginPaint(window, &ps);
             PaintPage(window, dc, state);
@@ -770,37 +709,14 @@ LRESULT CALLBACK ShowcasePageProc(HWND window, UINT message, WPARAM wParam, LPAR
             return 0;
         }
         break;
-    case WM_HSCROLL:
-    case WM_VSCROLL:
-        if (state && state->kind == PageKind::Controls) {
-            UpdateControlPreview(state->app);
-            return 0;
+    case WM_COMMAND:
+        if (state && state->app && state->app->tab.parent()) {
+            return SendMessageW(state->app->tab.parent(), WM_COMMAND, wParam, lParam);
         }
         break;
-    case WM_COMMAND:
-        if (state) {
-            const int id = LOWORD(wParam);
-            const int code = HIWORD(wParam);
-            if (state->kind == PageKind::Overview && code == BN_CLICKED) {
-                if (id == ID_OVERVIEW_PRIMARY) {
-                    state->app->overview.storage.SetValue(std::min(100, state->app->overview.storage.GetValue() + 6));
-                    return 0;
-                }
-                if (id == ID_OVERVIEW_SECONDARY) {
-                    state->app->overview.index.SetValue(std::min(100, state->app->overview.index.GetValue() + 9));
-                    return 0;
-                }
-            }
-            if (state->kind == PageKind::Data) {
-                if (id == ID_DATA_FILTER && code == CBN_SELCHANGE) {
-                    RefreshDataRows(state->app);
-                    return 0;
-                }
-                if (code == BN_CLICKED && (id == ID_DATA_REFRESH || id == ID_DATA_ARCHIVE)) {
-                    RefreshDataRows(state->app);
-                    return 0;
-                }
-            }
+    case WM_NOTIFY:
+        if (state && state->app && state->app->tab.parent()) {
+            return SendMessageW(state->app->tab.parent(), WM_NOTIFY, wParam, lParam);
         }
         break;
     case WM_NCDESTROY:
@@ -821,95 +737,51 @@ LRESULT CALLBACK ShowcaseWindowProc(HWND window, UINT message, WPARAM wParam, LP
     case WM_CREATE: {
         auto* created = new AppState();
         created->theme = MakeThemeByIndex(0);
+        created->themeIndex = 0;
         RecreateWindowBrush(created);
-
-        darkui::FontSpec titleSpec = created->theme.uiFont;
-        titleSpec.height = -34;
-        titleSpec.weight = FW_SEMIBOLD;
-        created->titleFont = darkui::CreateFont(titleSpec);
-
-        darkui::FontSpec subtitleSpec = created->theme.uiFont;
-        subtitleSpec.height = -18;
-        created->subtitleFont = darkui::CreateFont(subtitleSpec);
-
-        darkui::FontSpec sectionSpec = created->theme.uiFont;
-        sectionSpec.height = -22;
-        sectionSpec.weight = FW_SEMIBOLD;
-        created->sectionFont = darkui::CreateFont(sectionSpec);
-        created->bodyFont = darkui::CreateFont(created->theme.uiFont);
-        if (!created->windowBrush || !created->titleFont || !created->subtitleFont || !created->sectionFont || !created->bodyFont) {
+        if (!created->windowBrush || !RecreateFonts(created)) {
             CleanupAppState(created);
             return -1;
         }
-
-        if (!created->themeGraphite.Create(window, ID_THEME_GRAPHITE, L"Graphite", created->theme)) {
-            CleanupAppState(created);
-            return -1;
-        }
-        if (!created->themeObsidian.Create(window, ID_THEME_OBSIDIAN, L"Obsidian", created->theme)) {
-            CleanupAppState(created);
-            return -1;
-        }
-        if (!created->themeNocturne.Create(window, ID_THEME_NOCTURNE, L"Nocturne", created->theme)) {
-            CleanupAppState(created);
-            return -1;
-        }
-        created->themeGraphite.SetCornerRadius(18);
-        created->themeObsidian.SetCornerRadius(18);
-        created->themeNocturne.SetCornerRadius(18);
-
-        if (!created->tab.Create(window, ID_MAIN_TAB, created->theme)) {
-            CleanupAppState(created);
-            return -1;
-        }
-        created->tab.SetVertical(true);
-        created->tab.SetItems({
-            {L"Overview", 1},
-            {L"Controls", 2},
-            {L"Data Library", 3}
-        });
-
-        if (!CreatePageWindow(created->tab.hwnd(), ID_PAGE_OVERVIEW, PageKind::Overview, created, &created->overviewPage) ||
-            !CreatePageWindow(created->tab.hwnd(), ID_PAGE_CONTROLS, PageKind::Controls, created, &created->controlsPage) ||
-            !CreatePageWindow(created->tab.hwnd(), ID_PAGE_DATA, PageKind::Data, created, &created->dataPage)) {
-            CleanupAppState(created);
-            return -1;
-        }
-
-        if (!CreateOverviewControls(created) || !CreateControlsPanel(created) || !CreateDataPanel(created)) {
-            CleanupAppState(created);
-            return -1;
-        }
-
-        created->tab.AttachPage(0, created->overviewPage);
-        created->tab.AttachPage(1, created->controlsPage);
-        created->tab.AttachPage(2, created->dataPage);
-        created->tab.SetSelection(0, false);
-
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
-        LayoutMainWindow(window, created);
+        ApplyWindowCaptionTheme(window);
+        if (!CreateShowcase(created, window)) {
+            CleanupAppState(created);
+            SetWindowLongPtrW(window, GWLP_USERDATA, 0);
+            return -1;
+        }
         return 0;
     }
     case WM_SIZE:
-        if (state) {
-            LayoutMainWindow(window, state);
-        }
+        if (state) LayoutMainWindow(window, state);
         return 0;
     case WM_COMMAND:
-        if (state && HIWORD(wParam) == BN_CLICKED) {
+        if (!state) break;
+        if (HIWORD(wParam) == BN_CLICKED) {
             switch (LOWORD(wParam)) {
-            case ID_THEME_GRAPHITE:
-                ApplyTheme(state, 0);
+            case ID_THEME_GRAPHITE: ApplyTheme(state, window, 0); return 0;
+            case ID_THEME_EMBER: ApplyTheme(state, window, 1); return 0;
+            case ID_THEME_GLACIER: ApplyTheme(state, window, 2); return 0;
+            case ID_THEME_MOSS: ApplyTheme(state, window, 3); return 0;
+            case ID_THEME_MONO: ApplyTheme(state, window, 4); return 0;
+            case ID_DATA_REFRESH: RefreshDataRows(state); return 0;
+            case ID_EXPANDED_CHECK_AUTOSAVE:
+            case ID_EXPANDED_CHECK_COMPACT:
+            case ID_EXPANDED_RADIO_GRID:
+            case ID_EXPANDED_RADIO_FOCUS:
+            case ID_EXPANDED_RADIO_FLOW:
+                UpdateExpandedSummary(state);
                 return 0;
-            case ID_THEME_OBSIDIAN:
-                ApplyTheme(state, 1);
-                return 0;
-            case ID_THEME_NOCTURNE:
-                ApplyTheme(state, 2);
+            case ID_EXPANDED_DIALOG:
+                ShowExpandedDialog(window, state);
                 return 0;
             default:
                 break;
             }
+        }
+        if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == ID_DATA_FILTER) {
+            RefreshDataRows(state);
+            return 0;
         }
         break;
     case WM_NOTIFY:
@@ -921,17 +793,14 @@ LRESULT CALLBACK ShowcaseWindowProc(HWND window, UINT message, WPARAM wParam, LP
             }
         }
         break;
-    case WM_CTLCOLORSTATIC:
+    case WM_ERASEBKGND:
         if (state) {
-            HDC dc = reinterpret_cast<HDC>(wParam);
-            SetBkMode(dc, TRANSPARENT);
-            SetTextColor(dc, state->theme.text);
-            SetBkColor(dc, state->theme.background);
-            return reinterpret_cast<LRESULT>(state->windowBrush);
+            RECT rect{};
+            GetClientRect(window, &rect);
+            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->windowBrush);
+            return 1;
         }
         break;
-    case WM_ERASEBKGND:
-        return 1;
     case WM_PAINT:
         if (state) {
             PAINTSTRUCT ps{};
@@ -966,34 +835,30 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     pageClass.lpszClassName = kPageClassName;
     pageClass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     pageClass.hbrBackground = nullptr;
-    RegisterClassExW(&pageClass);
+    if (!RegisterClassExW(&pageClass)) return 0;
 
-    WNDCLASSEXW windowClass{};
-    windowClass.cbSize = sizeof(windowClass);
-    windowClass.lpfnWndProc = ShowcaseWindowProc;
-    windowClass.hInstance = instance;
-    windowClass.lpszClassName = kDemoClassName;
-    windowClass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-    windowClass.hbrBackground = nullptr;
-    if (!RegisterClassExW(&windowClass)) {
-        return 0;
-    }
+    WNDCLASSEXW wc{};
+    wc.cbSize = sizeof(wc);
+    wc.lpfnWndProc = ShowcaseWindowProc;
+    wc.hInstance = instance;
+    wc.lpszClassName = kDemoClassName;
+    wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    wc.hbrBackground = nullptr;
+    if (!RegisterClassExW(&wc)) return 0;
 
     HWND window = CreateWindowExW(0,
                                   kDemoClassName,
                                   kDemoTitle,
-                                  WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
+                                  WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
                                   CW_USEDEFAULT,
                                   CW_USEDEFAULT,
-                                  1360,
-                                  900,
+                                  1320,
+                                  860,
                                   nullptr,
                                   nullptr,
                                   instance,
                                   nullptr);
-    if (!window) {
-        return 0;
-    }
+    if (!window) return 0;
 
     ShowWindow(window, showCommand);
     UpdateWindow(window);

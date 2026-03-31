@@ -15,7 +15,21 @@ set "CXXFLAGS=-std=c++17 -DUNICODE -D_UNICODE -DNOMINMAX -DWIN32_LEAN_AND_MEAN -
 set "LDFLAGS=-municode -mwindows -lcomctl32 -ldwmapi -luxtheme -lgdi32"
 
 echo Building lib_darkui showcase demo...
-%CXX% "%DEMO_SRC_DIR%\demo_showcase.cpp" "%LIB_SRC_DIR%\tab.cpp" "%LIB_SRC_DIR%\scrollbar.cpp" "%LIB_SRC_DIR%\progress.cpp" "%LIB_SRC_DIR%\button.cpp" "%LIB_SRC_DIR%\table.cpp" "%LIB_SRC_DIR%\slider.cpp" "%LIB_SRC_DIR%\combobox.cpp" %CXXFLAGS% -o "%BUILD_DIR%\darkui_showcase_demo.exe" %LDFLAGS%
+%CXX% "%DEMO_SRC_DIR%\demo_showcase.cpp" ^
+ "%LIB_SRC_DIR%\button.cpp" ^
+ "%LIB_SRC_DIR%\checkbox.cpp" ^
+ "%LIB_SRC_DIR%\combobox.cpp" ^
+ "%LIB_SRC_DIR%\dialog.cpp" ^
+ "%LIB_SRC_DIR%\edit.cpp" ^
+ "%LIB_SRC_DIR%\listbox.cpp" ^
+ "%LIB_SRC_DIR%\progress.cpp" ^
+ "%LIB_SRC_DIR%\radiobutton.cpp" ^
+ "%LIB_SRC_DIR%\scrollbar.cpp" ^
+ "%LIB_SRC_DIR%\slider.cpp" ^
+ "%LIB_SRC_DIR%\static.cpp" ^
+ "%LIB_SRC_DIR%\tab.cpp" ^
+ "%LIB_SRC_DIR%\table.cpp" ^
+ %CXXFLAGS% -o "%BUILD_DIR%\darkui_showcase_demo.exe" %LDFLAGS%
 if errorlevel 1 goto error
 
 echo Build succeeded: "%BUILD_DIR%\darkui_showcase_demo.exe"
