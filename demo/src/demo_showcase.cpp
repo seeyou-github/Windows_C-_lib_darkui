@@ -241,15 +241,6 @@ void RecreateWindowBrush(AppState* state) {
 }
 
 bool RecreateFonts(AppState* state) {
-    if (state->titleFont) DeleteObject(state->titleFont);
-    if (state->subtitleFont) DeleteObject(state->subtitleFont);
-    if (state->sectionFont) DeleteObject(state->sectionFont);
-    if (state->bodyFont) DeleteObject(state->bodyFont);
-    state->titleFont = nullptr;
-    state->subtitleFont = nullptr;
-    state->sectionFont = nullptr;
-    state->bodyFont = nullptr;
-
     darkui::FontSpec titleSpec = state->theme.uiFont;
     titleSpec.height -= 12;
     titleSpec.weight = FW_SEMIBOLD;
@@ -261,11 +252,28 @@ bool RecreateFonts(AppState* state) {
     sectionSpec.height -= 2;
     sectionSpec.weight = FW_SEMIBOLD;
 
-    state->titleFont = darkui::CreateFont(titleSpec);
-    state->subtitleFont = darkui::CreateFont(subtitleSpec);
-    state->sectionFont = darkui::CreateFont(sectionSpec);
-    state->bodyFont = darkui::CreateFont(state->theme.uiFont);
-    return state->titleFont && state->subtitleFont && state->sectionFont && state->bodyFont;
+    HFONT newTitleFont = darkui::CreateFont(titleSpec);
+    HFONT newSubtitleFont = darkui::CreateFont(subtitleSpec);
+    HFONT newSectionFont = darkui::CreateFont(sectionSpec);
+    HFONT newBodyFont = darkui::CreateFont(state->theme.uiFont);
+    if (!newTitleFont || !newSubtitleFont || !newSectionFont || !newBodyFont) {
+        if (newTitleFont) DeleteObject(newTitleFont);
+        if (newSubtitleFont) DeleteObject(newSubtitleFont);
+        if (newSectionFont) DeleteObject(newSectionFont);
+        if (newBodyFont) DeleteObject(newBodyFont);
+        return false;
+    }
+
+    if (state->titleFont) DeleteObject(state->titleFont);
+    if (state->subtitleFont) DeleteObject(state->subtitleFont);
+    if (state->sectionFont) DeleteObject(state->sectionFont);
+    if (state->bodyFont) DeleteObject(state->bodyFont);
+
+    state->titleFont = newTitleFont;
+    state->subtitleFont = newSubtitleFont;
+    state->sectionFont = newSectionFont;
+    state->bodyFont = newBodyFont;
+    return true;
 }
 
 void UpdateExpandedSummary(AppState* state) {
@@ -322,7 +330,7 @@ void ApplyTheme(AppState* state, HWND window, int themeIndex) {
     state->themeIndex = themeIndex;
     state->theme = MakeThemeByIndex(themeIndex);
     RecreateWindowBrush(state);
-    RecreateFonts(state);
+    if (!RecreateFonts(state)) return;
     ApplyWindowCaptionTheme(window);
     ApplyThemeToControls(state);
     InvalidateRect(window, nullptr, TRUE);
@@ -464,7 +472,7 @@ void LayoutExpandedPage(HWND page, AppState* state) {
     MoveWindow(state->expanded.focus.hwnd(), li.left, li.top + 268, li.right - li.left, 28, TRUE);
     MoveWindow(state->expanded.flow.hwnd(), li.left, li.top + 304, li.right - li.left, 28, TRUE);
     MoveWindow(state->expanded.dialogButton.hwnd(), ri.left, ri.top + 56, 196, 40, TRUE);
-    MoveWindow(state->expanded.result.hwnd(), ri.left, ri.top + 124, ri.right - ri.left, 92, TRUE);
+    MoveWindow(state->expanded.result.hwnd(), ri.left, ri.top + 124, ri.right - ri.left, std::max(120L, ri.bottom - ri.top - 140), TRUE);
 }
 
 void LayoutPage(HWND page, AppState* state, PageKind kind) {
@@ -755,6 +763,15 @@ LRESULT CALLBACK ShowcaseWindowProc(HWND window, UINT message, WPARAM wParam, LP
     case WM_SIZE:
         if (state) LayoutMainWindow(window, state);
         return 0;
+    case WM_GETMINMAXINFO: {
+        auto* info = reinterpret_cast<MINMAXINFO*>(lParam);
+        if (info) {
+            info->ptMinTrackSize.x = 1180;
+            info->ptMinTrackSize.y = 760;
+            return 0;
+        }
+        break;
+    }
     case WM_COMMAND:
         if (!state) break;
         if (HIWORD(wParam) == BN_CLICKED) {
