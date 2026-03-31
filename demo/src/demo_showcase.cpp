@@ -179,40 +179,13 @@ void FillRoundedRect(HDC dc, const RECT& rect, int radius, COLORREF fill, COLORR
     DeleteObject(pen);
 }
 
-darkui::Theme MakeSemanticTheme(COLORREF bg, COLORREF panel, COLORREF text, COLORREF hi, COLORREF accent, COLORREF accent2) {
-    darkui::Theme theme;
-    theme.useSemanticPalette = true;
-    theme.primaryBackground = bg;
-    theme.secondaryBackground = panel;
-    theme.primaryText = text;
-    theme.highlightText = hi;
-    theme.accent = accent;
-    theme.accentSecondary = accent2;
-    theme.fontFamily = L"Segoe UI";
-    theme.fontSize = 19;
-    theme.secondaryFontSize = 17;
-    theme.textPadding = 12;
-    theme.itemHeight = 30;
-    theme.listBoxItemHeight = 28;
-    theme.tableRowHeight = 32;
-    theme.tableHeaderHeight = 34;
-    theme.sliderTrackHeight = 8;
-    theme.sliderThumbRadius = 10;
-    theme.progressHeight = 14;
-    theme.scrollBarThickness = 16;
-    theme.scrollBarMinThumbSize = 34;
-    theme.tabHeight = 48;
-    theme.tabWidth = 190;
-    return darkui::ResolveTheme(theme);
-}
-
 darkui::Theme MakeThemeByIndex(int index) {
     switch (index) {
-    case 1: return MakeSemanticTheme(RGB(22, 16, 15), RGB(38, 27, 24), RGB(244, 232, 224), RGB(255, 247, 240), RGB(226, 112, 74), RGB(146, 69, 48));
-    case 2: return MakeSemanticTheme(RGB(14, 21, 28), RGB(24, 38, 48), RGB(226, 238, 244), RGB(247, 251, 255), RGB(96, 188, 224), RGB(51, 110, 146));
-    case 3: return MakeSemanticTheme(RGB(16, 22, 18), RGB(28, 38, 30), RGB(230, 238, 226), RGB(248, 252, 246), RGB(108, 176, 118), RGB(58, 108, 66));
-    case 4: return MakeSemanticTheme(RGB(10, 10, 10), RGB(22, 22, 22), RGB(230, 230, 230), RGB(252, 252, 252), RGB(190, 190, 190), RGB(110, 110, 110));
-    default: return MakeSemanticTheme(RGB(16, 18, 22), RGB(28, 32, 38), RGB(232, 236, 241), RGB(248, 250, 252), RGB(92, 137, 210), RGB(58, 88, 144));
+    case 1: return darkui::MakePresetTheme(darkui::ThemePreset::Ember);
+    case 2: return darkui::MakePresetTheme(darkui::ThemePreset::Glacier);
+    case 3: return darkui::MakePresetTheme(darkui::ThemePreset::Moss);
+    case 4: return darkui::MakePresetTheme(darkui::ThemePreset::Mono);
+    default: return darkui::MakePresetTheme(darkui::ThemePreset::Graphite);
     }
 }
 
@@ -306,13 +279,13 @@ void RefreshDataRows(AppState* state) {
 }
 
 void ShowExpandedDialog(HWND ownerWindow, AppState* state) {
-    darkui::Dialog dialog;
-    if (!dialog.Create(ownerWindow, 9701, L"Publish Session", state->theme, 460, 236)) return;
-    dialog.SetTitle(L"Publish Session");
-    dialog.SetMessage(L"Apply the current expanded controls profile to every editing station in the workspace?");
-    dialog.SetConfirmText(L"Publish");
-    dialog.SetCancelText(L"Cancel");
-    const auto result = dialog.ShowModal();
+    const auto result = darkui::ShowConfirmDialog(ownerWindow,
+                                                  9701,
+                                                  state->theme,
+                                                  L"Publish Session",
+                                                  L"Apply the current expanded controls profile to every editing station in the workspace?",
+                                                  L"Publish",
+                                                  L"Cancel");
     state->expanded.result.SetText(result == darkui::Dialog::Result::Confirm ? L"Dialog result: Published" : L"Dialog result: Cancelled");
 }
 

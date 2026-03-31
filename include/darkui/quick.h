@@ -1,0 +1,123 @@
+#pragma once
+
+#include "darkui/dialog.h"
+
+#include <string>
+
+namespace darkui {
+
+// Semantic theme presets for callers who want a ready-to-use dark palette.
+enum class ThemePreset {
+    Graphite = 0,
+    Ember = 1,
+    Glacier = 2,
+    Moss = 3,
+    Mono = 4
+};
+
+// One-shot options for the built-in dark message dialog helpers.
+struct DialogOptions {
+    std::wstring title = L"Message";
+    std::wstring message{};
+    std::wstring confirmText = L"Confirm";
+    std::wstring cancelText = L"Cancel";
+    int width = 480;
+    int height = 280;
+    bool showCancel = true;
+};
+
+// Creates a semantic dark theme from a compact set of palette tokens.
+inline Theme MakeSemanticTheme(COLORREF background,
+                               COLORREF panel,
+                               COLORREF text,
+                               COLORREF highlightText,
+                               COLORREF accent,
+                               COLORREF accentSecondary,
+                               const std::wstring& fontFamily = L"Segoe UI",
+                               int fontSize = 20,
+                               int secondaryFontSize = 18) {
+    Theme theme;
+    theme.useSemanticPalette = true;
+    theme.primaryBackground = background;
+    theme.secondaryBackground = panel;
+    theme.primaryText = text;
+    theme.highlightText = highlightText;
+    theme.accent = accent;
+    theme.accentSecondary = accentSecondary;
+    theme.fontFamily = fontFamily;
+    theme.fontSize = fontSize;
+    theme.secondaryFontSize = secondaryFontSize;
+    return ResolveTheme(theme);
+}
+
+// Returns a ready-made semantic preset theme.
+inline Theme MakePresetTheme(ThemePreset preset = ThemePreset::Graphite) {
+    switch (preset) {
+    case ThemePreset::Ember:
+        return MakeSemanticTheme(RGB(22, 16, 15), RGB(38, 27, 24), RGB(244, 232, 224), RGB(255, 247, 240), RGB(226, 112, 74), RGB(146, 69, 48));
+    case ThemePreset::Glacier:
+        return MakeSemanticTheme(RGB(14, 21, 28), RGB(24, 38, 48), RGB(226, 238, 244), RGB(247, 251, 255), RGB(96, 188, 224), RGB(51, 110, 146));
+    case ThemePreset::Moss:
+        return MakeSemanticTheme(RGB(16, 22, 18), RGB(28, 38, 30), RGB(230, 238, 226), RGB(248, 252, 246), RGB(108, 176, 118), RGB(58, 108, 66));
+    case ThemePreset::Mono:
+        return MakeSemanticTheme(RGB(10, 10, 10), RGB(22, 22, 22), RGB(230, 230, 230), RGB(252, 252, 252), RGB(190, 190, 190), RGB(110, 110, 110));
+    case ThemePreset::Graphite:
+    default:
+        return MakeSemanticTheme(RGB(16, 18, 22), RGB(28, 32, 38), RGB(232, 236, 241), RGB(248, 250, 252), RGB(92, 137, 210), RGB(58, 88, 144));
+    }
+}
+
+// Applies the same theme to any number of darkui controls that expose SetTheme().
+template <typename... Controls>
+void ApplyTheme(const Theme& theme, Controls&... controls) {
+    (controls.SetTheme(theme), ...);
+}
+
+// Opens a simple dark message dialog with one helper call.
+inline Dialog::Result ShowMessageDialog(HWND owner, int controlId, const Theme& theme, const DialogOptions& options) {
+    Dialog dialog;
+    if (!dialog.Create(owner, controlId, options.title, theme, options.width, options.height)) {
+        return Dialog::Result::None;
+    }
+    dialog.SetTitle(options.title);
+    dialog.SetMessage(options.message);
+    dialog.SetConfirmText(options.confirmText);
+    dialog.SetCancelText(options.cancelText);
+    dialog.SetCancelVisible(options.showCancel);
+    return dialog.ShowModal();
+}
+
+// Opens a confirm/cancel dialog with conventional button labels.
+inline Dialog::Result ShowConfirmDialog(HWND owner,
+                                        int controlId,
+                                        const Theme& theme,
+                                        const std::wstring& title,
+                                        const std::wstring& message,
+                                        const std::wstring& confirmText = L"Confirm",
+                                        const std::wstring& cancelText = L"Cancel") {
+    DialogOptions options;
+    options.title = title;
+    options.message = message;
+    options.confirmText = confirmText;
+    options.cancelText = cancelText;
+    options.showCancel = true;
+    return ShowMessageDialog(owner, controlId, theme, options);
+}
+
+// Opens an information dialog with a single acknowledge button.
+inline Dialog::Result ShowInfoDialog(HWND owner,
+                                     int controlId,
+                                     const Theme& theme,
+                                     const std::wstring& title,
+                                     const std::wstring& message,
+                                     const std::wstring& confirmText = L"OK") {
+    DialogOptions options;
+    options.title = title;
+    options.message = message;
+    options.confirmText = confirmText;
+    options.cancelText = L"";
+    options.showCancel = false;
+    return ShowMessageDialog(owner, controlId, theme, options);
+}
+
+}  // namespace darkui

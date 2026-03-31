@@ -166,6 +166,49 @@ Notes:
 - In semantic mode, darkui expands those values into the detailed per-control colors internally
 - Existing per-control theme fields remain available for compatibility when `useSemanticPalette` is left `false`
 
+## Quick Helpers
+
+If the calling side should stay as short as possible, use the helper layer in `darkui/quick.h`.
+
+Ready-made preset theme:
+
+```cpp
+darkui::Theme theme = darkui::MakePresetTheme(darkui::ThemePreset::Graphite);
+```
+
+Compact semantic theme creation:
+
+```cpp
+darkui::Theme theme = darkui::MakeSemanticTheme(
+    RGB(20, 22, 26),
+    RGB(32, 36, 42),
+    RGB(228, 232, 238),
+    RGB(248, 250, 252),
+    RGB(82, 132, 204),
+    RGB(48, 86, 148));
+```
+
+Batch theme update:
+
+```cpp
+darkui::ApplyTheme(theme, buttonA, buttonB, editA, listBoxA);
+```
+
+One-shot dark dialog:
+
+```cpp
+darkui::ShowConfirmDialog(
+    hwnd,
+    5001,
+    theme,
+    L"Publish Session",
+    L"Apply the current settings to every workstation?",
+    L"Publish",
+    L"Cancel");
+```
+
+See: [doc/quick.md](doc/quick.md)
+
 ## Header Entry Points
 
 Unified include:
@@ -184,6 +227,7 @@ Per-control includes:
 #include "darkui/edit.h"
 #include "darkui/listbox.h"
 #include "darkui/progress.h"
+#include "darkui/quick.h"
 #include "darkui/radiobutton.h"
 #include "darkui/scrollbar.h"
 #include "darkui/slider.h"
@@ -243,6 +287,7 @@ If you only need the demo build scripts, the current `demo/build_demo*.bat` file
 - [Edit](doc/edit.md)
 - [ListBox](doc/listbox.md)
 - [ProgressBar](doc/progress.md)
+- [Quick Helpers](doc/quick.md)
 - [RadioButton](doc/radiobutton.md)
 - [ScrollBar](doc/scrollbar.md)
 - [Slider](doc/slider.md)

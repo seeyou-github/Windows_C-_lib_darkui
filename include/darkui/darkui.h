@@ -7,6 +7,7 @@
 #include "darkui/edit.h"
 #include "darkui/listbox.h"
 #include "darkui/progress.h"
+#include "darkui/quick.h"
 #include "darkui/radiobutton.h"
 #include "darkui/scrollbar.h"
 #include "darkui/slider.h"
