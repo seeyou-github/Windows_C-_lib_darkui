@@ -140,7 +140,7 @@ bool Static::Create(HWND parent, int controlId, const std::wstring& text, const 
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     backgroundColor_ = theme.staticBackground;
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
@@ -188,7 +188,7 @@ void Static::Destroy() {
 }
 
 void Static::SetTheme(const Theme& theme) {
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     impl_->UpdateThemeResources();
 }
 

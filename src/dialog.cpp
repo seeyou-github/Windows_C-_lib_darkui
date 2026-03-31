@@ -354,7 +354,7 @@ bool Dialog::Create(HWND owner, int controlId, const std::wstring& title, const 
     Destroy();
     ownerHwnd_ = owner;
     controlId_ = controlId;
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     width_ = std::max(320, width);
     height_ = std::max(180, height);
     impl_->instance = owner ? reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(owner, GWLP_HINSTANCE)) : GetModuleHandleW(nullptr);
@@ -450,7 +450,7 @@ void Dialog::Destroy() {
 }
 
 void Dialog::SetTheme(const Theme& theme) {
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     if (!impl_->UpdateThemeResources()) {
         return;
     }

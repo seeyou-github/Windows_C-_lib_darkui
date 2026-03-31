@@ -521,7 +521,7 @@ bool Edit::Create(HWND parent, int controlId, const std::wstring& text, const Th
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
@@ -649,7 +649,7 @@ void Edit::Destroy() {
 
 void Edit::SetTheme(const Theme& theme) {
     const Theme previous = theme_;
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     if (!impl_->UpdateThemeResources()) {
         theme_ = previous;
         impl_->UpdateThemeResources();

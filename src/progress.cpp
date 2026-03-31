@@ -182,7 +182,7 @@ bool ProgressBar::Create(HWND parent, int controlId, const Theme& theme, DWORD s
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     surfaceColor_ = theme.background;
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
@@ -228,7 +228,7 @@ void ProgressBar::Destroy() {
 }
 
 void ProgressBar::SetTheme(const Theme& theme) {
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     impl_->UpdateThemeResources();
 }
 

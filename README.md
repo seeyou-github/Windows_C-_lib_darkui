@@ -137,9 +137,34 @@ See: [doc/toolbar.md](doc/toolbar.md)
 
 - Built around a shared `darkui::Theme` structure
 - Most controls support runtime theme switching through `SetTheme()`
+- Supports a unified semantic theme entry through `Theme::useSemanticPalette`
 - Keeps native Win32 usage patterns where practical
 - Control layout remains the responsibility of the host window
 - Suitable for gradually replacing stock light-themed controls in existing projects
+
+## Unified Theme Entry
+
+If you want every control to follow one palette and one typography system, enable semantic palette mode:
+
+```cpp
+darkui::Theme theme;
+theme.useSemanticPalette = true;
+theme.primaryBackground = RGB(20, 22, 26);
+theme.secondaryBackground = RGB(32, 36, 42);
+theme.primaryText = RGB(228, 232, 238);
+theme.highlightText = RGB(248, 250, 252);
+theme.accent = RGB(82, 132, 204);
+theme.accentSecondary = RGB(48, 86, 148);
+theme.fontFamily = L"Segoe UI";
+theme.fontSize = 20;
+theme.secondaryFontSize = 18;
+```
+
+Notes:
+
+- All controls still use the same `Create(..., theme)` and `SetTheme(theme)` entry points
+- In semantic mode, darkui expands those values into the detailed per-control colors internally
+- Existing per-control theme fields remain available for compatibility when `useSemanticPalette` is left `false`
 
 ## Header Entry Points
 

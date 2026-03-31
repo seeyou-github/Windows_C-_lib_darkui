@@ -39,6 +39,26 @@ ATOM EnsurePopupClassRegistered(HINSTANCE instance, WNDPROC proc) {
     return atom;
 }
 
+COLORREF ClampColor(int r, int g, int b) {
+    return RGB(std::clamp(r, 0, 255), std::clamp(g, 0, 255), std::clamp(b, 0, 255));
+}
+
+COLORREF AdjustColor(COLORREF color, int delta) {
+    return ClampColor(static_cast<int>(GetRValue(color)) + delta,
+                      static_cast<int>(GetGValue(color)) + delta,
+                      static_cast<int>(GetBValue(color)) + delta);
+}
+
+COLORREF MixColor(COLORREF a, COLORREF b, double ratio) {
+    ratio = std::clamp(ratio, 0.0, 1.0);
+    const auto mix = [ratio](int x, int y) {
+        return static_cast<int>(x + (y - x) * ratio + 0.5);
+    };
+    return RGB(mix(GetRValue(a), GetRValue(b)),
+               mix(GetGValue(a), GetGValue(b)),
+               mix(GetBValue(a), GetBValue(b)));
+}
+
 }  // namespace
 
 HFONT CreateFont(const FontSpec& spec) {
@@ -56,6 +76,87 @@ HFONT CreateFont(const FontSpec& spec) {
                          CLEARTYPE_QUALITY,
                          spec.monospace ? FIXED_PITCH : VARIABLE_PITCH,
                          spec.family.c_str());
+}
+
+Theme ResolveTheme(const Theme& theme) {
+    if (!theme.useSemanticPalette) {
+        return theme;
+    }
+
+    Theme resolved = theme;
+    resolved.background = theme.primaryBackground;
+    resolved.panel = theme.secondaryBackground;
+    resolved.border = MixColor(theme.primaryBackground, theme.highlightText, 0.18);
+    resolved.text = theme.primaryText;
+    resolved.mutedText = MixColor(theme.primaryText, theme.primaryBackground, 0.38);
+    resolved.button = theme.secondaryBackground;
+    resolved.buttonHover = AdjustColor(theme.secondaryBackground, 10);
+    resolved.buttonHot = AdjustColor(theme.secondaryBackground, 18);
+    resolved.buttonDisabled = MixColor(theme.secondaryBackground, theme.primaryBackground, 0.45);
+    resolved.buttonDisabledText = MixColor(theme.primaryText, theme.primaryBackground, 0.55);
+    resolved.arrow = resolved.mutedText;
+    resolved.popupItem = theme.secondaryBackground;
+    resolved.popupItemHot = AdjustColor(theme.secondaryBackground, 10);
+    resolved.popupAccentItem = theme.accentSecondary;
+    resolved.popupAccentItemHot = theme.accent;
+    resolved.editBackground = theme.secondaryBackground;
+    resolved.editText = theme.primaryText;
+    resolved.editPlaceholder = MixColor(theme.primaryText, theme.primaryBackground, 0.52);
+    resolved.staticBackground = theme.primaryBackground;
+    resolved.staticText = theme.primaryText;
+    resolved.listBoxBackground = theme.primaryBackground;
+    resolved.listBoxPanel = theme.secondaryBackground;
+    resolved.listBoxText = theme.primaryText;
+    resolved.listBoxItemSelected = theme.accentSecondary;
+    resolved.listBoxItemSelectedText = theme.highlightText;
+    resolved.checkBackground = theme.secondaryBackground;
+    resolved.checkBackgroundHot = AdjustColor(theme.secondaryBackground, 10);
+    resolved.checkAccent = theme.accent;
+    resolved.checkBorder = resolved.border;
+    resolved.checkText = theme.primaryText;
+    resolved.checkDisabledText = resolved.buttonDisabledText;
+    resolved.radioBackground = theme.secondaryBackground;
+    resolved.radioBackgroundHot = AdjustColor(theme.secondaryBackground, 10);
+    resolved.radioAccent = theme.accent;
+    resolved.radioBorder = resolved.border;
+    resolved.radioText = theme.primaryText;
+    resolved.radioDisabledText = resolved.buttonDisabledText;
+    resolved.tableBackground = theme.primaryBackground;
+    resolved.tableText = theme.primaryText;
+    resolved.tableHeaderBackground = theme.secondaryBackground;
+    resolved.tableHeaderText = theme.highlightText;
+    resolved.tableGrid = resolved.border;
+    resolved.sliderBackground = theme.primaryBackground;
+    resolved.sliderTrack = theme.secondaryBackground;
+    resolved.sliderFill = theme.accent;
+    resolved.sliderThumb = theme.highlightText;
+    resolved.sliderThumbHot = AdjustColor(theme.highlightText, 6);
+    resolved.sliderTick = resolved.mutedText;
+    resolved.progressBackground = theme.primaryBackground;
+    resolved.progressTrack = theme.secondaryBackground;
+    resolved.progressFill = theme.accent;
+    resolved.progressText = theme.highlightText;
+    resolved.scrollBarBackground = theme.primaryBackground;
+    resolved.scrollBarTrack = theme.secondaryBackground;
+    resolved.scrollBarThumb = MixColor(theme.secondaryBackground, theme.highlightText, 0.42);
+    resolved.scrollBarThumbHot = MixColor(theme.secondaryBackground, theme.highlightText, 0.58);
+    resolved.tabBackground = theme.primaryBackground;
+    resolved.tabItem = theme.secondaryBackground;
+    resolved.tabItemActive = theme.accentSecondary;
+    resolved.tabText = theme.primaryText;
+    resolved.tabTextActive = theme.highlightText;
+    resolved.toolbarBackground = theme.primaryBackground;
+    resolved.toolbarItem = theme.secondaryBackground;
+    resolved.toolbarItemHot = AdjustColor(theme.secondaryBackground, 10);
+    resolved.toolbarItemActive = theme.accentSecondary;
+    resolved.toolbarText = theme.primaryText;
+    resolved.toolbarTextActive = theme.highlightText;
+    resolved.toolbarSeparator = resolved.border;
+    if (!theme.fontFamily.empty()) {
+        resolved.uiFont.family = theme.fontFamily;
+    }
+    resolved.uiFont.height = -std::max(1, theme.fontSize);
+    return resolved;
 }
 
 struct ComboBox::Impl {
@@ -478,7 +579,7 @@ bool ComboBox::Create(HWND parent, int controlId, const Theme& theme, DWORD styl
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
@@ -580,7 +681,7 @@ void ComboBox::Destroy() {
 }
 
 void ComboBox::SetTheme(const Theme& theme) {
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     impl_->UpdateThemeResources();
 }
 

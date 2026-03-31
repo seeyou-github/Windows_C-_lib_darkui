@@ -315,7 +315,7 @@ bool Slider::Create(HWND parent, int controlId, const Theme& theme, DWORD style,
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
@@ -356,7 +356,7 @@ void Slider::Destroy() {
 }
 
 void Slider::SetTheme(const Theme& theme) {
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     impl_->UpdateThemeResources();
 }
 

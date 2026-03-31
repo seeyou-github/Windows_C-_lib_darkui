@@ -339,7 +339,7 @@ bool ScrollBar::Create(HWND parent, int controlId, bool vertical, const Theme& t
     parentHwnd_ = parent;
     controlId_ = controlId;
     vertical_ = vertical;
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
@@ -388,7 +388,7 @@ void ScrollBar::Destroy() {
 }
 
 void ScrollBar::SetTheme(const Theme& theme) {
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     impl_->UpdateThemeResources();
 }
 

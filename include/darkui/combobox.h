@@ -35,6 +35,32 @@ struct FontSpec {
 // - Not every control uses every field.
 // - Unused fields can stay at their defaults.
 struct Theme {
+    // Enables semantic token resolution when true.
+    // Usage:
+    // - Set the semantic fields below once.
+    // - Pass the same Theme into every control.
+    // - darkui derives control-specific colors and typography from those values.
+    // Notes:
+    // - When false, the existing per-control fields continue to work exactly as before.
+    bool useSemanticPalette = false;
+    // Primary application background color.
+    COLORREF primaryBackground = RGB(34, 36, 40);
+    // Secondary surface or panel background color.
+    COLORREF secondaryBackground = RGB(44, 47, 52);
+    // Primary text color.
+    COLORREF primaryText = RGB(224, 227, 232);
+    // Highlighted or emphasized text color.
+    COLORREF highlightText = RGB(245, 247, 250);
+    // Main accent color.
+    COLORREF accent = RGB(78, 120, 184);
+    // Secondary accent color, commonly used for hover/selection states.
+    COLORREF accentSecondary = RGB(39, 66, 116);
+    // Unified font family used when semantic palette mode is enabled.
+    std::wstring fontFamily = L"Segoe UI";
+    // Main UI font size in pixels.
+    int fontSize = 20;
+    // Secondary UI font size in pixels.
+    int secondaryFontSize = 18;
     // Generic window or page background color.
     COLORREF background = RGB(34, 36, 40);
     // Generic panel surface color.
@@ -229,6 +255,12 @@ struct ComboItem {
 // - The returned font handle must eventually be deleted with DeleteObject by
 //   the owner that stores it.
 HFONT CreateFont(const FontSpec& spec);
+// Resolves a theme into the full control-specific palette used internally.
+// Notes:
+// - When `theme.useSemanticPalette` is false, the input theme is returned unchanged.
+// - When true, semantic colors and typography are expanded into the legacy
+//   per-control fields so all controls share one visual system.
+Theme ResolveTheme(const Theme& theme);
 
 // Custom dark combo box built from a button plus popup list.
 // Usage:

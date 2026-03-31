@@ -256,7 +256,7 @@ bool RadioButton::Create(HWND parent, int controlId, const std::wstring& text, c
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     surfaceColor_ = theme.background;
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
@@ -316,7 +316,7 @@ void RadioButton::Destroy() {
 }
 
 void RadioButton::SetTheme(const Theme& theme) {
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     impl_->UpdateThemeResources();
 }
 

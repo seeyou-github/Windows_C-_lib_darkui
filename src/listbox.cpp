@@ -317,7 +317,7 @@ bool ListBox::Create(HWND parent, int controlId, const Theme& theme, DWORD style
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
@@ -397,7 +397,7 @@ void ListBox::Destroy() {
 
 void ListBox::SetTheme(const Theme& theme) {
     const Theme previous = theme_;
-    theme_ = theme;
+    theme_ = ResolveTheme(theme);
     if (!impl_->UpdateThemeResources()) {
         theme_ = previous;
         impl_->UpdateThemeResources();
