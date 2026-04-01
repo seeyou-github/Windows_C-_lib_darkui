@@ -58,6 +58,8 @@ private:
     HWND radioHwnd_ = nullptr;
     int controlId_ = 0;
     COLORREF surfaceColor_ = RGB(34, 36, 40);
+    SurfaceRole surfaceRole_ = SurfaceRole::Auto;
+    bool hasCustomSurfaceColor_ = false;
     Theme theme_{};
 };
 

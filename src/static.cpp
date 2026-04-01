@@ -141,7 +141,9 @@ bool Static::Create(HWND parent, int controlId, const Theme& theme, const Option
     parentHwnd_ = parent;
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
-    backgroundColor_ = options.backgroundColor != CLR_INVALID ? options.backgroundColor : ResolveSurfaceColor(theme_, options.surfaceRole);
+    surfaceRole_ = options.surfaceRole;
+    hasCustomBackgroundColor_ = options.backgroundColor != CLR_INVALID;
+    backgroundColor_ = hasCustomBackgroundColor_ ? options.backgroundColor : ResolveInheritedSurfaceColor(theme_, parent, surfaceRole_);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
@@ -196,6 +198,9 @@ void Static::Destroy() {
 
 void Static::SetTheme(const Theme& theme) {
     theme_ = ResolveTheme(theme);
+    if (!hasCustomBackgroundColor_) {
+        backgroundColor_ = ResolveInheritedSurfaceColor(theme_, parentHwnd_, surfaceRole_);
+    }
     impl_->UpdateThemeResources();
 }
 
@@ -249,6 +254,7 @@ void Static::ClearImage() {
 }
 
 void Static::SetBackgroundColor(COLORREF color) {
+    hasCustomBackgroundColor_ = true;
     backgroundColor_ = color;
     impl_->UpdateThemeResources();
 }

@@ -41,6 +41,8 @@ enum class SurfaceRole {
     Panel
 };
 
+inline constexpr wchar_t kSurfaceRoleProperty[] = L"DarkUiSurfaceRole";
+
 // Shared visual theme for all darkui controls.
 // Usage:
 // - Create one Theme instance, customize the fields you care about, then pass
@@ -291,6 +293,44 @@ inline COLORREF ResolveSurfaceColor(const Theme& theme, SurfaceRole role) {
     default:
         return theme.background;
     }
+}
+
+// Stores a semantic surface role on a window so child controls can inherit it.
+inline void SetWindowSurfaceRole(HWND window, SurfaceRole role) {
+    if (!window) {
+        return;
+    }
+    if (role == SurfaceRole::Auto) {
+        RemovePropW(window, kSurfaceRoleProperty);
+        return;
+    }
+    SetPropW(window, kSurfaceRoleProperty, reinterpret_cast<HANDLE>(static_cast<INT_PTR>(role)));
+}
+
+// Reads the semantic surface role stored on a window.
+inline SurfaceRole GetWindowSurfaceRole(HWND window) {
+    if (!window) {
+        return SurfaceRole::Auto;
+    }
+    HANDLE value = GetPropW(window, kSurfaceRoleProperty);
+    if (!value) {
+        return SurfaceRole::Auto;
+    }
+    return static_cast<SurfaceRole>(static_cast<INT_PTR>(reinterpret_cast<INT_PTR>(value)));
+}
+
+// Resolves an option role against the parent surface role.
+inline SurfaceRole ResolveInheritedSurfaceRole(HWND parent, SurfaceRole role) {
+    if (role != SurfaceRole::Auto) {
+        return role;
+    }
+    const SurfaceRole inherited = GetWindowSurfaceRole(parent);
+    return inherited == SurfaceRole::Auto ? SurfaceRole::Background : inherited;
+}
+
+// Resolves a semantic surface role into a concrete color, inheriting from the parent window when needed.
+inline COLORREF ResolveInheritedSurfaceColor(const Theme& theme, HWND parent, SurfaceRole role) {
+    return ResolveSurfaceColor(theme, ResolveInheritedSurfaceRole(parent, role));
 }
 
 // Custom dark combo box built from a button plus popup list.

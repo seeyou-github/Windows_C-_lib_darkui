@@ -234,7 +234,9 @@ bool CheckBox::Create(HWND parent, int controlId, const Theme& theme, const Opti
     parentHwnd_ = parent;
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
-    surfaceColor_ = options.surfaceColor != CLR_INVALID ? options.surfaceColor : ResolveSurfaceColor(theme_, options.surfaceRole);
+    surfaceRole_ = options.surfaceRole;
+    hasCustomSurfaceColor_ = options.surfaceColor != CLR_INVALID;
+    surfaceColor_ = hasCustomSurfaceColor_ ? options.surfaceColor : ResolveInheritedSurfaceColor(theme_, parent, surfaceRole_);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
@@ -296,6 +298,9 @@ void CheckBox::Destroy() {
 
 void CheckBox::SetTheme(const Theme& theme) {
     theme_ = ResolveTheme(theme);
+    if (!hasCustomSurfaceColor_) {
+        surfaceColor_ = ResolveInheritedSurfaceColor(theme_, parentHwnd_, surfaceRole_);
+    }
     impl_->UpdateThemeResources();
 }
 
@@ -335,6 +340,7 @@ void CheckBox::SetChecked(bool checked) {
 }
 
 void CheckBox::SetSurfaceColor(COLORREF color) {
+    hasCustomSurfaceColor_ = true;
     surfaceColor_ = color;
     impl_->UpdateThemeResources();
 }

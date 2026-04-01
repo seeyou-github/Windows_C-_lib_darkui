@@ -94,6 +94,10 @@ private:
     int cornerRadius_ = 8;
     // Host/background color behind the rounded button corners.
     COLORREF surfaceColor_ = RGB(34, 36, 40);
+    // Semantic surface role used when the color is inherited.
+    SurfaceRole surfaceRole_ = SurfaceRole::Auto;
+    // Tracks whether SetSurfaceColor or Options::surfaceColor overrode inheritance.
+    bool hasCustomSurfaceColor_ = false;
     // Theme currently used by the control.
     Theme theme_{};
 };

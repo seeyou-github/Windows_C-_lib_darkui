@@ -93,6 +93,8 @@ private:
     Theme theme_{};
     ContentMode contentMode_ = ContentMode::Text;
     COLORREF backgroundColor_ = RGB(34, 36, 40);
+    SurfaceRole surfaceRole_ = SurfaceRole::Auto;
+    bool hasCustomBackgroundColor_ = false;
     UINT textFormat_ = DT_LEFT;
     bool ellipsis_ = true;
 };

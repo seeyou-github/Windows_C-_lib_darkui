@@ -48,6 +48,8 @@ enum ControlId {
     ID_EXPANDED_RADIO_FLOW,
     ID_EXPANDED_DIALOG,
     ID_EXPANDED_RESULT,
+    ID_EXPANDED_PANEL_LEFT,
+    ID_EXPANDED_PANEL_RIGHT,
 
     ID_PAGE_OVERVIEW = 9501,
     ID_PAGE_CONTROLS,
@@ -83,6 +85,8 @@ struct DataPanel {
 };
 
 struct ExpandedPanel {
+    darkui::Panel leftCard;
+    darkui::Panel rightCard;
     darkui::Static headline;
     darkui::Static helper;
     darkui::CheckBox autoSave;
@@ -254,15 +258,6 @@ void ApplyThemeToControls(AppState* state) {
     state->overview.sync.SetSurfaceColor(state->theme.panel);
     state->overview.cpu.SetSurfaceColor(state->theme.panel);
     state->data.refresh.SetSurfaceColor(state->theme.background);
-    state->expanded.headline.SetBackgroundColor(state->theme.panel);
-    state->expanded.helper.SetBackgroundColor(state->theme.panel);
-    state->expanded.autoSave.SetSurfaceColor(state->theme.panel);
-    state->expanded.compact.SetSurfaceColor(state->theme.panel);
-    state->expanded.grid.SetSurfaceColor(state->theme.panel);
-    state->expanded.focus.SetSurfaceColor(state->theme.panel);
-    state->expanded.flow.SetSurfaceColor(state->theme.panel);
-    state->expanded.dialogButton.SetSurfaceColor(state->theme.panel);
-    state->expanded.result.SetBackgroundColor(state->theme.panel);
     UpdateExpandedSummary(state);
 }
 
@@ -348,8 +343,13 @@ void LayoutExpandedPage(HWND page, AppState* state) {
     RECT content = InsetRectCopy(client, 28, 28);
     RECT left = SliceLeft(content, ((content.right - content.left) - 20) / 2);
     RECT right{left.right + 20, content.top, content.right, content.bottom};
-    RECT li = InsetRectCopy(left, 24, 24);
-    RECT ri = InsetRectCopy(right, 24, 24);
+    RECT leftCard{left.left, left.top + 60, left.right, left.bottom};
+    RECT rightCard{right.left, right.top + 60, right.right, right.bottom};
+    MoveWindow(state->expanded.leftCard.hwnd(), leftCard.left, leftCard.top, leftCard.right - leftCard.left, leftCard.bottom - leftCard.top, TRUE);
+    MoveWindow(state->expanded.rightCard.hwnd(), rightCard.left, rightCard.top, rightCard.right - rightCard.left, rightCard.bottom - rightCard.top, TRUE);
+
+    RECT li = InsetRectCopy(RECT{0, 0, leftCard.right - leftCard.left, leftCard.bottom - leftCard.top}, 24, 24);
+    RECT ri = InsetRectCopy(RECT{0, 0, rightCard.right - rightCard.left, rightCard.bottom - rightCard.top}, 24, 24);
 
     MoveWindow(state->expanded.headline.hwnd(), li.left, li.top + 12, li.right - li.left, 28, TRUE);
     MoveWindow(state->expanded.helper.hwnd(), li.left, li.top + 52, li.right - li.left, 62, TRUE);
@@ -358,8 +358,8 @@ void LayoutExpandedPage(HWND page, AppState* state) {
     MoveWindow(state->expanded.grid.hwnd(), li.left, li.top + 232, li.right - li.left, 28, TRUE);
     MoveWindow(state->expanded.focus.hwnd(), li.left, li.top + 268, li.right - li.left, 28, TRUE);
     MoveWindow(state->expanded.flow.hwnd(), li.left, li.top + 304, li.right - li.left, 28, TRUE);
-    MoveWindow(state->expanded.dialogButton.hwnd(), ri.left, ri.top + 56, 196, 40, TRUE);
-    MoveWindow(state->expanded.result.hwnd(), ri.left, ri.top + 124, ri.right - ri.left, std::max(120L, ri.bottom - ri.top - 140), TRUE);
+    MoveWindow(state->expanded.dialogButton.hwnd(), ri.left, ri.top + 20, 196, 40, TRUE);
+    MoveWindow(state->expanded.result.hwnd(), ri.left, ri.top + 88, ri.right - ri.left, std::max(120L, ri.bottom - ri.top - 104), TRUE);
 }
 
 void LayoutPage(HWND page, AppState* state, PageKind kind) {
@@ -445,8 +445,6 @@ void PaintExpandedPage(HWND page, HDC dc, PageState* state) {
     RECT content = InsetRectCopy(client, 28, 28);
     RECT left = SliceLeft(content, ((content.right - content.left) - 20) / 2);
     RECT right{left.right + 20, content.top, content.right, content.bottom};
-    FillRoundedRect(dc, left, 24, state->app->theme.panel, state->app->theme.border);
-    FillRoundedRect(dc, right, 24, state->app->theme.panel, state->app->theme.border);
     RECT li = InsetRectCopy(left, 24, 24);
     RECT ri = InsetRectCopy(right, 24, 24);
     DrawLabel(dc, state->app->host.section_font(), state->app->theme.text, SliceTop(li, 26), L"New Controls", DT_LEFT | DT_TOP | DT_SINGLELINE);
@@ -556,53 +554,49 @@ bool CreateDataPanel(AppState* app) {
 }
 
 bool CreateExpandedPanel(AppState* app) {
+    darkui::Panel::Options panelOptions;
+    panelOptions.role = darkui::SurfaceRole::Panel;
+    panelOptions.cornerRadius = 24;
     darkui::Static::Options titleOptions;
     titleOptions.text = L"Extended Components";
     titleOptions.style = WS_CHILD | WS_VISIBLE | SS_LEFT;
-    titleOptions.surfaceRole = darkui::SurfaceRole::Panel;
     titleOptions.textFormat = DT_LEFT | DT_VCENTER | DT_SINGLELINE;
     darkui::Static::Options helperOptions;
     helperOptions.text = L"These controls were added after the original showcase and now participate in the same semantic theme system.";
     helperOptions.style = WS_CHILD | WS_VISIBLE | SS_LEFT;
-    helperOptions.surfaceRole = darkui::SurfaceRole::Panel;
     helperOptions.textFormat = DT_LEFT | DT_TOP;
     darkui::CheckBox::Options autoSaveOptions;
     autoSaveOptions.text = L"Enable automatic recovery snapshots";
     autoSaveOptions.checked = true;
-    autoSaveOptions.surfaceRole = darkui::SurfaceRole::Panel;
     darkui::CheckBox::Options compactOptions;
     compactOptions.text = L"Compact side rails";
-    compactOptions.surfaceRole = darkui::SurfaceRole::Panel;
     darkui::RadioButton::Options gridOptions;
     gridOptions.text = L"Grid layout";
     gridOptions.checked = true;
-    gridOptions.surfaceRole = darkui::SurfaceRole::Panel;
     gridOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_GROUP;
     darkui::RadioButton::Options focusOptions;
     focusOptions.text = L"Focus layout";
-    focusOptions.surfaceRole = darkui::SurfaceRole::Panel;
     darkui::RadioButton::Options flowOptions;
     flowOptions.text = L"Flow layout";
-    flowOptions.surfaceRole = darkui::SurfaceRole::Panel;
     darkui::Button::Options dialogButtonOptions;
     dialogButtonOptions.text = L"Open Dialog";
     dialogButtonOptions.cornerRadius = 14;
-    dialogButtonOptions.surfaceRole = darkui::SurfaceRole::Panel;
     darkui::Static::Options resultOptions;
     resultOptions.text = L"";
     resultOptions.style = WS_CHILD | WS_VISIBLE | SS_LEFT;
-    resultOptions.surfaceRole = darkui::SurfaceRole::Panel;
     resultOptions.textFormat = DT_LEFT | DT_WORDBREAK;
 
-    if (!app->expanded.headline.Create(app->expandedPage, ID_EXPANDED_STATIC_TITLE, app->theme, titleOptions)) return false;
-    if (!app->expanded.helper.Create(app->expandedPage, ID_EXPANDED_STATIC_HELPER, app->theme, helperOptions)) return false;
-    if (!app->expanded.autoSave.Create(app->expandedPage, ID_EXPANDED_CHECK_AUTOSAVE, app->theme, autoSaveOptions)) return false;
-    if (!app->expanded.compact.Create(app->expandedPage, ID_EXPANDED_CHECK_COMPACT, app->theme, compactOptions)) return false;
-    if (!app->expanded.grid.Create(app->expandedPage, ID_EXPANDED_RADIO_GRID, app->theme, gridOptions)) return false;
-    if (!app->expanded.focus.Create(app->expandedPage, ID_EXPANDED_RADIO_FOCUS, app->theme, focusOptions)) return false;
-    if (!app->expanded.flow.Create(app->expandedPage, ID_EXPANDED_RADIO_FLOW, app->theme, flowOptions)) return false;
-    if (!app->expanded.dialogButton.Create(app->expandedPage, ID_EXPANDED_DIALOG, app->theme, dialogButtonOptions)) return false;
-    if (!app->expanded.result.Create(app->expandedPage, ID_EXPANDED_RESULT, app->theme, resultOptions)) return false;
+    if (!app->expanded.leftCard.Create(app->expandedPage, ID_EXPANDED_PANEL_LEFT, app->theme, panelOptions)) return false;
+    if (!app->expanded.rightCard.Create(app->expandedPage, ID_EXPANDED_PANEL_RIGHT, app->theme, panelOptions)) return false;
+    if (!app->expanded.headline.Create(app->expanded.leftCard.hwnd(), ID_EXPANDED_STATIC_TITLE, app->theme, titleOptions)) return false;
+    if (!app->expanded.helper.Create(app->expanded.leftCard.hwnd(), ID_EXPANDED_STATIC_HELPER, app->theme, helperOptions)) return false;
+    if (!app->expanded.autoSave.Create(app->expanded.leftCard.hwnd(), ID_EXPANDED_CHECK_AUTOSAVE, app->theme, autoSaveOptions)) return false;
+    if (!app->expanded.compact.Create(app->expanded.leftCard.hwnd(), ID_EXPANDED_CHECK_COMPACT, app->theme, compactOptions)) return false;
+    if (!app->expanded.grid.Create(app->expanded.leftCard.hwnd(), ID_EXPANDED_RADIO_GRID, app->theme, gridOptions)) return false;
+    if (!app->expanded.focus.Create(app->expanded.leftCard.hwnd(), ID_EXPANDED_RADIO_FOCUS, app->theme, focusOptions)) return false;
+    if (!app->expanded.flow.Create(app->expanded.leftCard.hwnd(), ID_EXPANDED_RADIO_FLOW, app->theme, flowOptions)) return false;
+    if (!app->expanded.dialogButton.Create(app->expanded.rightCard.hwnd(), ID_EXPANDED_DIALOG, app->theme, dialogButtonOptions)) return false;
+    if (!app->expanded.result.Create(app->expanded.rightCard.hwnd(), ID_EXPANDED_RESULT, app->theme, resultOptions)) return false;
     UpdateExpandedSummary(app);
     return true;
 }
@@ -661,6 +655,8 @@ bool CreateShowcase(AppState* state, HWND window) {
                              state->data.refresh,
                              state->data.table,
                              state->data.queue,
+                             state->expanded.leftCard,
+                             state->expanded.rightCard,
                              state->expanded.headline,
                              state->expanded.helper,
                              state->expanded.autoSave,

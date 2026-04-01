@@ -22,6 +22,7 @@ echo Building lib_darkui showcase demo...
  "%LIB_SRC_DIR%\dialog.cpp" ^
  "%LIB_SRC_DIR%\edit.cpp" ^
  "%LIB_SRC_DIR%\listbox.cpp" ^
+ "%LIB_SRC_DIR%\panel.cpp" ^
  "%LIB_SRC_DIR%\progress.cpp" ^
  "%LIB_SRC_DIR%\radiobutton.cpp" ^
  "%LIB_SRC_DIR%\scrollbar.cpp" ^
