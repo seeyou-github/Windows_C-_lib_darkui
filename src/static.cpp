@@ -105,18 +105,27 @@ struct Static::Impl {
         if (font) DeleteObject(font);
     }
 
-    void UpdateThemeResources() {
+    bool UpdateThemeResources() {
+        HBRUSH newBrushBackground = CreateSolidBrush(owner->backgroundColor_);
+        HFONT newFont = CreateFont(ResolveStaticFont(owner->theme_, owner->variant_));
+        if (!newBrushBackground || !newFont) {
+            if (newBrushBackground) DeleteObject(newBrushBackground);
+            if (newFont) DeleteObject(newFont);
+            return false;
+        }
+
         if (brushBackground) DeleteObject(brushBackground);
         if (font) DeleteObject(font);
 
-        brushBackground = CreateSolidBrush(owner->backgroundColor_);
-        font = CreateFont(ResolveStaticFont(owner->theme_, owner->variant_));
+        brushBackground = newBrushBackground;
+        font = newFont;
         if (owner->staticHwnd_ && font) {
             SendMessageW(owner->staticHwnd_, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
         }
         if (owner->staticHwnd_) {
             InvalidateRect(owner->staticHwnd_, nullptr, TRUE);
         }
+        return true;
     }
 
     void DrawContent(HDC dc, const RECT& rect) {
@@ -254,7 +263,10 @@ bool Static::Create(HWND parent, int controlId, const Theme& theme, const Option
         return false;
     }
 
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        Destroy();
+        return false;
+    }
     SetWindowSubclass(staticHwnd_,
                       Impl::StaticSubclassProc,
                       reinterpret_cast<UINT_PTR>(this),
@@ -285,12 +297,20 @@ void Static::Destroy() {
 }
 
 void Static::SetTheme(const Theme& theme) {
+    const Theme previousTheme = theme_;
+    const COLORREF previousBackgroundColor = backgroundColor_;
+    const COLORREF previousTextColor = textColor_;
     theme_ = ResolveTheme(theme);
     if (!hasCustomBackgroundColor_) {
         backgroundColor_ = ResolveInheritedSurfaceColor(theme_, parentHwnd_, surfaceRole_);
     }
     textColor_ = ResolveStaticTextColor(theme_, variant_);
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        theme_ = previousTheme;
+        backgroundColor_ = previousBackgroundColor;
+        textColor_ = previousTextColor;
+        impl_->UpdateThemeResources();
+    }
 }
 
 void Static::SetText(const std::wstring& text) {
@@ -343,9 +363,13 @@ void Static::ClearImage() {
 }
 
 void Static::SetBackgroundColor(COLORREF color) {
+    const COLORREF previousBackgroundColor = backgroundColor_;
     hasCustomBackgroundColor_ = true;
     backgroundColor_ = color;
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        backgroundColor_ = previousBackgroundColor;
+        impl_->UpdateThemeResources();
+    }
 }
 
 void Static::SetTextFormat(UINT format) {

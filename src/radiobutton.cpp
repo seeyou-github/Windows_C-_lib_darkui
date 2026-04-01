@@ -47,14 +47,7 @@ struct RadioButton::Impl {
         if (brushDot) DeleteObject(brushDot);
     }
 
-    void UpdateThemeResources() {
-        if (font) DeleteObject(font);
-        if (penBorder) DeleteObject(penBorder);
-        if (brushSurface) DeleteObject(brushSurface);
-        if (brushCircle) DeleteObject(brushCircle);
-        if (brushCircleHot) DeleteObject(brushCircleHot);
-        if (brushDot) DeleteObject(brushDot);
-
+    bool UpdateThemeResources() {
         COLORREF borderColor = owner->theme_.radioBorder;
         COLORREF circleColor = owner->theme_.radioBackground;
         COLORREF circleHotColor = owner->theme_.radioBackgroundHot;
@@ -76,17 +69,42 @@ struct RadioButton::Impl {
             break;
         }
 
-        font = CreateFont(owner->theme_.uiFont);
-        penBorder = CreatePen(PS_SOLID, 1, borderColor);
-        brushSurface = CreateSolidBrush(owner->surfaceColor_);
-        brushCircle = CreateSolidBrush(circleColor);
-        brushCircleHot = CreateSolidBrush(circleHotColor);
-        brushDot = CreateSolidBrush(dotColor);
+        HFONT newFont = CreateFont(owner->theme_.uiFont);
+        HPEN newPenBorder = CreatePen(PS_SOLID, 1, borderColor);
+        HBRUSH newBrushSurface = CreateSolidBrush(owner->surfaceColor_);
+        HBRUSH newBrushCircle = CreateSolidBrush(circleColor);
+        HBRUSH newBrushCircleHot = CreateSolidBrush(circleHotColor);
+        HBRUSH newBrushDot = CreateSolidBrush(dotColor);
+
+        if (!newFont || !newPenBorder || !newBrushSurface || !newBrushCircle || !newBrushCircleHot || !newBrushDot) {
+            if (newFont) DeleteObject(newFont);
+            if (newPenBorder) DeleteObject(newPenBorder);
+            if (newBrushSurface) DeleteObject(newBrushSurface);
+            if (newBrushCircle) DeleteObject(newBrushCircle);
+            if (newBrushCircleHot) DeleteObject(newBrushCircleHot);
+            if (newBrushDot) DeleteObject(newBrushDot);
+            return false;
+        }
+
+        if (font) DeleteObject(font);
+        if (penBorder) DeleteObject(penBorder);
+        if (brushSurface) DeleteObject(brushSurface);
+        if (brushCircle) DeleteObject(brushCircle);
+        if (brushCircleHot) DeleteObject(brushCircleHot);
+        if (brushDot) DeleteObject(brushDot);
+
+        font = newFont;
+        penBorder = newPenBorder;
+        brushSurface = newBrushSurface;
+        brushCircle = newBrushCircle;
+        brushCircleHot = newBrushCircleHot;
+        brushDot = newBrushDot;
 
         if (owner->radioHwnd_) {
             SendMessageW(owner->radioHwnd_, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
             InvalidateRect(owner->radioHwnd_, nullptr, TRUE);
         }
+        return true;
     }
 
     HFONT SelectControlFont(HDC dc, HWND control) {
@@ -299,7 +317,10 @@ bool RadioButton::Create(HWND parent, int controlId, const Theme& theme, const O
         impl_->instance = GetModuleHandleW(nullptr);
     }
 
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        Destroy();
+        return false;
+    }
 
     DWORD style = options.style;
     style &= ~BS_TYPEMASK;
@@ -356,11 +377,17 @@ void RadioButton::Destroy() {
 }
 
 void RadioButton::SetTheme(const Theme& theme) {
+    const Theme previousTheme = theme_;
+    const COLORREF previousSurfaceColor = surfaceColor_;
     theme_ = ResolveTheme(theme);
     if (!hasCustomSurfaceColor_) {
         surfaceColor_ = ResolveInheritedSurfaceColor(theme_, parentHwnd_, surfaceRole_);
     }
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        theme_ = previousTheme;
+        surfaceColor_ = previousSurfaceColor;
+        impl_->UpdateThemeResources();
+    }
 }
 
 void RadioButton::SetText(const std::wstring& text) {
@@ -399,9 +426,13 @@ void RadioButton::SetChecked(bool checked) {
 }
 
 void RadioButton::SetSurfaceColor(COLORREF color) {
+    const COLORREF previousSurfaceColor = surfaceColor_;
     hasCustomSurfaceColor_ = true;
     surfaceColor_ = color;
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        surfaceColor_ = previousSurfaceColor;
+        impl_->UpdateThemeResources();
+    }
 }
 
 }  // namespace darkui

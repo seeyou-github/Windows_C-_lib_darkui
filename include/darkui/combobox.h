@@ -468,6 +468,8 @@ private:
     std::unique_ptr<Impl> impl_;
     // Parent window handle.
     HWND parentHwnd_ = nullptr;
+    // Top-level root window used for outside-click popup dismissal.
+    HWND rootHwnd_ = nullptr;
     // Main combo-box button handle.
     HWND comboHwnd_ = nullptr;
     // Popup host window handle.

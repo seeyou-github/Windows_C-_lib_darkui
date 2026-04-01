@@ -1,4 +1,5 @@
 #include "darkui/dialog.h"
+#include "darkui/quick.h"
 
 #include <commctrl.h>
 #include <windowsx.h>
@@ -32,6 +33,7 @@ struct Dialog::Impl {
     HBRUSH brushBorder = nullptr;
     HFONT titleFont = nullptr;
     HFONT bodyFont = nullptr;
+    ThemeBinder builtInThemeBinder{};
 
     explicit Impl(Dialog* dialog) : owner(dialog) {}
 
@@ -111,6 +113,13 @@ struct Dialog::Impl {
         rect.top += 10;
         rect.bottom -= 6;
         return rect;
+    }
+
+    void ApplyBuiltInControlSurfaces() {
+        owner->confirmButton_.SetSurfaceColor(owner->theme_.panel);
+        owner->cancelButton_.SetSurfaceColor(owner->theme_.panel);
+        owner->titleLabel_.SetBackgroundColor(owner->theme_.panel);
+        owner->messageLabel_.SetBackgroundColor(owner->theme_.panel);
     }
 
     void LayoutChildren() {
@@ -431,6 +440,10 @@ bool Dialog::Create(HWND owner, int controlId, const Theme& theme, const Options
         return false;
     }
 
+    impl_->builtInThemeBinder.Clear();
+    impl_->builtInThemeBinder.Bind(confirmButton_, cancelButton_, titleLabel_, messageLabel_);
+    impl_->ApplyBuiltInControlSurfaces();
+
     titleLabel_.SetEllipsis(true);
     SetTitle(options.title);
     SetMessage(options.message);
@@ -464,18 +477,15 @@ void Dialog::Destroy() {
 }
 
 void Dialog::SetTheme(const Theme& theme) {
+    const Theme previous = theme_;
     theme_ = ResolveTheme(theme);
     if (!impl_->UpdateThemeResources()) {
+        theme_ = previous;
+        impl_->UpdateThemeResources();
         return;
     }
-    confirmButton_.SetTheme(theme_);
-    cancelButton_.SetTheme(theme_);
-    confirmButton_.SetSurfaceColor(theme_.panel);
-    cancelButton_.SetSurfaceColor(theme_.panel);
-    titleLabel_.SetTheme(theme_);
-    titleLabel_.SetBackgroundColor(theme_.panel);
-    messageLabel_.SetTheme(theme_);
-    messageLabel_.SetBackgroundColor(theme_.panel);
+    impl_->builtInThemeBinder.Apply(theme_);
+    impl_->ApplyBuiltInControlSurfaces();
     if (contentHwnd_) {
         SetPropW(contentHwnd_, L"DarkUiDialogContentBrush", impl_->brushContent);
         InvalidateRect(contentHwnd_, nullptr, TRUE);

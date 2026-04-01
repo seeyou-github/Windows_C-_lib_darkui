@@ -23,15 +23,24 @@ struct Panel::Impl {
         if (penBorder) DeleteObject(penBorder);
     }
 
-    void UpdateThemeResources() {
+    bool UpdateThemeResources() {
+        HBRUSH newBrushBackground = CreateSolidBrush(owner->backgroundColor_);
+        HPEN newPenBorder = CreatePen(PS_SOLID, 1, owner->borderColor_);
+        if (!newBrushBackground || !newPenBorder) {
+            if (newBrushBackground) DeleteObject(newBrushBackground);
+            if (newPenBorder) DeleteObject(newPenBorder);
+            return false;
+        }
+
         if (brushBackground) DeleteObject(brushBackground);
         if (penBorder) DeleteObject(penBorder);
 
-        brushBackground = CreateSolidBrush(owner->backgroundColor_);
-        penBorder = CreatePen(PS_SOLID, 1, owner->borderColor_);
+        brushBackground = newBrushBackground;
+        penBorder = newPenBorder;
         if (owner->panelHwnd_) {
             InvalidateRect(owner->panelHwnd_, nullptr, TRUE);
         }
+        return true;
     }
 
     void UpdateWindowRegion() {
@@ -184,7 +193,10 @@ bool Panel::Create(HWND parent, int controlId, const Theme& theme, const Options
     }
 
     SetWindowSurfaceRole(panelHwnd_, role_);
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        Destroy();
+        return false;
+    }
     impl_->UpdateWindowRegion();
     if (!impl_->brushBackground || !impl_->penBorder) {
         Destroy();
@@ -203,6 +215,9 @@ void Panel::Destroy() {
 }
 
 void Panel::SetTheme(const Theme& theme) {
+    const Theme previousTheme = theme_;
+    const COLORREF previousBackgroundColor = backgroundColor_;
+    const COLORREF previousBorderColor = borderColor_;
     theme_ = ResolveTheme(theme);
     if (!hasCustomBackgroundColor_) {
         backgroundColor_ = ResolveSurfaceColor(theme_, role_);
@@ -210,7 +225,12 @@ void Panel::SetTheme(const Theme& theme) {
     if (!hasCustomBorderColor_) {
         borderColor_ = theme_.border;
     }
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        theme_ = previousTheme;
+        backgroundColor_ = previousBackgroundColor;
+        borderColor_ = previousBorderColor;
+        impl_->UpdateThemeResources();
+    }
 }
 
 void Panel::SetCornerRadius(int radius) {

@@ -222,7 +222,39 @@ struct ComboBox::Impl {
         if (penArrow) DeleteObject(penArrow);
     }
 
-    void UpdateThemeResources() {
+    bool UpdateThemeResources() {
+        HFONT newFont = CreateFont(owner->theme_.uiFont);
+        HBRUSH newBrushPanel = CreateSolidBrush(owner->theme_.panel);
+        HBRUSH newBrushButton = CreateSolidBrush(owner->theme_.button);
+        HBRUSH newBrushButtonHot = CreateSolidBrush(owner->theme_.buttonHot);
+        HBRUSH newBrushBorder = CreateSolidBrush(owner->theme_.border);
+        HBRUSH newBrushPopupItem = CreateSolidBrush(owner->theme_.popupItem);
+        HBRUSH newBrushPopupItemHot = CreateSolidBrush(owner->theme_.popupItemHot);
+        HBRUSH newBrushPopupAccentItem = CreateSolidBrush(owner->theme_.popupAccentItem);
+        HBRUSH newBrushPopupAccentItemHot = CreateSolidBrush(owner->theme_.popupAccentItemHot);
+        HBRUSH newBrushText = CreateSolidBrush(owner->theme_.text);
+        HBRUSH newBrushArrow = CreateSolidBrush(owner->theme_.arrow);
+        HPEN newPenText = CreatePen(PS_SOLID, 1, owner->theme_.text);
+        HPEN newPenArrow = CreatePen(PS_SOLID, 1, owner->theme_.arrow);
+        if (!newFont || !newBrushPanel || !newBrushButton || !newBrushButtonHot || !newBrushBorder ||
+            !newBrushPopupItem || !newBrushPopupItemHot || !newBrushPopupAccentItem ||
+            !newBrushPopupAccentItemHot || !newBrushText || !newBrushArrow || !newPenText || !newPenArrow) {
+            if (newFont) DeleteObject(newFont);
+            if (newBrushPanel) DeleteObject(newBrushPanel);
+            if (newBrushButton) DeleteObject(newBrushButton);
+            if (newBrushButtonHot) DeleteObject(newBrushButtonHot);
+            if (newBrushBorder) DeleteObject(newBrushBorder);
+            if (newBrushPopupItem) DeleteObject(newBrushPopupItem);
+            if (newBrushPopupItemHot) DeleteObject(newBrushPopupItemHot);
+            if (newBrushPopupAccentItem) DeleteObject(newBrushPopupAccentItem);
+            if (newBrushPopupAccentItemHot) DeleteObject(newBrushPopupAccentItemHot);
+            if (newBrushText) DeleteObject(newBrushText);
+            if (newBrushArrow) DeleteObject(newBrushArrow);
+            if (newPenText) DeleteObject(newPenText);
+            if (newPenArrow) DeleteObject(newPenArrow);
+            return false;
+        }
+
         if (font) DeleteObject(font);
         if (brushPanel) DeleteObject(brushPanel);
         if (brushButton) DeleteObject(brushButton);
@@ -236,19 +268,19 @@ struct ComboBox::Impl {
         if (brushArrow) DeleteObject(brushArrow);
         if (penText) DeleteObject(penText);
         if (penArrow) DeleteObject(penArrow);
-        font = CreateFont(owner->theme_.uiFont);
-        brushPanel = CreateSolidBrush(owner->theme_.panel);
-        brushButton = CreateSolidBrush(owner->theme_.button);
-        brushButtonHot = CreateSolidBrush(owner->theme_.buttonHot);
-        brushBorder = CreateSolidBrush(owner->theme_.border);
-        brushPopupItem = CreateSolidBrush(owner->theme_.popupItem);
-        brushPopupItemHot = CreateSolidBrush(owner->theme_.popupItemHot);
-        brushPopupAccentItem = CreateSolidBrush(owner->theme_.popupAccentItem);
-        brushPopupAccentItemHot = CreateSolidBrush(owner->theme_.popupAccentItemHot);
-        brushText = CreateSolidBrush(owner->theme_.text);
-        brushArrow = CreateSolidBrush(owner->theme_.arrow);
-        penText = CreatePen(PS_SOLID, 1, owner->theme_.text);
-        penArrow = CreatePen(PS_SOLID, 1, owner->theme_.arrow);
+        font = newFont;
+        brushPanel = newBrushPanel;
+        brushButton = newBrushButton;
+        brushButtonHot = newBrushButtonHot;
+        brushBorder = newBrushBorder;
+        brushPopupItem = newBrushPopupItem;
+        brushPopupItemHot = newBrushPopupItemHot;
+        brushPopupAccentItem = newBrushPopupAccentItem;
+        brushPopupAccentItemHot = newBrushPopupAccentItemHot;
+        brushText = newBrushText;
+        brushArrow = newBrushArrow;
+        penText = newPenText;
+        penArrow = newPenArrow;
         if (owner->comboHwnd_) {
             SendMessageW(owner->comboHwnd_, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
             InvalidateRect(owner->comboHwnd_, nullptr, TRUE);
@@ -257,6 +289,7 @@ struct ComboBox::Impl {
             SendMessageW(owner->popupList_, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
             InvalidateRect(owner->popupList_, nullptr, TRUE);
         }
+        return true;
     }
 
     HFONT SelectControlFont(HDC dc, HWND control) {
@@ -645,6 +678,7 @@ ComboBox::~ComboBox() {
 bool ComboBox::Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
     Destroy();
     parentHwnd_ = parent;
+    rootHwnd_ = parent ? GetAncestor(parent, GA_ROOT) : nullptr;
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
     variant_ = options.variant;
@@ -653,7 +687,10 @@ bool ComboBox::Create(HWND parent, int controlId, const Theme& theme, const Opti
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
     }
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        Destroy();
+        return false;
+    }
 
     DWORD style = options.style | BS_OWNERDRAW;
     comboHwnd_ = CreateWindowExW(options.exStyle,
@@ -722,6 +759,12 @@ bool ComboBox::Create(HWND parent, int controlId, const Theme& theme, const Opti
                       Impl::ParentSubclassProc,
                       reinterpret_cast<UINT_PTR>(this),
                       reinterpret_cast<DWORD_PTR>(impl_.get()));
+    if (rootHwnd_ && rootHwnd_ != parentHwnd_) {
+        SetWindowSubclass(rootHwnd_,
+                          Impl::ParentSubclassProc,
+                          reinterpret_cast<UINT_PTR>(this),
+                          reinterpret_cast<DWORD_PTR>(impl_.get()));
+    }
     if (!options.items.empty()) {
         SetItems(options.items);
     }
@@ -732,6 +775,9 @@ bool ComboBox::Create(HWND parent, int controlId, const Theme& theme, const Opti
 }
 
 void ComboBox::Destroy() {
+    if (rootHwnd_ && rootHwnd_ != parentHwnd_) {
+        RemoveWindowSubclass(rootHwnd_, Impl::ParentSubclassProc, reinterpret_cast<UINT_PTR>(this));
+    }
     if (parentHwnd_) {
         RemoveWindowSubclass(parentHwnd_, Impl::ParentSubclassProc, reinterpret_cast<UINT_PTR>(this));
     }
@@ -751,15 +797,22 @@ void ComboBox::Destroy() {
         comboHwnd_ = nullptr;
     }
     parentHwnd_ = nullptr;
+    rootHwnd_ = nullptr;
     controlId_ = 0;
     impl_->items.clear();
     impl_->selection = -1;
 }
 
 void ComboBox::SetTheme(const Theme& theme) {
+    const Theme previousTheme = theme_;
+    const int previousItemHeight = itemHeight_;
     theme_ = ResolveTheme(theme);
     itemHeight_ = ResolveComboItemHeight(theme_, variant_);
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        theme_ = previousTheme;
+        itemHeight_ = previousItemHeight;
+        impl_->UpdateThemeResources();
+    }
     if (comboHwnd_) {
         impl_->UpdateWindowRegion();
         InvalidateRect(comboHwnd_, nullptr, TRUE);

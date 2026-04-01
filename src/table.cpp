@@ -35,23 +35,38 @@ struct Table::Impl {
         if (penGrid) DeleteObject(penGrid);
     }
 
-    void UpdateThemeResources() {
+    bool UpdateThemeResources() {
+        HFONT newFont = CreateFont(owner->theme_.uiFont);
+        HBRUSH newBrushBackground = CreateSolidBrush(owner->theme_.tableBackground);
+        HBRUSH newBrushHeaderBackground = CreateSolidBrush(owner->theme_.tableHeaderBackground);
+        HBRUSH newBrushSelected = CreateSolidBrush(owner->theme_.buttonHot);
+        HPEN newPenGrid = CreatePen(PS_SOLID, 1, owner->theme_.tableGrid);
+        if (!newFont || !newBrushBackground || !newBrushHeaderBackground || !newBrushSelected || !newPenGrid) {
+            if (newFont) DeleteObject(newFont);
+            if (newBrushBackground) DeleteObject(newBrushBackground);
+            if (newBrushHeaderBackground) DeleteObject(newBrushHeaderBackground);
+            if (newBrushSelected) DeleteObject(newBrushSelected);
+            if (newPenGrid) DeleteObject(newPenGrid);
+            return false;
+        }
+
         if (font) DeleteObject(font);
         if (brushBackground) DeleteObject(brushBackground);
         if (brushHeaderBackground) DeleteObject(brushHeaderBackground);
         if (brushSelected) DeleteObject(brushSelected);
         if (penGrid) DeleteObject(penGrid);
 
-        font = CreateFont(owner->theme_.uiFont);
-        brushBackground = CreateSolidBrush(owner->theme_.tableBackground);
-        brushHeaderBackground = CreateSolidBrush(owner->theme_.tableHeaderBackground);
-        brushSelected = CreateSolidBrush(owner->theme_.buttonHot);
-        penGrid = CreatePen(PS_SOLID, 1, owner->theme_.tableGrid);
+        font = newFont;
+        brushBackground = newBrushBackground;
+        brushHeaderBackground = newBrushHeaderBackground;
+        brushSelected = newBrushSelected;
+        penGrid = newPenGrid;
 
         if (owner->tableHwnd_) {
             SendMessageW(owner->tableHwnd_, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
             InvalidateRect(owner->tableHwnd_, nullptr, TRUE);
         }
+        return true;
     }
 
     std::wstring GetCellText(int rowIndex, int columnIndex) const {
@@ -336,7 +351,10 @@ bool Table::Create(HWND parent, int controlId, const Theme& theme, const Options
         return false;
     }
 
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        Destroy();
+        return false;
+    }
     SetDrawEmptyGrid(options.drawEmptyGrid);
     if (!options.columns.empty()) {
         SetColumns(options.columns);
@@ -358,8 +376,12 @@ void Table::Destroy() {
 }
 
 void Table::SetTheme(const Theme& theme) {
+    const Theme previous = theme_;
     theme_ = ResolveTheme(theme);
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        theme_ = previous;
+        impl_->UpdateThemeResources();
+    }
 }
 
 void Table::SetColumns(const std::vector<TableColumn>& columns) {

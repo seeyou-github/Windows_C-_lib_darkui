@@ -13,13 +13,13 @@ constexpr int kComboIds[kComboCount] = {1001, 1002, 1003, 1004};
 struct DemoCombo {
     const wchar_t* label = L"";
     darkui::Theme theme;
-    darkui::ThemeManager themeManager;
+    darkui::Panel panel;
+    darkui::Static caption;
     darkui::ComboBox combo;
 };
 
 struct DemoState {
     darkui::ThemedWindowHost host;
-    HBRUSH brushBackground = nullptr;
     DemoCombo combos[kComboCount];
 };
 
@@ -100,15 +100,20 @@ darkui::Theme MakeRoseTheme() {
 void Layout(HWND window, DemoState* state) {
     RECT rc{};
     GetClientRect(window, &rc);
-    const int width = 420;
-    const int height = 40;
-    const int spacing = 22;
-    const int totalHeight = kComboCount * height + (kComboCount - 1) * spacing;
-    const int x = (rc.right - width) / 2;
-    int y = (rc.bottom - totalHeight) / 2;
+    const int outerGap = 20;
+    const int cardGap = 18;
+    const int cardWidth = std::max(220, static_cast<int>((rc.right - outerGap * 2 - cardGap) / 2));
+    const int cardHeight = 124;
+    const int totalHeight = cardHeight * 2 + cardGap;
+    const int startY = std::max(outerGap, static_cast<int>((rc.bottom - totalHeight) / 2));
     for (int i = 0; i < kComboCount; ++i) {
-        MoveWindow(state->combos[i].combo.hwnd(), x, y, width, height, TRUE);
-        y += height + spacing;
+        const int row = i / 2;
+        const int column = i % 2;
+        const int x = outerGap + column * (cardWidth + cardGap);
+        const int y = startY + row * (cardHeight + cardGap);
+        MoveWindow(state->combos[i].panel.hwnd(), x, y, cardWidth, cardHeight, TRUE);
+        MoveWindow(state->combos[i].caption.hwnd(), 18, 16, cardWidth - 36, 22, TRUE);
+        MoveWindow(state->combos[i].combo.hwnd(), 18, 54, cardWidth - 36, 40, TRUE);
     }
 }
 
@@ -125,7 +130,6 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             delete created;
             return -1;
         }
-        created->brushBackground = CreateSolidBrush(RGB(20, 23, 28));
         created->combos[0].label = L"Slate";
         created->combos[0].theme = MakeSlateTheme();
         created->combos[1].label = L"Amber";
@@ -135,6 +139,11 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         created->combos[3].label = L"Rose";
         created->combos[3].theme = MakeRoseTheme();
         for (int i = 0; i < kComboCount; ++i) {
+            darkui::Panel::Options panelOptions;
+            panelOptions.cornerRadius = 18;
+            darkui::Static::Options captionOptions;
+            captionOptions.text = created->combos[i].label;
+            captionOptions.variant = darkui::StaticVariant::PanelTitle;
             darkui::ComboBox::Options comboOptions;
             comboOptions.items = {
                 {std::wstring(created->combos[i].label) + L" / bestaudio", 1, false},
@@ -143,9 +152,13 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
                 {std::wstring(created->combos[i].label) + L" / 140 - m4a 128k", 4, false},
             };
             comboOptions.selection = 0;
-            created->combos[i].combo.Create(window, kComboIds[i], created->combos[i].theme, comboOptions);
-            created->combos[i].themeManager.SetTheme(created->combos[i].theme);
-            created->combos[i].themeManager.Bind(created->combos[i].combo);
+            comboOptions.variant = darkui::FieldVariant::Panel;
+            if (!created->combos[i].panel.Create(window, 2000 + i, created->combos[i].theme, panelOptions) ||
+                !created->combos[i].caption.Create(created->combos[i].panel.hwnd(), 3000 + i, created->combos[i].theme, captionOptions) ||
+                !created->combos[i].combo.Create(created->combos[i].panel.hwnd(), kComboIds[i], created->combos[i].theme, comboOptions)) {
+                delete created;
+                return -1;
+            }
         }
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);
@@ -158,10 +171,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         return 0;
     case WM_ERASEBKGND:
         if (state) {
-            RECT rect{};
-            GetClientRect(window, &rect);
-            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->brushBackground);
-            return 1;
+            return state->host.HandleEraseBackground(reinterpret_cast<HDC>(wParam));
         }
         break;
     case WM_COMMAND:
@@ -177,11 +187,6 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         }
         break;
     case WM_DESTROY:
-        if (state) {
-            if (state->brushBackground) {
-                DeleteObject(state->brushBackground);
-            }
-        }
         delete state;
         SetWindowLongPtrW(window, GWLP_USERDATA, 0);
         PostQuitMessage(0);

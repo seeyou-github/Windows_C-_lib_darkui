@@ -312,7 +312,6 @@ struct Edit::Impl {
         const int firstVisibleLine = std::max(0, static_cast<int>(SendMessageW(owner->editHwnd_, EM_GETFIRSTVISIBLELINE, 0, 0)));
         const int visibleLines = VisibleLineCount();
 
-        verticalScrollBar.SetTheme(owner->theme_);
         verticalScrollBar.SetRange(0, std::max(0, lineCount - 1));
         verticalScrollBar.SetPageSize(visibleLines);
         verticalScrollBar.SetValue(firstVisibleLine, false);
@@ -449,7 +448,7 @@ struct Edit::Impl {
         case WM_COMMAND:
             if (reinterpret_cast<HWND>(lParam) == self->owner->editHwnd_) {
                 const UINT code = HIWORD(wParam);
-                if (code == EN_CHANGE || code == EN_SETFOCUS || code == EN_KILLFOCUS || code == EN_VSCROLL) {
+                if (code == EN_CHANGE || code == EN_SETFOCUS || code == EN_KILLFOCUS || code == EN_VSCROLL || code == EN_UPDATE) {
                     self->UpdatePlaceholderVisibility();
                     self->UpdateCustomScrollMetrics();
                 }
@@ -494,15 +493,20 @@ struct Edit::Impl {
 
         const bool shouldSyncAfter =
             message == WM_MOUSEWHEEL ||
+            message == WM_VSCROLL ||
             message == WM_KEYDOWN ||
             message == WM_KEYUP ||
             message == WM_CHAR ||
+            message == WM_LBUTTONDOWN ||
+            message == WM_LBUTTONUP ||
+            message == WM_MOUSEMOVE ||
             message == WM_PASTE ||
             message == WM_CUT ||
             message == WM_SETTEXT;
 
         LRESULT result = DefSubclassProc(window, message, wParam, lParam);
-        if (shouldSyncAfter && self->useCustomVScroll && self->owner->hostHwnd_) {
+        const bool dragMove = message == WM_MOUSEMOVE && (wParam & MK_LBUTTON) == 0;
+        if (shouldSyncAfter && !dragMove && self->useCustomVScroll && self->owner->hostHwnd_) {
             PostMessageW(self->owner->hostHwnd_, kEditSyncScrollMessage, 0, 0);
         }
         if (message == WM_DESTROY) {
@@ -690,6 +694,9 @@ void Edit::SetTheme(const Theme& theme) {
         theme_ = previous;
         impl_->UpdateThemeResources();
         return;
+    }
+    if (impl_ && impl_->useCustomVScroll && impl_->verticalScrollBar.hwnd()) {
+        impl_->verticalScrollBar.SetTheme(theme_);
     }
     if (hostHwnd_) {
         InvalidateRect(hostHwnd_, nullptr, TRUE);

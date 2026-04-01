@@ -48,15 +48,7 @@ struct CheckBox::Impl {
         if (brushAccent) DeleteObject(brushAccent);
     }
 
-    void UpdateThemeResources() {
-        if (font) DeleteObject(font);
-        if (penBorder) DeleteObject(penBorder);
-        if (penAccent) DeleteObject(penAccent);
-        if (brushSurface) DeleteObject(brushSurface);
-        if (brushBox) DeleteObject(brushBox);
-        if (brushBoxHot) DeleteObject(brushBoxHot);
-        if (brushAccent) DeleteObject(brushAccent);
-
+    bool UpdateThemeResources() {
         COLORREF borderColor = owner->theme_.checkBorder;
         COLORREF boxColor = owner->theme_.checkBackground;
         COLORREF boxHotColor = owner->theme_.checkBackgroundHot;
@@ -80,18 +72,46 @@ struct CheckBox::Impl {
             break;
         }
 
-        font = CreateFont(owner->theme_.uiFont);
-        penBorder = CreatePen(PS_SOLID, 1, borderColor);
-        penAccent = CreatePen(PS_SOLID, 2, checkmarkColor);
-        brushSurface = CreateSolidBrush(owner->surfaceColor_);
-        brushBox = CreateSolidBrush(boxColor);
-        brushBoxHot = CreateSolidBrush(boxHotColor);
-        brushAccent = CreateSolidBrush(accentColor);
+        HFONT newFont = CreateFont(owner->theme_.uiFont);
+        HPEN newPenBorder = CreatePen(PS_SOLID, 1, borderColor);
+        HPEN newPenAccent = CreatePen(PS_SOLID, 2, checkmarkColor);
+        HBRUSH newBrushSurface = CreateSolidBrush(owner->surfaceColor_);
+        HBRUSH newBrushBox = CreateSolidBrush(boxColor);
+        HBRUSH newBrushBoxHot = CreateSolidBrush(boxHotColor);
+        HBRUSH newBrushAccent = CreateSolidBrush(accentColor);
+
+        if (!newFont || !newPenBorder || !newPenAccent || !newBrushSurface || !newBrushBox || !newBrushBoxHot || !newBrushAccent) {
+            if (newFont) DeleteObject(newFont);
+            if (newPenBorder) DeleteObject(newPenBorder);
+            if (newPenAccent) DeleteObject(newPenAccent);
+            if (newBrushSurface) DeleteObject(newBrushSurface);
+            if (newBrushBox) DeleteObject(newBrushBox);
+            if (newBrushBoxHot) DeleteObject(newBrushBoxHot);
+            if (newBrushAccent) DeleteObject(newBrushAccent);
+            return false;
+        }
+
+        if (font) DeleteObject(font);
+        if (penBorder) DeleteObject(penBorder);
+        if (penAccent) DeleteObject(penAccent);
+        if (brushSurface) DeleteObject(brushSurface);
+        if (brushBox) DeleteObject(brushBox);
+        if (brushBoxHot) DeleteObject(brushBoxHot);
+        if (brushAccent) DeleteObject(brushAccent);
+
+        font = newFont;
+        penBorder = newPenBorder;
+        penAccent = newPenAccent;
+        brushSurface = newBrushSurface;
+        brushBox = newBrushBox;
+        brushBoxHot = newBrushBoxHot;
+        brushAccent = newBrushAccent;
 
         if (owner->checkboxHwnd_) {
             SendMessageW(owner->checkboxHwnd_, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
             InvalidateRect(owner->checkboxHwnd_, nullptr, TRUE);
         }
+        return true;
     }
 
     HFONT SelectControlFont(HDC dc, HWND control) {
@@ -278,7 +298,10 @@ bool CheckBox::Create(HWND parent, int controlId, const Theme& theme, const Opti
         impl_->instance = GetModuleHandleW(nullptr);
     }
 
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        Destroy();
+        return false;
+    }
 
     DWORD style = options.style;
     style &= ~BS_TYPEMASK;
@@ -333,11 +356,17 @@ void CheckBox::Destroy() {
 }
 
 void CheckBox::SetTheme(const Theme& theme) {
+    const Theme previousTheme = theme_;
+    const COLORREF previousSurfaceColor = surfaceColor_;
     theme_ = ResolveTheme(theme);
     if (!hasCustomSurfaceColor_) {
         surfaceColor_ = ResolveInheritedSurfaceColor(theme_, parentHwnd_, surfaceRole_);
     }
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        theme_ = previousTheme;
+        surfaceColor_ = previousSurfaceColor;
+        impl_->UpdateThemeResources();
+    }
 }
 
 void CheckBox::SetText(const std::wstring& text) {
@@ -376,9 +405,13 @@ void CheckBox::SetChecked(bool checked) {
 }
 
 void CheckBox::SetSurfaceColor(COLORREF color) {
+    const COLORREF previousSurfaceColor = surfaceColor_;
     hasCustomSurfaceColor_ = true;
     surfaceColor_ = color;
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        surfaceColor_ = previousSurfaceColor;
+        impl_->UpdateThemeResources();
+    }
 }
 
 }  // namespace darkui

@@ -144,7 +144,7 @@ struct Button::Impl {
         if (penBorder) DeleteObject(penBorder);
     }
 
-    void UpdateThemeResources() {
+    bool UpdateThemeResources() {
         const ResolvedButtonVisuals visuals = ResolveButtonVisuals(owner->theme_, owner->surfaceColor_, owner->variant_);
         owner->fillColor_ = visuals.fill;
         owner->fillHoverColor_ = visuals.fillHover;
@@ -154,6 +154,26 @@ struct Button::Impl {
         owner->textColor_ = visuals.text;
         owner->disabledTextColor_ = visuals.disabledText;
 
+        HFONT newFont = CreateFont(owner->theme_.uiFont);
+        HBRUSH newBrushButton = CreateSolidBrush(owner->fillColor_);
+        HBRUSH newBrushButtonHover = CreateSolidBrush(owner->fillHoverColor_);
+        HBRUSH newBrushButtonHot = CreateSolidBrush(owner->fillHotColor_);
+        HBRUSH newBrushButtonDisabled = CreateSolidBrush(owner->fillDisabledColor_);
+        HBRUSH newBrushBorder = CreateSolidBrush(owner->borderColor_);
+        HPEN newPenBorder = CreatePen(PS_SOLID, 1, owner->borderColor_);
+
+        if (!newFont || !newBrushButton || !newBrushButtonHover || !newBrushButtonHot ||
+            !newBrushButtonDisabled || !newBrushBorder || !newPenBorder) {
+            if (newFont) DeleteObject(newFont);
+            if (newBrushButton) DeleteObject(newBrushButton);
+            if (newBrushButtonHover) DeleteObject(newBrushButtonHover);
+            if (newBrushButtonHot) DeleteObject(newBrushButtonHot);
+            if (newBrushButtonDisabled) DeleteObject(newBrushButtonDisabled);
+            if (newBrushBorder) DeleteObject(newBrushBorder);
+            if (newPenBorder) DeleteObject(newPenBorder);
+            return false;
+        }
+
         if (font) DeleteObject(font);
         if (brushButton) DeleteObject(brushButton);
         if (brushButtonHover) DeleteObject(brushButtonHover);
@@ -162,18 +182,19 @@ struct Button::Impl {
         if (brushBorder) DeleteObject(brushBorder);
         if (penBorder) DeleteObject(penBorder);
 
-        font = CreateFont(owner->theme_.uiFont);
-        brushButton = CreateSolidBrush(owner->fillColor_);
-        brushButtonHover = CreateSolidBrush(owner->fillHoverColor_);
-        brushButtonHot = CreateSolidBrush(owner->fillHotColor_);
-        brushButtonDisabled = CreateSolidBrush(owner->fillDisabledColor_);
-        brushBorder = CreateSolidBrush(owner->borderColor_);
-        penBorder = CreatePen(PS_SOLID, 1, owner->borderColor_);
+        font = newFont;
+        brushButton = newBrushButton;
+        brushButtonHover = newBrushButtonHover;
+        brushButtonHot = newBrushButtonHot;
+        brushButtonDisabled = newBrushButtonDisabled;
+        brushBorder = newBrushBorder;
+        penBorder = newPenBorder;
 
         if (owner->buttonHwnd_) {
             SendMessageW(owner->buttonHwnd_, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
             InvalidateRect(owner->buttonHwnd_, nullptr, TRUE);
         }
+        return true;
     }
 
     HFONT SelectControlFont(HDC dc, HWND control) {
@@ -402,7 +423,10 @@ bool Button::Create(HWND parent, int controlId, const Theme& theme, const Option
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
     }
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        Destroy();
+        return false;
+    }
 
     DWORD style = options.style | BS_OWNERDRAW;
     buttonHwnd_ = CreateWindowExW(options.exStyle,
@@ -454,11 +478,17 @@ void Button::Destroy() {
 }
 
 void Button::SetTheme(const Theme& theme) {
+    const Theme previousTheme = theme_;
+    const COLORREF previousSurfaceColor = surfaceColor_;
     theme_ = ResolveTheme(theme);
     if (!hasCustomSurfaceColor_) {
         surfaceColor_ = ResolveInheritedSurfaceColor(theme_, parentHwnd_, surfaceRole_);
     }
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        theme_ = previousTheme;
+        surfaceColor_ = previousSurfaceColor;
+        impl_->UpdateThemeResources();
+    }
 }
 
 void Button::SetText(const std::wstring& text) {
@@ -488,9 +518,13 @@ void Button::SetCornerRadius(int radius) {
 }
 
 void Button::SetSurfaceColor(COLORREF color) {
+    const COLORREF previousSurfaceColor = surfaceColor_;
     hasCustomSurfaceColor_ = true;
     surfaceColor_ = color;
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        surfaceColor_ = previousSurfaceColor;
+        impl_->UpdateThemeResources();
+    }
 }
 
 }  // namespace darkui

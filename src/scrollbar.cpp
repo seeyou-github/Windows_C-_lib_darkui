@@ -35,24 +35,44 @@ struct ScrollBar::Impl {
         if (brushThumbHot) DeleteObject(brushThumbHot);
     }
 
-    void UpdateThemeResources() {
+    bool UpdateThemeResources() {
+        HBRUSH newBrushBackground = CreateSolidBrush(owner->theme_.scrollBarBackground);
+        HBRUSH newBrushTrack = CreateSolidBrush(owner->theme_.scrollBarTrack);
+        HBRUSH newBrushThumb = CreateSolidBrush(owner->theme_.scrollBarThumb);
+        HBRUSH newBrushThumbHot = CreateSolidBrush(owner->theme_.scrollBarThumbHot);
+        if (!newBrushBackground || !newBrushTrack || !newBrushThumb || !newBrushThumbHot) {
+            if (newBrushBackground) DeleteObject(newBrushBackground);
+            if (newBrushTrack) DeleteObject(newBrushTrack);
+            if (newBrushThumb) DeleteObject(newBrushThumb);
+            if (newBrushThumbHot) DeleteObject(newBrushThumbHot);
+            return false;
+        }
+
         if (brushBackground) DeleteObject(brushBackground);
         if (brushTrack) DeleteObject(brushTrack);
         if (brushThumb) DeleteObject(brushThumb);
         if (brushThumbHot) DeleteObject(brushThumbHot);
 
-        brushBackground = CreateSolidBrush(owner->theme_.scrollBarBackground);
-        brushTrack = CreateSolidBrush(owner->theme_.scrollBarTrack);
-        brushThumb = CreateSolidBrush(owner->theme_.scrollBarThumb);
-        brushThumbHot = CreateSolidBrush(owner->theme_.scrollBarThumbHot);
+        brushBackground = newBrushBackground;
+        brushTrack = newBrushTrack;
+        brushThumb = newBrushThumb;
+        brushThumbHot = newBrushThumbHot;
 
         if (owner->scrollBarHwnd_) {
             InvalidateRect(owner->scrollBarHwnd_, nullptr, TRUE);
         }
+        return true;
+    }
+
+    int MaxReachableValue() const {
+        if (owner->pageSize_ <= 0) {
+            return owner->maximum_;
+        }
+        return std::max(owner->minimum_, owner->maximum_ - owner->pageSize_ + 1);
     }
 
     int ClampValue(int value) const {
-        const int maxValue = std::max(owner->minimum_, owner->maximum_ - std::max(0, owner->pageSize_));
+        const int maxValue = MaxReachableValue();
         return std::clamp(value, owner->minimum_, maxValue);
     }
 
@@ -95,7 +115,7 @@ struct ScrollBar::Impl {
         const int trackLength = std::max(1, TrackLength(track));
         const int thumbLength = ThumbLength(track);
         const int movable = std::max(1, trackLength - thumbLength);
-        const int maxValue = std::max(owner->minimum_, owner->maximum_ - std::max(0, owner->pageSize_));
+        const int maxValue = MaxReachableValue();
         if (maxValue <= owner->minimum_) {
             return 0;
         }
@@ -136,7 +156,7 @@ struct ScrollBar::Impl {
         const int thumbLength = ThumbLength(track);
         const int movable = std::max(1, trackLength - thumbLength);
         const int clampedOffset = std::clamp(thumbOffset, 0, movable);
-        const int maxValue = std::max(owner->minimum_, owner->maximum_ - std::max(0, owner->pageSize_));
+        const int maxValue = MaxReachableValue();
         if (maxValue <= owner->minimum_) {
             return owner->minimum_;
         }
@@ -367,8 +387,7 @@ bool ScrollBar::Create(HWND parent, int controlId, const Theme& theme, const Opt
         return false;
     }
 
-    impl_->UpdateThemeResources();
-    if (!impl_->brushBackground || !impl_->brushTrack || !impl_->brushThumb || !impl_->brushThumbHot) {
+    if (!impl_->UpdateThemeResources() || !impl_->brushBackground || !impl_->brushTrack || !impl_->brushThumb || !impl_->brushThumbHot) {
         Destroy();
         return false;
     }
@@ -391,8 +410,12 @@ void ScrollBar::Destroy() {
 }
 
 void ScrollBar::SetTheme(const Theme& theme) {
+    const Theme previous = theme_;
     theme_ = ResolveTheme(theme);
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        theme_ = previous;
+        impl_->UpdateThemeResources();
+    }
 }
 
 void ScrollBar::SetRange(int minimum, int maximum) {
