@@ -48,7 +48,7 @@ struct Tab::Impl {
         if (font) DeleteObject(font);
     }
 
-    void UpdateThemeResources() {
+    bool UpdateThemeResources() {
         owner->backgroundColor_ = owner->theme_.tabBackground;
         owner->contentBackgroundColor_ = owner->theme_.background;
         owner->itemColor_ = owner->theme_.tabItem;
@@ -73,21 +73,37 @@ struct Tab::Impl {
             break;
         }
 
+        HBRUSH newBrushBackground = CreateSolidBrush(owner->backgroundColor_);
+        HBRUSH newBrushContentBackground = CreateSolidBrush(owner->contentBackgroundColor_);
+        HBRUSH newBrushItem = CreateSolidBrush(owner->itemColor_);
+        HBRUSH newBrushItemActive = CreateSolidBrush(owner->itemActiveColor_);
+        HFONT newFont = CreateFont(owner->theme_.uiFont);
+
+        if (!newBrushBackground || !newBrushContentBackground || !newBrushItem || !newBrushItemActive || !newFont) {
+            if (newBrushBackground) DeleteObject(newBrushBackground);
+            if (newBrushContentBackground) DeleteObject(newBrushContentBackground);
+            if (newBrushItem) DeleteObject(newBrushItem);
+            if (newBrushItemActive) DeleteObject(newBrushItemActive);
+            if (newFont) DeleteObject(newFont);
+            return false;
+        }
+
         if (brushBackground) DeleteObject(brushBackground);
         if (brushContentBackground) DeleteObject(brushContentBackground);
         if (brushItem) DeleteObject(brushItem);
         if (brushItemActive) DeleteObject(brushItemActive);
         if (font) DeleteObject(font);
 
-        brushBackground = CreateSolidBrush(owner->backgroundColor_);
-        brushContentBackground = CreateSolidBrush(owner->contentBackgroundColor_);
-        brushItem = CreateSolidBrush(owner->itemColor_);
-        brushItemActive = CreateSolidBrush(owner->itemActiveColor_);
-        font = CreateFont(owner->theme_.uiFont);
+        brushBackground = newBrushBackground;
+        brushContentBackground = newBrushContentBackground;
+        brushItem = newBrushItem;
+        brushItemActive = newBrushItemActive;
+        font = newFont;
 
         if (owner->tabHwnd_) {
             InvalidateRect(owner->tabHwnd_, nullptr, TRUE);
         }
+        return true;
     }
 
     int SafeSelection() const {
@@ -402,8 +418,7 @@ bool Tab::Create(HWND parent, int controlId, const Theme& theme, const Options& 
         return false;
     }
 
-    impl_->UpdateThemeResources();
-    if (!impl_->brushBackground || !impl_->brushContentBackground || !impl_->brushItem || !impl_->brushItemActive || !impl_->font) {
+    if (!impl_->UpdateThemeResources() || !impl_->brushBackground || !impl_->brushContentBackground || !impl_->brushItem || !impl_->brushItemActive || !impl_->font) {
         Destroy();
         return false;
     }
@@ -427,8 +442,12 @@ void Tab::Destroy() {
 }
 
 void Tab::SetTheme(const Theme& theme) {
+    const Theme previous = theme_;
     theme_ = ResolveTheme(theme);
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        theme_ = previous;
+        impl_->UpdateThemeResources();
+    }
 }
 
 void Tab::SetVertical(bool enabled) {

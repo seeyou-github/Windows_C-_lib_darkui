@@ -46,7 +46,7 @@ struct Slider::Impl {
         if (brushTick) DeleteObject(brushTick);
     }
 
-    void UpdateThemeResources() {
+    bool UpdateThemeResources() {
         owner->trackHeight_ = std::max(2, owner->theme_.sliderTrackHeight);
         owner->thumbRadius_ = std::max(4, owner->theme_.sliderThumbRadius);
         owner->backgroundColor_ = owner->theme_.sliderBackground;
@@ -72,6 +72,23 @@ struct Slider::Impl {
             break;
         }
 
+        HBRUSH newBrushBackground = CreateSolidBrush(owner->backgroundColor_);
+        HBRUSH newBrushTrack = CreateSolidBrush(owner->trackColor_);
+        HBRUSH newBrushFill = CreateSolidBrush(owner->fillColor_);
+        HBRUSH newBrushThumb = CreateSolidBrush(owner->thumbColor_);
+        HBRUSH newBrushThumbHot = CreateSolidBrush(owner->thumbHotColor_);
+        HBRUSH newBrushTick = CreateSolidBrush(owner->tickColor_);
+
+        if (!newBrushBackground || !newBrushTrack || !newBrushFill || !newBrushThumb || !newBrushThumbHot || !newBrushTick) {
+            if (newBrushBackground) DeleteObject(newBrushBackground);
+            if (newBrushTrack) DeleteObject(newBrushTrack);
+            if (newBrushFill) DeleteObject(newBrushFill);
+            if (newBrushThumb) DeleteObject(newBrushThumb);
+            if (newBrushThumbHot) DeleteObject(newBrushThumbHot);
+            if (newBrushTick) DeleteObject(newBrushTick);
+            return false;
+        }
+
         if (brushBackground) DeleteObject(brushBackground);
         if (brushTrack) DeleteObject(brushTrack);
         if (brushFill) DeleteObject(brushFill);
@@ -79,16 +96,17 @@ struct Slider::Impl {
         if (brushThumbHot) DeleteObject(brushThumbHot);
         if (brushTick) DeleteObject(brushTick);
 
-        brushBackground = CreateSolidBrush(owner->backgroundColor_);
-        brushTrack = CreateSolidBrush(owner->trackColor_);
-        brushFill = CreateSolidBrush(owner->fillColor_);
-        brushThumb = CreateSolidBrush(owner->thumbColor_);
-        brushThumbHot = CreateSolidBrush(owner->thumbHotColor_);
-        brushTick = CreateSolidBrush(owner->tickColor_);
+        brushBackground = newBrushBackground;
+        brushTrack = newBrushTrack;
+        brushFill = newBrushFill;
+        brushThumb = newBrushThumb;
+        brushThumbHot = newBrushThumbHot;
+        brushTick = newBrushTick;
 
         if (owner->sliderHwnd_) {
             InvalidateRect(owner->sliderHwnd_, nullptr, TRUE);
         }
+        return true;
     }
 
     RECT GetTrackRect() const {
@@ -375,7 +393,10 @@ bool Slider::Create(HWND parent, int controlId, const Theme& theme, const Option
         return false;
     }
 
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        Destroy();
+        return false;
+    }
     SetRange(options.minimum, options.maximum);
     SetValue(options.value);
     SetShowTicks(options.showTicks);
@@ -396,8 +417,12 @@ void Slider::Destroy() {
 }
 
 void Slider::SetTheme(const Theme& theme) {
+    const Theme previous = theme_;
     theme_ = ResolveTheme(theme);
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        theme_ = previous;
+        impl_->UpdateThemeResources();
+    }
 }
 
 void Slider::SetRange(int minimum, int maximum) {

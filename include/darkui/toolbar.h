@@ -145,6 +145,7 @@ private:
     ToolbarVariant variant_ = ToolbarVariant::Default;
     int itemGap_ = 6;
     int buttonSideInset_ = 14;
+    int verticalInset_ = 6;
     int itemHeight_ = 28;
     COLORREF backgroundColor_ = RGB(34, 36, 40);
     COLORREF itemColor_ = RGB(52, 56, 62);

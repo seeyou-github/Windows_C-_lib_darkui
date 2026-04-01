@@ -156,6 +156,7 @@ struct Toolbar::Impl {
     bool UpdateThemeResources() {
         owner->itemGap_ = kToolbarButtonGap;
         owner->buttonSideInset_ = kToolbarButtonSideInset;
+        owner->verticalInset_ = 6;
         owner->itemHeight_ = std::max(owner->theme_.toolbarHeight - 12, 28);
         owner->backgroundColor_ = owner->theme_.toolbarBackground;
         owner->itemColor_ = owner->theme_.toolbarItem;
@@ -168,6 +169,7 @@ struct Toolbar::Impl {
         case ToolbarVariant::Dense:
             owner->itemGap_ = 4;
             owner->buttonSideInset_ = 10;
+            owner->verticalInset_ = 8;
             owner->itemHeight_ = std::max(owner->itemHeight_ - 4, 24);
             break;
         case ToolbarVariant::Accent:
@@ -319,7 +321,8 @@ struct Toolbar::Impl {
         }
         RECT client{};
         GetClientRect(owner->toolbarHwnd_, &client);
-        return std::max(owner->itemHeight_, static_cast<int>(client.bottom - client.top) - 12);
+        const int availableHeight = std::max(16, static_cast<int>(client.bottom - client.top) - owner->verticalInset_ * 2);
+        return std::min(owner->itemHeight_, availableHeight);
     }
 
     int ItemWidth(HDC dc, const ToolbarItem& item) const {
@@ -352,7 +355,7 @@ struct Toolbar::Impl {
     }
 
     int OverflowWidth() const {
-        return std::max(40, std::max(owner->itemHeight_ + 4, 34));
+        return std::max(40, std::max(CurrentItemHeight() + 4, 34));
     }
 
     bool HasOverflow() const {
@@ -379,8 +382,8 @@ struct Toolbar::Impl {
         HFONT oldFont = drawFont ? reinterpret_cast<HFONT>(SelectObject(dc, drawFont)) : nullptr;
 
         RECT client = ClientRect();
-        const int top = client.top + 6;
-        const int bottom = client.bottom - 6;
+        const int top = client.top + owner->verticalInset_;
+        const int bottom = client.bottom - owner->verticalInset_;
         const int leftStart = client.left + 8;
         const int rightStart = client.right - 8;
         int leftX = leftStart;

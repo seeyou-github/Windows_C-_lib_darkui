@@ -40,7 +40,7 @@ struct ProgressBar::Impl {
         if (font) DeleteObject(font);
     }
 
-    void UpdateThemeResources() {
+    bool UpdateThemeResources() {
         owner->trackHeight_ = std::max(8, owner->theme_.progressHeight);
         owner->backgroundColor_ = owner->theme_.progressBackground;
         owner->trackColor_ = owner->theme_.progressTrack;
@@ -63,19 +63,33 @@ struct ProgressBar::Impl {
             break;
         }
 
+        HBRUSH newBrushBackground = CreateSolidBrush(owner->backgroundColor_);
+        HBRUSH newBrushTrack = CreateSolidBrush(owner->trackColor_);
+        HBRUSH newBrushFill = CreateSolidBrush(owner->fillColor_);
+        HFONT newFont = CreateFont(owner->theme_.uiFont);
+
+        if (!newBrushBackground || !newBrushTrack || !newBrushFill || !newFont) {
+            if (newBrushBackground) DeleteObject(newBrushBackground);
+            if (newBrushTrack) DeleteObject(newBrushTrack);
+            if (newBrushFill) DeleteObject(newBrushFill);
+            if (newFont) DeleteObject(newFont);
+            return false;
+        }
+
         if (brushBackground) DeleteObject(brushBackground);
         if (brushTrack) DeleteObject(brushTrack);
         if (brushFill) DeleteObject(brushFill);
         if (font) DeleteObject(font);
 
-        brushBackground = CreateSolidBrush(owner->backgroundColor_);
-        brushTrack = CreateSolidBrush(owner->trackColor_);
-        brushFill = CreateSolidBrush(owner->fillColor_);
-        font = CreateFont(owner->theme_.uiFont);
+        brushBackground = newBrushBackground;
+        brushTrack = newBrushTrack;
+        brushFill = newBrushFill;
+        font = newFont;
 
         if (owner->progressHwnd_) {
             InvalidateRect(owner->progressHwnd_, nullptr, TRUE);
         }
+        return true;
     }
 
     RECT GetTrackRect() const {
@@ -128,6 +142,9 @@ struct ProgressBar::Impl {
         }
 
         if (!owner->showPercentage_) {
+            if (fallbackBackground) DeleteObject(fallbackBackground);
+            if (fallbackTrack) DeleteObject(fallbackTrack);
+            if (fallbackFill) DeleteObject(fallbackFill);
             return;
         }
 
@@ -245,8 +262,7 @@ bool ProgressBar::Create(HWND parent, int controlId, const Theme& theme, const O
         return false;
     }
 
-    impl_->UpdateThemeResources();
-    if (!impl_->brushBackground || !impl_->brushTrack || !impl_->brushFill || !impl_->font) {
+    if (!impl_->UpdateThemeResources() || !impl_->brushBackground || !impl_->brushTrack || !impl_->brushFill || !impl_->font) {
         Destroy();
         return false;
     }
@@ -266,11 +282,17 @@ void ProgressBar::Destroy() {
 }
 
 void ProgressBar::SetTheme(const Theme& theme) {
+    const Theme previousTheme = theme_;
+    const COLORREF previousSurfaceColor = surfaceColor_;
     theme_ = ResolveTheme(theme);
     if (!hasCustomSurfaceColor_) {
         surfaceColor_ = ResolveInheritedSurfaceColor(theme_, parentHwnd_, surfaceRole_);
     }
-    impl_->UpdateThemeResources();
+    if (!impl_->UpdateThemeResources()) {
+        theme_ = previousTheme;
+        surfaceColor_ = previousSurfaceColor;
+        impl_->UpdateThemeResources();
+    }
 }
 
 void ProgressBar::SetRange(int minimum, int maximum) {
@@ -300,9 +322,13 @@ void ProgressBar::SetShowPercentage(bool enabled) {
 }
 
 void ProgressBar::SetSurfaceColor(COLORREF color) {
+    const COLORREF previousSurfaceColor = surfaceColor_;
     hasCustomSurfaceColor_ = true;
     surfaceColor_ = color;
-    if (progressHwnd_) {
+    if (progressHwnd_ && !impl_->UpdateThemeResources()) {
+        surfaceColor_ = previousSurfaceColor;
+        impl_->UpdateThemeResources();
+    } else if (progressHwnd_) {
         InvalidateRect(progressHwnd_, nullptr, TRUE);
     }
 }
