@@ -50,6 +50,11 @@ theme.popupItemHot = RGB(57, 66, 78);
 theme.popupAccentItem = RGB(28, 54, 95);
 theme.popupAccentItemHot = RGB(42, 75, 126);
 
+darkui::Panel card;
+darkui::Panel::Options cardOptions;
+cardOptions.cornerRadius = 18;
+card.Create(hwnd, 1000, theme, cardOptions);
+
 darkui::ComboBox combo;
 darkui::ComboBox::Options options;
 options.items = {
@@ -59,16 +64,17 @@ options.items = {
 };
 options.selection = 0;
 
-combo.Create(hwnd, 1001, theme, options);
+combo.Create(card.hwnd(), 1001, theme, options);
 
 darkui::ThemedWindowHost host;
 darkui::ThemedWindowHost::Options hostOptions;
 hostOptions.theme = theme;
 host.Attach(hwnd, hostOptions);
 auto& themeManager = host.theme_manager();
-themeManager.Bind(combo);
+themeManager.Bind(card, combo);
 themeManager.Apply();
 
+MoveWindow(card.hwnd(), 20, 20, 320, 92, TRUE);
 MoveWindow(combo.hwnd(), 20, 20, 280, 38, TRUE);
 ```
 
@@ -160,6 +166,7 @@ options.selection = 0;
 
 - Use `accent = true` for highlighted or recommended items
 - Use `userData` for enum values, IDs, or application payloads
+- When the combo box sits inside a card section, prefer parenting it to `darkui::Panel`
 - Layout is still owned by the parent window, typically through `MoveWindow()`
 
 ## Demo Reference

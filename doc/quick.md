@@ -6,6 +6,7 @@
 
 - creating a ready-made semantic theme
 - picking a built-in dark theme preset
+- creating card/panel containers with inherited surfaces
 - binding one theme to multiple controls
 - opening a dark message dialog with one function call
 
@@ -47,12 +48,32 @@ darkui::Button button;
 darkui::Button::Options options;
 options.text = L"Apply";
 options.cornerRadius = 14;
-options.surfaceRole = darkui::SurfaceRole::Panel;
 
-button.Create(hwnd, 4101, theme, options);
+darkui::Panel card;
+darkui::Panel::Options cardOptions;
+card.Create(hwnd, 4100, theme, cardOptions);
+
+button.Create(card.hwnd(), 4101, theme, options);
 ```
 
 If you need an explicit color, `surfaceColor` still overrides `surfaceRole`.
+If several controls share one card surface, prefer `darkui::Panel` and let children inherit it.
+
+## Panel And Surface Inheritance
+
+```cpp
+darkui::Panel card;
+darkui::Panel::Options cardOptions;
+card.Create(hwnd, 4200, theme, cardOptions);
+
+darkui::Button button;
+darkui::Button::Options buttonOptions;
+buttonOptions.text = L"Apply";
+
+button.Create(card.hwnd(), 4201, theme, buttonOptions);
+```
+
+With this structure, `buttonOptions.surfaceRole` can usually stay at the default `Auto`.
 
 Available presets:
 

@@ -26,6 +26,9 @@ enum ControlId {
     ID_OVERVIEW_STATUS,
     ID_OVERVIEW_SYNC,
     ID_OVERVIEW_CPU,
+    ID_OVERVIEW_PANEL_LEFT,
+    ID_OVERVIEW_PANEL_RIGHT,
+    ID_OVERVIEW_PANEL_BOTTOM,
 
     ID_CONTROLS_EXPOSURE = 9201,
     ID_CONTROLS_BALANCE,
@@ -60,6 +63,9 @@ enum ControlId {
 enum class PageKind { Overview, Controls, Data, Expanded };
 
 struct OverviewPanel {
+    darkui::Panel leftCard;
+    darkui::Panel rightCard;
+    darkui::Panel bottomCard;
     darkui::ComboBox profile;
     darkui::Button primary;
     darkui::Button secondary;
@@ -252,11 +258,6 @@ void ApplyThemeToControls(AppState* state) {
     state->themeGlacier.SetSurfaceColor(state->themeIndex == 2 ? state->theme.panel : state->theme.background);
     state->themeMoss.SetSurfaceColor(state->themeIndex == 3 ? state->theme.panel : state->theme.background);
     state->themeMono.SetSurfaceColor(state->themeIndex == 4 ? state->theme.panel : state->theme.background);
-    state->overview.primary.SetSurfaceColor(state->theme.panel);
-    state->overview.secondary.SetSurfaceColor(state->theme.panel);
-    state->overview.status.SetBackgroundColor(state->theme.panel);
-    state->overview.sync.SetSurfaceColor(state->theme.panel);
-    state->overview.cpu.SetSurfaceColor(state->theme.panel);
     state->data.refresh.SetSurfaceColor(state->theme.background);
     UpdateExpandedSummary(state);
 }
@@ -293,9 +294,13 @@ void LayoutOverviewPage(HWND page, AppState* state) {
     RECT bottom{content.left, top.bottom + 20, content.right, content.bottom};
     RECT left = SliceLeft(top, ((top.right - top.left) - 20) / 2);
     RECT right{left.right + 20, top.top, top.right, top.bottom};
-    RECT li = InsetRectCopy(left, 24, 24);
-    RECT ri = InsetRectCopy(right, 24, 24);
-    RECT bi = InsetRectCopy(bottom, 24, 24);
+    MoveWindow(state->overview.leftCard.hwnd(), left.left, left.top, left.right - left.left, left.bottom - left.top, TRUE);
+    MoveWindow(state->overview.rightCard.hwnd(), right.left, right.top, right.right - right.left, right.bottom - right.top, TRUE);
+    MoveWindow(state->overview.bottomCard.hwnd(), bottom.left, bottom.top, bottom.right - bottom.left, bottom.bottom - bottom.top, TRUE);
+
+    RECT li = InsetRectCopy(RECT{0, 0, left.right - left.left, left.bottom - left.top}, 24, 24);
+    RECT ri = InsetRectCopy(RECT{0, 0, right.right - right.left, right.bottom - right.top}, 24, 24);
+    RECT bi = InsetRectCopy(RECT{0, 0, bottom.right - bottom.left, bottom.bottom - bottom.top}, 24, 24);
 
     MoveWindow(state->overview.profile.hwnd(), li.left, li.top + 54, li.right - li.left, 34, TRUE);
     MoveWindow(state->overview.primary.hwnd(), ri.left, ri.top + 58, 168, 38, TRUE);
@@ -390,9 +395,6 @@ void PaintOverviewPage(HWND page, HDC dc, PageState* state) {
     RECT bottom{content.left, top.bottom + 20, content.right, content.bottom};
     RECT left = SliceLeft(top, ((top.right - top.left) - 20) / 2);
     RECT right{left.right + 20, top.top, top.right, top.bottom};
-    FillRoundedRect(dc, left, 24, state->app->theme.panel, state->app->theme.border);
-    FillRoundedRect(dc, right, 24, state->app->theme.panel, state->app->theme.border);
-    FillRoundedRect(dc, bottom, 24, state->app->theme.panel, state->app->theme.border);
     RECT li = InsetRectCopy(left, 24, 24);
     RECT ri = InsetRectCopy(right, 24, 24);
     RECT bi = InsetRectCopy(bottom, 24, 24);
@@ -473,32 +475,36 @@ bool CreatePageWindow(HWND parent, int controlId, PageKind kind, AppState* app, 
 }
 
 bool CreateOverviewControls(AppState* app) {
+    darkui::Panel::Options panelOptions;
+    panelOptions.role = darkui::SurfaceRole::Panel;
+    panelOptions.cornerRadius = 24;
     darkui::ComboBox::Options profileOptions;
     profileOptions.items = {{L"Studio Executive", 1, true}, {L"Asset Review", 2, false}, {L"Broadcast Board", 3, false}};
     profileOptions.selection = 0;
     darkui::Button::Options primaryOptions;
     primaryOptions.text = L"Sync Cluster";
     primaryOptions.cornerRadius = 14;
-    primaryOptions.surfaceRole = darkui::SurfaceRole::Panel;
     darkui::Button::Options secondaryOptions = primaryOptions;
     secondaryOptions.text = L"Share Preview";
     darkui::Static::Options statusOptions;
     statusOptions.text = L"Semantic palette active across every page";
     statusOptions.style = WS_CHILD | WS_VISIBLE | SS_LEFT;
-    statusOptions.surfaceRole = darkui::SurfaceRole::Panel;
     statusOptions.textFormat = DT_LEFT | DT_VCENTER | DT_SINGLELINE;
     darkui::ProgressBar::Options syncOptions;
-    syncOptions.minimum = 0; syncOptions.maximum = 100; syncOptions.value = 74; syncOptions.surfaceRole = darkui::SurfaceRole::Panel;
+    syncOptions.minimum = 0; syncOptions.maximum = 100; syncOptions.value = 74;
     darkui::ProgressBar::Options cpuOptions = syncOptions;
     cpuOptions.value = 61;
     cpuOptions.showPercentage = false;
 
-    if (!app->overview.profile.Create(app->overviewPage, ID_OVERVIEW_PROFILE, app->theme, profileOptions)) return false;
-    if (!app->overview.primary.Create(app->overviewPage, ID_OVERVIEW_PRIMARY, app->theme, primaryOptions)) return false;
-    if (!app->overview.secondary.Create(app->overviewPage, ID_OVERVIEW_SECONDARY, app->theme, secondaryOptions)) return false;
-    if (!app->overview.status.Create(app->overviewPage, ID_OVERVIEW_STATUS, app->theme, statusOptions)) return false;
-    if (!app->overview.sync.Create(app->overviewPage, ID_OVERVIEW_SYNC, app->theme, syncOptions)) return false;
-    if (!app->overview.cpu.Create(app->overviewPage, ID_OVERVIEW_CPU, app->theme, cpuOptions)) return false;
+    if (!app->overview.leftCard.Create(app->overviewPage, ID_OVERVIEW_PANEL_LEFT, app->theme, panelOptions)) return false;
+    if (!app->overview.rightCard.Create(app->overviewPage, ID_OVERVIEW_PANEL_RIGHT, app->theme, panelOptions)) return false;
+    if (!app->overview.bottomCard.Create(app->overviewPage, ID_OVERVIEW_PANEL_BOTTOM, app->theme, panelOptions)) return false;
+    if (!app->overview.profile.Create(app->overview.leftCard.hwnd(), ID_OVERVIEW_PROFILE, app->theme, profileOptions)) return false;
+    if (!app->overview.primary.Create(app->overview.rightCard.hwnd(), ID_OVERVIEW_PRIMARY, app->theme, primaryOptions)) return false;
+    if (!app->overview.secondary.Create(app->overview.rightCard.hwnd(), ID_OVERVIEW_SECONDARY, app->theme, secondaryOptions)) return false;
+    if (!app->overview.status.Create(app->overview.rightCard.hwnd(), ID_OVERVIEW_STATUS, app->theme, statusOptions)) return false;
+    if (!app->overview.sync.Create(app->overview.bottomCard.hwnd(), ID_OVERVIEW_SYNC, app->theme, syncOptions)) return false;
+    if (!app->overview.cpu.Create(app->overview.bottomCard.hwnd(), ID_OVERVIEW_CPU, app->theme, cpuOptions)) return false;
     return true;
 }
 
@@ -639,6 +645,9 @@ bool CreateShowcase(AppState* state, HWND window) {
                              state->themeGlacier,
                              state->themeMoss,
                              state->themeMono,
+                             state->overview.leftCard,
+                             state->overview.rightCard,
+                             state->overview.bottomCard,
                              state->overview.profile,
                              state->overview.primary,
                              state->overview.secondary,

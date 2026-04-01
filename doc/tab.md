@@ -44,6 +44,11 @@ theme.tabText = RGB(206, 211, 218);
 theme.tabTextActive = RGB(245, 247, 250);
 theme.tabHeight = 38;
 
+darkui::Panel card;
+darkui::Panel::Options cardOptions;
+cardOptions.cornerRadius = 20;
+card.Create(hwnd, 7000, theme, cardOptions);
+
 darkui::Tab tab;
 darkui::Tab::Options options;
 options.items = {
@@ -53,16 +58,17 @@ options.items = {
 };
 options.selection = 0;
 
-tab.Create(hwnd, 7001, theme, options);
+tab.Create(card.hwnd(), 7001, theme, options);
 
 darkui::ThemedWindowHost host;
 darkui::ThemedWindowHost::Options hostOptions;
 hostOptions.theme = theme;
 host.Attach(hwnd, hostOptions);
 auto& themeManager = host.theme_manager();
-themeManager.Bind(tab);
+themeManager.Bind(card, tab);
 themeManager.Apply();
 
+MoveWindow(card.hwnd(), 20, 20, 680, 460, TRUE);
 MoveWindow(tab.hwnd(), 20, 20, 640, 420, TRUE);
 ```
 
@@ -155,6 +161,7 @@ themeManager.Apply();
 ## Usage Notes
 
 - Page creation and page layout stay in application code
+- When the tab area sits on a shared card surface, prefer parenting it to `darkui::Panel`
 - Vertical layout works well for left navigation
 - Horizontal layout works well for classic tabbed windows
 

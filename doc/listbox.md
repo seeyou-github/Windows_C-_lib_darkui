@@ -33,6 +33,11 @@ theme.listBoxPanel = RGB(38, 42, 48);
 theme.listBoxText = RGB(232, 236, 241);
 theme.listBoxItemSelected = RGB(78, 120, 184);
 
+darkui::Panel card;
+darkui::Panel::Options cardOptions;
+cardOptions.cornerRadius = 18;
+card.Create(hwnd, 2200, theme, cardOptions);
+
 darkui::ListBox listBox;
 darkui::ListBox::Options options;
 options.cornerRadius = 12;
@@ -43,25 +48,27 @@ options.items = {
 };
 options.selection = 0;
 
-listBox.Create(hwnd, 2201, theme, options);
+listBox.Create(card.hwnd(), 2201, theme, options);
 
 darkui::ThemedWindowHost host;
 darkui::ThemedWindowHost::Options hostOptions;
 hostOptions.theme = theme;
 host.Attach(hwnd, hostOptions);
 auto& themeManager = host.theme_manager();
-themeManager.Bind(listBox);
+themeManager.Bind(card, listBox);
 themeManager.Apply();
 
+MoveWindow(card.hwnd(), 20, 20, 320, 220, TRUE);
 MoveWindow(listBox.hwnd(), 20, 20, 280, 180, TRUE);
 ```
 
 ## Multi-Selection Example
 
 ```cpp
+darkui::ListBox multiList;
 darkui::ListBox::Options multiOptions;
 multiOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | LBS_EXTENDEDSEL;
-listBox.Create(hwnd, 2202, theme, multiOptions);
+multiList.Create(card.hwnd(), 2202, theme, multiOptions);
 ```
 
 ## Parent Message Handling
@@ -125,6 +132,7 @@ listBox.SetCornerRadius(14);
 ## Usage Notes
 
 - Move and size the host returned by `listBox.hwnd()`
+- When the list box sits on a grouped card, prefer parenting it to `darkui::Panel`
 - Use `listBox.list_hwnd()` when you need direct access to the inner native `LISTBOX`
 - For multi-select mode, prefer `GetSelections()` instead of `GetSelection()`
 

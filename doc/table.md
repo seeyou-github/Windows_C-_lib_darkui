@@ -49,6 +49,11 @@ theme.tableGrid = RGB(69, 77, 89);
 theme.tableRowHeight = 30;
 theme.tableHeaderHeight = 34;
 
+darkui::Panel card;
+darkui::Panel::Options cardOptions;
+cardOptions.cornerRadius = 20;
+card.Create(hwnd, 2000, theme, cardOptions);
+
 darkui::Table table;
 darkui::Table::Options options;
 options.columns = {
@@ -62,16 +67,17 @@ options.rows = {
     {L"Table", L"Control", L"Ready", L"Dark header, body and grid"},
 };
 
-table.Create(hwnd, 2001, theme, options);
+table.Create(card.hwnd(), 2001, theme, options);
 
 darkui::ThemedWindowHost host;
 darkui::ThemedWindowHost::Options hostOptions;
 hostOptions.theme = theme;
 host.Attach(hwnd, hostOptions);
 auto& themeManager = host.theme_manager();
-themeManager.Bind(table);
+themeManager.Bind(card, table);
 themeManager.Apply();
 
+MoveWindow(card.hwnd(), 20, 20, 680, 400, TRUE);
 MoveWindow(table.hwnd(), 20, 20, 640, 360, TRUE);
 ```
 
@@ -137,6 +143,7 @@ bool drawEmptyGrid = table.draw_empty_grid();
 ## Usage Notes
 
 - Best suited for presentation-oriented tables rather than highly interactive grids
+- When the table sits on a dashboard-style card, prefer parenting it to `darkui::Panel`
 - Sorting, paging, and editing are expected to be implemented by application code if needed
 
 ## Demo Reference

@@ -39,18 +39,22 @@ darkui::ProgressBar::Options options;
 options.minimum = 0;
 options.maximum = 100;
 options.value = 64;
-options.surfaceRole = darkui::SurfaceRole::Panel;
 
-progress.Create(hwnd, 5001, theme, options);
+darkui::Panel card;
+darkui::Panel::Options cardOptions;
+card.Create(hwnd, 5000, theme, cardOptions);
+
+progress.Create(card.hwnd(), 5001, theme, options);
 
 darkui::ThemedWindowHost host;
 darkui::ThemedWindowHost::Options hostOptions;
 hostOptions.theme = theme;
 host.Attach(hwnd, hostOptions);
 auto& themeManager = host.theme_manager();
-themeManager.Bind(progress);
+themeManager.Bind(card, progress);
 themeManager.Apply();
 
+MoveWindow(card.hwnd(), 20, 20, 340, 90, TRUE);
 MoveWindow(progress.hwnd(), 20, 20, 300, 40, TRUE);
 ```
 
@@ -80,7 +84,6 @@ progress.SetShowPercentage(true);
 darkui::ProgressBar::Options options;
 options.minimum = 0;
 options.maximum = 100;
-options.surfaceRole = darkui::SurfaceRole::Panel;
 ```
 
 ### `ThemedWindowHost \+ ThemeManager`
@@ -116,7 +119,7 @@ bool showText = progress.show_percentage();
 
 ## Usage Notes
 
-- When the control sits on a custom card, prefer `options.surfaceRole = darkui::SurfaceRole::Panel`
+- When the control sits on a custom card, prefer parenting it to `darkui::Panel` and keeping `surfaceRole = Auto`
 - Changing the logical range automatically clamps the current value
 
 ## Demo Reference

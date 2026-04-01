@@ -31,22 +31,27 @@ darkui::Theme theme;
 theme.staticBackground = RGB(24, 27, 31);
 theme.staticText = RGB(236, 239, 244);
 
+darkui::Panel card;
+darkui::Panel::Options cardOptions;
+cardOptions.cornerRadius = 20;
+card.Create(hwnd, 1200, theme, cardOptions);
+
 darkui::Static title;
 darkui::Static::Options options;
 options.text = L"Repository Overview";
-options.surfaceRole = darkui::SurfaceRole::Panel;
 options.textFormat = DT_LEFT | DT_SINGLELINE;
 
-title.Create(hwnd, 1201, theme, options);
+title.Create(card.hwnd(), 1201, theme, options);
 
 darkui::ThemedWindowHost host;
 darkui::ThemedWindowHost::Options hostOptions;
 hostOptions.theme = theme;
 host.Attach(hwnd, hostOptions);
 auto& themeManager = host.theme_manager();
-themeManager.Bind(title);
+themeManager.Bind(card, title);
 themeManager.Apply();
 
+MoveWindow(card.hwnd(), 20, 20, 300, 120, TRUE);
 MoveWindow(title.hwnd(), 20, 20, 260, 36, TRUE);
 ```
 
@@ -93,7 +98,6 @@ title.SetBitmap(bitmapHandle);
 
 ```cpp
 darkui::Static::Options options;
-options.surfaceRole = darkui::SurfaceRole::Panel;
 options.textFormat = DT_CENTER | DT_SINGLELINE;
 ```
 

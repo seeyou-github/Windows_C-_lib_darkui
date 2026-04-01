@@ -11,6 +11,7 @@ namespace darkui {
 // Usage:
 // - Fill Static::Options and call Create(parent, id, theme, options).
 // - Position it with MoveWindow().
+// - When the static control sits inside darkui::Panel, the default `surfaceRole = Auto` inherits that panel surface.
 // - Bind it through ThemedWindowHost::theme_manager() when the page supports runtime theme changes.
 // - Use SetText(), SetIcon(), or SetBitmap() to switch presentation mode.
 // Notes:

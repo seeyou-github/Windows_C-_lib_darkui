@@ -54,6 +54,14 @@ See: [doc/dialog.md](doc/dialog.md)
 
 See: [doc/static.md](doc/static.md)
 
+### Panel
+
+- Dark card/container surface
+- Rounded background and border for grouped content
+- Child controls can inherit the panel surface automatically
+
+See: [doc/panel.md](doc/panel.md)
+
 ### ListBox
 
 - Dark list box
@@ -185,6 +193,7 @@ This is available for:
 - `Dialog::Options`
 - `Edit::Options`
 - `ListBox::Options`
+- `Panel::Options`
 - `ProgressBar::Options`
 - `RadioButton::Options`
 - `ScrollBar::Options`
@@ -208,10 +217,13 @@ darkui::Button button;
 darkui::Button::Options options;
 options.text = L"Refresh";
 options.cornerRadius = 14;
-options.surfaceRole = darkui::SurfaceRole::Panel;
 
-button.Create(hwnd, 1001, host.theme(), options);
-host.theme_manager().Bind(button);
+darkui::Panel card;
+darkui::Panel::Options cardOptions;
+card.Create(hwnd, 1000, host.theme(), cardOptions);
+
+button.Create(card.hwnd(), 1001, host.theme(), options);
+host.theme_manager().Bind(card, button);
 host.theme_manager().Apply();
 ```
 
@@ -265,6 +277,24 @@ host.theme_manager().Apply();
 host.ApplyTheme(darkui::MakePresetTheme(darkui::ThemePreset::Moss));
 ```
 
+## Panel And Surface Inheritance
+
+Use `Panel` when several child controls live on the same card surface:
+
+```cpp
+darkui::Panel card;
+darkui::Panel::Options cardOptions;
+card.Create(hwnd, 1200, host.theme(), cardOptions);
+
+darkui::Static title;
+darkui::Static::Options titleOptions;
+titleOptions.text = L"Repository Overview";
+
+title.Create(card.hwnd(), 1201, host.theme(), titleOptions);
+```
+
+With that structure, child controls can usually keep the default `surfaceRole = Auto`.
+
 One-shot dark dialog:
 
 ```cpp
@@ -297,6 +327,7 @@ Per-control includes:
 #include "darkui/dialog.h"
 #include "darkui/edit.h"
 #include "darkui/listbox.h"
+#include "darkui/panel.h"
 #include "darkui/progress.h"
 #include "darkui/quick.h"
 #include "darkui/radiobutton.h"
@@ -330,6 +361,7 @@ Windows_C++_lib_darkui/
     dialog.md
     edit.md
     listbox.md
+    panel.md
     progress.md
     radiobutton.md
     scrollbar.md

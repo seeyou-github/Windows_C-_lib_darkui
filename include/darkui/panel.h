@@ -11,6 +11,9 @@ namespace darkui {
 // - Fill Panel::Options and call Create(parent, id, theme, options).
 // - Parent child controls to panel.hwnd() so `SurfaceRole::Auto` can inherit the panel surface.
 // - Bind the panel through ThemedWindowHost::theme_manager() when the page supports runtime theme changes.
+// Notes:
+// - Prefer Panel when several child controls should share one card/panel surface.
+// - This avoids repeating `options.surfaceRole = SurfaceRole::Panel` on every child control.
 class Panel {
 public:
     struct Impl;

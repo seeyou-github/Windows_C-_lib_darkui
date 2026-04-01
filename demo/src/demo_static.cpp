@@ -9,6 +9,7 @@ constexpr wchar_t kDemoClassName[] = L"DarkUiStaticDemoWindow";
 constexpr wchar_t kDemoTitle[] = L"lib_darkui static demo";
 
 enum ControlId {
+    ID_PANEL_CARD = 5100,
     ID_STATIC_TITLE = 5101,
     ID_STATIC_ICON = 5102,
     ID_STATIC_BITMAP = 5103
@@ -16,6 +17,7 @@ enum ControlId {
 
 struct DemoState {
     darkui::ThemedWindowHost host;
+    darkui::Panel card;
     darkui::Static title;
     darkui::Static iconView;
     darkui::Static bitmapView;
@@ -70,9 +72,10 @@ HBITMAP CreatePreviewBitmap(HWND window) {
 }
 
 void Layout(HWND, DemoState* state) {
-    MoveWindow(state->title.hwnd(), 32, 108, 300, 44, TRUE);
-    MoveWindow(state->iconView.hwnd(), 32, 176, 96, 96, TRUE);
-    MoveWindow(state->bitmapView.hwnd(), 152, 176, 140, 96, TRUE);
+    MoveWindow(state->card.hwnd(), 32, 108, 340, 200, TRUE);
+    MoveWindow(state->title.hwnd(), 20, 18, 300, 44, TRUE);
+    MoveWindow(state->iconView.hwnd(), 20, 86, 96, 96, TRUE);
+    MoveWindow(state->bitmapView.hwnd(), 140, 86, 140, 96, TRUE);
 }
 
 void DrawLine(HDC dc, HFONT font, COLORREF color, RECT rect, const wchar_t* text, UINT format) {
@@ -102,24 +105,25 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             return -1;
         }
 
+        darkui::Panel::Options panelOptions;
+        panelOptions.role = darkui::SurfaceRole::Panel;
+        panelOptions.cornerRadius = 22;
         darkui::Static::Options titleOptions;
         titleOptions.text = L"Dark static text block";
-        titleOptions.surfaceRole = darkui::SurfaceRole::Panel;
         titleOptions.textFormat = DT_LEFT | DT_SINGLELINE;
         darkui::Static::Options iconOptions;
-        iconOptions.surfaceRole = darkui::SurfaceRole::Panel;
         iconOptions.icon = LoadIconW(nullptr, IDI_INFORMATION);
         darkui::Static::Options bitmapOptions;
-        bitmapOptions.surfaceRole = darkui::SurfaceRole::Panel;
         bitmapOptions.bitmap = created->previewBitmap;
 
-        if (!created->title.Create(window, ID_STATIC_TITLE, created->host.theme(), titleOptions) ||
-            !created->iconView.Create(window, ID_STATIC_ICON, created->host.theme(), iconOptions) ||
-            !created->bitmapView.Create(window, ID_STATIC_BITMAP, created->host.theme(), bitmapOptions)) {
+        if (!created->card.Create(window, ID_PANEL_CARD, created->host.theme(), panelOptions) ||
+            !created->title.Create(created->card.hwnd(), ID_STATIC_TITLE, created->host.theme(), titleOptions) ||
+            !created->iconView.Create(created->card.hwnd(), ID_STATIC_ICON, created->host.theme(), iconOptions) ||
+            !created->bitmapView.Create(created->card.hwnd(), ID_STATIC_BITMAP, created->host.theme(), bitmapOptions)) {
             CleanupState(created);
             return -1;
         }
-        created->host.theme_manager().Bind(created->title, created->iconView, created->bitmapView);
+        created->host.theme_manager().Bind(created->card, created->title, created->iconView, created->bitmapView);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);

@@ -61,30 +61,34 @@ darkui::Static label;
 darkui::Edit titleEdit;
 darkui::Button fillButton;
 darkui::Edit notesEdit;
+darkui::Panel formPanel;
+
+darkui::Panel::Options panelOptions;
+panelOptions.cornerRadius = 18;
+formPanel.Create(dialog.content_hwnd(), 5100, theme, panelOptions);
 
 darkui::Static::Options labelOptions;
 labelOptions.text = L"Title";
-labelOptions.surfaceRole = darkui::SurfaceRole::Panel;
 darkui::Edit::Options titleOptions;
 titleOptions.cueBanner = L"Enter a title";
 darkui::Button::Options fillOptions;
 fillOptions.text = L"Fill Sample";
 fillOptions.cornerRadius = 12;
-fillOptions.surfaceRole = darkui::SurfaceRole::Panel;
 darkui::Edit::Options notesOptions;
 notesOptions.cueBanner = L"Write notes here";
 notesOptions.cornerRadius = 12;
 notesOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL;
 
-label.Create(dialog.content_hwnd(), 5101, theme, labelOptions);
-titleEdit.Create(dialog.content_hwnd(), 5102, theme, titleOptions);
-fillButton.Create(dialog.content_hwnd(), 5103, theme, fillOptions);
-notesEdit.Create(dialog.content_hwnd(), 5104, theme, notesOptions);
+label.Create(formPanel.hwnd(), 5101, theme, labelOptions);
+titleEdit.Create(formPanel.hwnd(), 5102, theme, titleOptions);
+fillButton.Create(formPanel.hwnd(), 5103, theme, fillOptions);
+notesEdit.Create(formPanel.hwnd(), 5104, theme, notesOptions);
 
+MoveWindow(formPanel.hwnd(), 16, 16, 512, 240, TRUE);
 MoveWindow(label.hwnd(), 16, 16, 120, 24, TRUE);
 MoveWindow(titleEdit.hwnd(), 16, 44, 360, 38, TRUE);
-MoveWindow(fillButton.hwnd(), 392, 44, 120, 38, TRUE);
-MoveWindow(notesEdit.hwnd(), 16, 96, 496, 150, TRUE);
+MoveWindow(fillButton.hwnd(), 392, 44, 104, 38, TRUE);
+MoveWindow(notesEdit.hwnd(), 16, 96, 480, 128, TRUE);
 
 dialog.ShowModal();
 ```

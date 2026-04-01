@@ -15,6 +15,7 @@ enum ControlId {
     ID_OPEN_MESSAGE = 9201,
     ID_OPEN_FORM = 9202,
     ID_DIALOG_FILL = 9301,
+    ID_DIALOG_PANEL = 9306,
     ID_DIALOG_TITLE = 9302,
     ID_DIALOG_NOTES = 9303,
     ID_DIALOG_LABEL_TITLE = 9304,
@@ -24,6 +25,7 @@ enum ControlId {
 struct CustomDialogSession {
     darkui::ThemeManager themeManager;
     darkui::Dialog dialog;
+    darkui::Panel formPanel;
     darkui::Static titleLabel;
     darkui::Static notesLabel;
     darkui::Edit titleEdit;
@@ -114,10 +116,12 @@ void ShowFormDialog(HWND window, DemoState* state) {
         return;
     }
 
+    darkui::Panel::Options panelOptions;
+    panelOptions.role = darkui::SurfaceRole::Panel;
+    panelOptions.cornerRadius = 18;
     darkui::Static::Options titleLabelOptions;
     titleLabelOptions.text = L"Title";
     titleLabelOptions.style = WS_CHILD | WS_VISIBLE | SS_LEFT;
-    titleLabelOptions.surfaceRole = darkui::SurfaceRole::Panel;
     darkui::Static::Options notesLabelOptions = titleLabelOptions;
     notesLabelOptions.text = L"Notes";
     darkui::Edit::Options titleEditOptions;
@@ -126,29 +130,30 @@ void ShowFormDialog(HWND window, DemoState* state) {
     darkui::Button::Options fillButtonOptions;
     fillButtonOptions.text = L"Fill Sample";
     fillButtonOptions.cornerRadius = 12;
-    fillButtonOptions.surfaceRole = darkui::SurfaceRole::Panel;
     darkui::Edit::Options notesEditOptions;
     notesEditOptions.cueBanner = L"Write your notes here";
     notesEditOptions.cornerRadius = 12;
     notesEditOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL;
 
-    if (!session.titleLabel.Create(session.dialog.content_hwnd(), ID_DIALOG_LABEL_TITLE, state->host.theme(), titleLabelOptions) ||
-        !session.notesLabel.Create(session.dialog.content_hwnd(), ID_DIALOG_LABEL_NOTES, state->host.theme(), notesLabelOptions) ||
-        !session.titleEdit.Create(session.dialog.content_hwnd(), ID_DIALOG_TITLE, state->host.theme(), titleEditOptions) ||
-        !session.fillButton.Create(session.dialog.content_hwnd(), ID_DIALOG_FILL, state->host.theme(), fillButtonOptions) ||
-        !session.notesEdit.Create(session.dialog.content_hwnd(), ID_DIALOG_NOTES, state->host.theme(), notesEditOptions)) {
+    if (!session.formPanel.Create(session.dialog.content_hwnd(), ID_DIALOG_PANEL, state->host.theme(), panelOptions) ||
+        !session.titleLabel.Create(session.formPanel.hwnd(), ID_DIALOG_LABEL_TITLE, state->host.theme(), titleLabelOptions) ||
+        !session.notesLabel.Create(session.formPanel.hwnd(), ID_DIALOG_LABEL_NOTES, state->host.theme(), notesLabelOptions) ||
+        !session.titleEdit.Create(session.formPanel.hwnd(), ID_DIALOG_TITLE, state->host.theme(), titleEditOptions) ||
+        !session.fillButton.Create(session.formPanel.hwnd(), ID_DIALOG_FILL, state->host.theme(), fillButtonOptions) ||
+        !session.notesEdit.Create(session.formPanel.hwnd(), ID_DIALOG_NOTES, state->host.theme(), notesEditOptions)) {
         state->status = L"Form controls creation failed";
         state->activeDialog.reset();
         InvalidateRect(window, nullptr, FALSE);
         return;
     }
-    session.themeManager.Bind(session.dialog, session.titleLabel, session.notesLabel, session.titleEdit, session.fillButton, session.notesEdit);
+    session.themeManager.Bind(session.dialog, session.formPanel, session.titleLabel, session.notesLabel, session.titleEdit, session.fillButton, session.notesEdit);
 
+    MoveWindow(session.formPanel.hwnd(), 16, 14, 526, 254, TRUE);
     MoveWindow(session.titleLabel.hwnd(), 16, 14, 120, 22, TRUE);
-    MoveWindow(session.titleEdit.hwnd(), 16, 40, 390, 38, TRUE);
-    MoveWindow(session.fillButton.hwnd(), 422, 40, 120, 38, TRUE);
+    MoveWindow(session.titleEdit.hwnd(), 16, 40, 374, 38, TRUE);
+    MoveWindow(session.fillButton.hwnd(), 406, 40, 104, 38, TRUE);
     MoveWindow(session.notesLabel.hwnd(), 16, 94, 120, 22, TRUE);
-    MoveWindow(session.notesEdit.hwnd(), 16, 120, 526, 148, TRUE);
+    MoveWindow(session.notesEdit.hwnd(), 16, 120, 494, 118, TRUE);
 
     const darkui::Dialog::Result result = session.dialog.ShowModal();
     if (result == darkui::Dialog::Result::Confirm) {

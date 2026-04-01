@@ -11,6 +11,7 @@ namespace darkui {
 // Usage:
 // - Fill RadioButton::Options and call Create(parent, id, theme, options).
 // - Position them with MoveWindow().
+// - When the radio buttons sit inside darkui::Panel, the default `surfaceRole = Auto` inherits that panel surface.
 // - Bind them into ThemeManager when the page supports theme switching, usually through ThemedWindowHost::theme_manager().
 // - Handle selection changes through WM_COMMAND / BN_CLICKED in the parent window.
 // Notes:

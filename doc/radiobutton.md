@@ -35,26 +35,28 @@ theme.radioText = RGB(236, 239, 244);
 
 darkui::RadioButton compact;
 darkui::RadioButton detailed;
+darkui::Panel card;
+darkui::Panel::Options cardOptions;
+card.Create(hwnd, 4400, theme, cardOptions);
 darkui::RadioButton::Options compactOptions;
 compactOptions.text = L"Compact view";
 compactOptions.checked = true;
-compactOptions.surfaceRole = darkui::SurfaceRole::Panel;
 compactOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_GROUP;
 darkui::RadioButton::Options detailedOptions;
 detailedOptions.text = L"Detailed view";
-detailedOptions.surfaceRole = darkui::SurfaceRole::Panel;
 
-compact.Create(hwnd, 4401, theme, compactOptions);
-detailed.Create(hwnd, 4402, theme, detailedOptions);
+compact.Create(card.hwnd(), 4401, theme, compactOptions);
+detailed.Create(card.hwnd(), 4402, theme, detailedOptions);
 
 darkui::ThemedWindowHost host;
 darkui::ThemedWindowHost::Options hostOptions;
 hostOptions.theme = theme;
 host.Attach(hwnd, hostOptions);
 auto& themeManager = host.theme_manager();
-themeManager.Bind(compact, detailed);
+themeManager.Bind(card, compact, detailed);
 themeManager.Apply();
 
+MoveWindow(card.hwnd(), 20, 20, 300, 110, TRUE);
 MoveWindow(compact.hwnd(), 20, 20, 260, 28, TRUE);
 MoveWindow(detailed.hwnd(), 20, 56, 260, 28, TRUE);
 ```
@@ -90,7 +92,6 @@ bool selected = compact.GetChecked();
 
 ```cpp
 darkui::RadioButton::Options options;
-options.surfaceRole = darkui::SurfaceRole::Panel;
 options.checked = true;
 ```
 
@@ -109,7 +110,7 @@ options.checked = true;
 
 - Use `WS_GROUP` on the first radio button in a group
 - Native auto-radio behavior clears the previously selected sibling
-- Prefer `options.surfaceRole` when the control sits on a card or panel
+- Prefer parenting the radio buttons to `darkui::Panel` when they sit on a shared card surface
 
 ## Demo Reference
 

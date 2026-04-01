@@ -37,18 +37,22 @@ darkui::CheckBox remember;
 darkui::CheckBox::Options options;
 options.text = L"Remember last workspace";
 options.checked = true;
-options.surfaceRole = darkui::SurfaceRole::Panel;
 
-remember.Create(hwnd, 3301, theme, options);
+darkui::Panel card;
+darkui::Panel::Options cardOptions;
+card.Create(hwnd, 3300, theme, cardOptions);
+
+remember.Create(card.hwnd(), 3301, theme, options);
 
 darkui::ThemedWindowHost host;
 darkui::ThemedWindowHost::Options hostOptions;
 hostOptions.theme = theme;
 host.Attach(hwnd, hostOptions);
 auto& themeManager = host.theme_manager();
-themeManager.Bind(remember);
+themeManager.Bind(card, remember);
 themeManager.Apply();
 
+MoveWindow(card.hwnd(), 20, 20, 320, 72, TRUE);
 MoveWindow(remember.hwnd(), 20, 20, 280, 28, TRUE);
 ```
 
@@ -82,7 +86,6 @@ bool checked = remember.GetChecked();
 
 ```cpp
 darkui::CheckBox::Options options;
-options.surfaceRole = darkui::SurfaceRole::Panel;
 options.checked = true;
 ```
 
@@ -101,7 +104,7 @@ options.checked = true;
 
 - Use `SetChecked()` for initial state setup
 - Disable the control through `EnableWindow(checkbox.hwnd(), FALSE)`
-- Prefer `options.surfaceRole` over manually calling `SetSurfaceColor(...)`
+- Prefer parenting the checkbox to `darkui::Panel` over manually pushing panel colors
 
 ## Demo Reference
 

@@ -40,18 +40,22 @@ darkui::Button button;
 darkui::Button::Options options;
 options.text = L"Run";
 options.cornerRadius = 14;
-options.surfaceRole = darkui::SurfaceRole::Panel;
 
-button.Create(hwnd, 3001, theme, options);
+darkui::Panel card;
+darkui::Panel::Options cardOptions;
+card.Create(hwnd, 3000, theme, cardOptions);
+
+button.Create(card.hwnd(), 3001, theme, options);
 
 darkui::ThemedWindowHost host;
 darkui::ThemedWindowHost::Options hostOptions;
 hostOptions.theme = theme;
 host.Attach(hwnd, hostOptions);
 auto& themeManager = host.theme_manager();
-themeManager.Bind(button);
+themeManager.Bind(card, button);
 themeManager.Apply();
 
+MoveWindow(card.hwnd(), 20, 20, 220, 90, TRUE);
 MoveWindow(button.hwnd(), 20, 20, 140, 40, TRUE);
 ```
 
@@ -80,7 +84,6 @@ bool Create(HWND parent, int controlId, const Theme& theme, const Button::Option
 darkui::Button::Options options;
 options.text = L"Run";
 options.cornerRadius = 18;
-options.surfaceRole = darkui::SurfaceRole::Panel;
 ```
 
 ### `SetText` / `GetText`
@@ -129,7 +132,7 @@ Purpose:
 ## Usage Notes
 
 - For plain window backgrounds, the default surface fallback is usually enough
-- For cards and panels, prefer `options.surfaceRole = darkui::SurfaceRole::Panel`
+- For cards and panels, prefer parenting the button to `darkui::Panel` and keeping `surfaceRole = Auto`
 - Use `ThemedWindowHost + theme_manager()` when the same page will switch themes repeatedly
 - To disable the control, use `EnableWindow(button.hwnd(), FALSE)`
 

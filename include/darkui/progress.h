@@ -10,6 +10,7 @@ namespace darkui {
 // Usage:
 // - Fill ProgressBar::Options and call Create(parent, id, theme, options).
 // - Position it with MoveWindow().
+// - When the progress bar sits inside darkui::Panel, the default `surfaceRole = Auto` inherits that panel surface.
 // - Bind it through ThemedWindowHost::theme_manager() when the page supports runtime theme changes.
 // - Update its state with SetRange() and SetValue().
 class ProgressBar {

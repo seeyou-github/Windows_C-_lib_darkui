@@ -34,21 +34,27 @@ theme.editBackground = RGB(43, 47, 54);
 theme.editText = RGB(236, 239, 244);
 theme.editPlaceholder = RGB(128, 137, 150);
 
+darkui::Panel card;
+darkui::Panel::Options cardOptions;
+cardOptions.cornerRadius = 20;
+card.Create(hwnd, 9000, theme, cardOptions);
+
 darkui::Edit edit;
 darkui::Edit::Options options;
 options.cueBanner = L"Search or enter text";
 options.cornerRadius = 16;
 
-edit.Create(hwnd, 9001, theme, options);
+edit.Create(card.hwnd(), 9001, theme, options);
 
 darkui::ThemedWindowHost host;
 darkui::ThemedWindowHost::Options hostOptions;
 hostOptions.theme = theme;
 host.Attach(hwnd, hostOptions);
 auto& themeManager = host.theme_manager();
-themeManager.Bind(edit);
+themeManager.Bind(card, edit);
 themeManager.Apply();
 
+MoveWindow(card.hwnd(), 20, 20, 320, 92, TRUE);
 MoveWindow(edit.hwnd(), 20, 20, 260, 42, TRUE);
 ```
 
@@ -113,8 +119,8 @@ notesOptions.text = L"Line 1\r\nLine 2\r\nLine 3";
 notesOptions.cueBanner = L"Write notes here";
 notesOptions.cornerRadius = 16;
 notesOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL;
-notes.Create(hwnd, 9002, theme, notesOptions);
-MoveWindow(notes.hwnd(), 20, 72, 320, 140, TRUE);
+notes.Create(card.hwnd(), 9002, theme, notesOptions);
+MoveWindow(notes.hwnd(), 20, 72, 280, 140, TRUE);
 ```
 
 ### `hwnd` / `edit_hwnd`
@@ -134,6 +140,7 @@ HWND nativeEdit = edit.edit_hwnd();
 ## Usage Notes
 
 - Move and size the host returned by `edit.hwnd()`
+- When several inputs share one card surface, prefer parenting them to `darkui::Panel`
 - Use `edit.edit_hwnd()` when you need direct access to the inner native `EDIT`
 - Read-only mode keeps the same dark appearance
 - Multiline mode is enabled by filling `Edit::Options::style` with normal Win32 edit flags
