@@ -75,13 +75,13 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         darkui::CheckBox::Options checkAOptions;
         checkAOptions.text = L"Enable automatic thumbnail generation";
         checkAOptions.checked = true;
-        checkAOptions.surfaceRole = darkui::SurfaceRole::Background;
+        checkAOptions.variant = darkui::SelectionVariant::Accent;
         darkui::CheckBox::Options checkBOptions;
         checkBOptions.text = L"Pin inspector on startup";
-        checkBOptions.surfaceRole = darkui::SurfaceRole::Background;
+        checkBOptions.variant = darkui::SelectionVariant::Default;
         darkui::CheckBox::Options checkCOptions;
         checkCOptions.text = L"Download proxy media in background";
-        checkCOptions.surfaceRole = darkui::SurfaceRole::Background;
+        checkCOptions.variant = darkui::SelectionVariant::Panel;
 
         if (!created->checkA.Create(window, ID_CHECK_A, created->host.theme(), checkAOptions) ||
             !created->checkB.Create(window, ID_CHECK_B, created->host.theme(), checkBOptions) ||

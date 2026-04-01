@@ -10,6 +10,16 @@ constexpr wchar_t kSliderClassName[] = L"DarkUiSliderControl";
 ATOM EnsureSliderClassRegistered(HINSTANCE instance);
 LRESULT CALLBACK SliderWindowProcThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 
+COLORREF MixColor(COLORREF a, COLORREF b, double ratio) {
+    ratio = std::clamp(ratio, 0.0, 1.0);
+    const auto mix = [ratio](int x, int y) {
+        return static_cast<int>(x + (y - x) * ratio + 0.5);
+    };
+    return RGB(mix(GetRValue(a), GetRValue(b)),
+               mix(GetGValue(a), GetGValue(b)),
+               mix(GetBValue(a), GetBValue(b)));
+}
+
 }  // namespace
 
 struct Slider::Impl {
@@ -37,6 +47,31 @@ struct Slider::Impl {
     }
 
     void UpdateThemeResources() {
+        owner->trackHeight_ = std::max(2, owner->theme_.sliderTrackHeight);
+        owner->thumbRadius_ = std::max(4, owner->theme_.sliderThumbRadius);
+        owner->backgroundColor_ = owner->theme_.sliderBackground;
+        owner->trackColor_ = owner->theme_.sliderTrack;
+        owner->fillColor_ = owner->theme_.sliderFill;
+        owner->thumbColor_ = owner->theme_.sliderThumb;
+        owner->thumbHotColor_ = owner->theme_.sliderThumbHot;
+        owner->tickColor_ = owner->theme_.sliderTick;
+
+        switch (owner->variant_) {
+        case SliderVariant::Dense:
+            owner->trackHeight_ = std::max(2, owner->trackHeight_ - 2);
+            owner->thumbRadius_ = std::max(4, owner->thumbRadius_ - 1);
+            break;
+        case SliderVariant::Emphasis:
+            owner->trackHeight_ = std::max(4, owner->trackHeight_ + 2);
+            owner->thumbRadius_ = std::max(5, owner->thumbRadius_ + 1);
+            owner->fillColor_ = MixColor(owner->theme_.sliderFill, owner->theme_.accent, 0.45);
+            owner->thumbHotColor_ = MixColor(owner->theme_.sliderThumbHot, owner->theme_.highlightText, 0.35);
+            break;
+        case SliderVariant::Default:
+        default:
+            break;
+        }
+
         if (brushBackground) DeleteObject(brushBackground);
         if (brushTrack) DeleteObject(brushTrack);
         if (brushFill) DeleteObject(brushFill);
@@ -44,12 +79,12 @@ struct Slider::Impl {
         if (brushThumbHot) DeleteObject(brushThumbHot);
         if (brushTick) DeleteObject(brushTick);
 
-        brushBackground = CreateSolidBrush(owner->theme_.sliderBackground);
-        brushTrack = CreateSolidBrush(owner->theme_.sliderTrack);
-        brushFill = CreateSolidBrush(owner->theme_.sliderFill);
-        brushThumb = CreateSolidBrush(owner->theme_.sliderThumb);
-        brushThumbHot = CreateSolidBrush(owner->theme_.sliderThumbHot);
-        brushTick = CreateSolidBrush(owner->theme_.sliderTick);
+        brushBackground = CreateSolidBrush(owner->backgroundColor_);
+        brushTrack = CreateSolidBrush(owner->trackColor_);
+        brushFill = CreateSolidBrush(owner->fillColor_);
+        brushThumb = CreateSolidBrush(owner->thumbColor_);
+        brushThumbHot = CreateSolidBrush(owner->thumbHotColor_);
+        brushTick = CreateSolidBrush(owner->tickColor_);
 
         if (owner->sliderHwnd_) {
             InvalidateRect(owner->sliderHwnd_, nullptr, TRUE);
@@ -59,7 +94,7 @@ struct Slider::Impl {
     RECT GetTrackRect() const {
         RECT client{};
         GetClientRect(owner->sliderHwnd_, &client);
-        const int trackHeight = std::max(2, owner->theme_.sliderTrackHeight);
+        const int trackHeight = std::max(2, owner->trackHeight_);
         const int horizontalPadding = HorizontalPadding();
         RECT track{
             client.left + horizontalPadding,
@@ -125,7 +160,7 @@ struct Slider::Impl {
     }
 
     int HorizontalPadding() const {
-        const int thumbRadius = std::max(4, owner->theme_.sliderThumbRadius);
+        const int thumbRadius = std::max(4, owner->thumbRadius_);
         return thumbRadius + 2;
     }
 
@@ -163,7 +198,7 @@ struct Slider::Impl {
             FillRect(targetDc, &fill, brushFill);
         }
 
-        const int radius = std::max(4, owner->theme_.sliderThumbRadius);
+        const int radius = std::max(4, owner->thumbRadius_);
         const int centerY = ThumbCenterY();
         RECT thumb{
             ThumbCenterX() - radius,
@@ -316,6 +351,7 @@ bool Slider::Create(HWND parent, int controlId, const Theme& theme, const Option
     parentHwnd_ = parent;
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
+    variant_ = options.variant;
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);

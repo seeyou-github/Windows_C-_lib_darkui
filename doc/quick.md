@@ -47,7 +47,7 @@ darkui::Theme theme = darkui::MakePresetTheme(darkui::ThemePreset::Graphite);
 darkui::Button button;
 darkui::Button::Options options;
 options.text = L"Apply";
-options.cornerRadius = 14;
+options.variant = darkui::ButtonVariant::Primary;
 
 darkui::Panel card;
 darkui::Panel::Options cardOptions;
@@ -58,6 +58,16 @@ button.Create(card.hwnd(), 4101, theme, options);
 
 If you need an explicit color, `surfaceColor` still overrides `surfaceRole`.
 If several controls share one card surface, prefer `darkui::Panel` and let children inherit it.
+For common styles, prefer semantic variants before hand-tuning radius or density:
+
+- `ButtonVariant::Primary / Secondary / Subtle / Ghost / Danger`
+- `FieldVariant::Default / Panel / Dense`
+- `StaticVariant::Title / Body / Muted / PanelTitle / PanelBody`
+- `SelectionVariant::Default / Panel / Accent`
+- `ProgressVariant::Default / Panel / Emphasis`
+- `SliderVariant::Default / Dense / Emphasis`
+- `TabVariant::Default / Panel / Accent`
+- `ToolbarVariant::Default / Dense / Accent`
 
 ## Panel And Surface Inheritance
 

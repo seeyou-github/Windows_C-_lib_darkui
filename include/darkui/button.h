@@ -7,11 +7,25 @@
 
 namespace darkui {
 
+// Semantic visual preset for darkui::Button.
+// Usage:
+// - Prefer `variant` for common button roles before manually tuning radius or colors.
+// - Primary is the default call-to-action style.
+// - Secondary, Subtle, Ghost, and Danger cover the most common supporting actions.
+enum class ButtonVariant {
+    Primary = 0,
+    Secondary,
+    Subtle,
+    Ghost,
+    Danger
+};
+
 // Owner-drawn dark button with standard Win32 BN_CLICKED behavior.
 // Usage:
 // - Fill Button::Options and call Create(parent, id, theme, options).
 // - Position it with MoveWindow().
 // - When the button sits inside darkui::Panel, the default `surfaceRole = Auto` inherits that panel surface.
+// - Prefer `variant` for common roles before manually tuning radius or surface values.
 // - Bind it into ThemeManager when the page supports theme switching, usually through ThemedWindowHost::theme_manager().
 // - Handle clicks through WM_COMMAND / BN_CLICKED in the parent window.
 class Button {
@@ -21,6 +35,7 @@ public:
         int cornerRadius = -1;
         COLORREF surfaceColor = CLR_INVALID;
         SurfaceRole surfaceRole = SurfaceRole::Auto;
+        ButtonVariant variant = ButtonVariant::Primary;
         DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW;
         DWORD exStyle = 0;
     };
@@ -50,6 +65,8 @@ public:
     int corner_radius() const { return cornerRadius_; }
     // Returns the background color used to fill the area outside the rounded button body.
     COLORREF surface_color() const { return surfaceColor_; }
+    // Returns the semantic visual preset currently active on the button.
+    ButtonVariant variant() const { return variant_; }
 
     // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
@@ -99,6 +116,16 @@ private:
     SurfaceRole surfaceRole_ = SurfaceRole::Auto;
     // Tracks whether SetSurfaceColor or Options::surfaceColor overrode inheritance.
     bool hasCustomSurfaceColor_ = false;
+    // Semantic visual preset used to derive the effective palette.
+    ButtonVariant variant_ = ButtonVariant::Primary;
+    // Resolved visual colors for this button instance.
+    COLORREF fillColor_ = RGB(65, 72, 82);
+    COLORREF fillHoverColor_ = RGB(72, 80, 92);
+    COLORREF fillHotColor_ = RGB(78, 86, 98);
+    COLORREF fillDisabledColor_ = RGB(50, 54, 60);
+    COLORREF borderColor_ = RGB(61, 66, 74);
+    COLORREF textColor_ = RGB(245, 247, 250);
+    COLORREF disabledTextColor_ = RGB(130, 136, 144);
     // Theme currently used by the control.
     Theme theme_{};
 };

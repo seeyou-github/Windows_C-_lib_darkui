@@ -12,6 +12,7 @@ namespace darkui {
 // - Fill CheckBox::Options and call Create(parent, id, theme, options).
 // - Position it with MoveWindow().
 // - When the checkbox sits inside darkui::Panel, the default `surfaceRole = Auto` inherits that panel surface.
+// - Prefer `variant` for common selection styles before manually tuning surfaces.
 // - Bind it into ThemeManager when the page supports theme switching, usually through ThemedWindowHost::theme_manager().
 // - Handle state changes through WM_COMMAND / BN_CLICKED in the parent window.
 class CheckBox {
@@ -21,6 +22,7 @@ public:
         bool checked = false;
         COLORREF surfaceColor = CLR_INVALID;
         SurfaceRole surfaceRole = SurfaceRole::Auto;
+        SelectionVariant variant = SelectionVariant::Default;
         DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP;
         DWORD exStyle = 0;
     };
@@ -41,6 +43,7 @@ public:
     int control_id() const { return controlId_; }
     const Theme& theme() const { return theme_; }
     COLORREF surface_color() const { return surfaceColor_; }
+    SelectionVariant variant() const { return variant_; }
 
     // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
@@ -59,6 +62,7 @@ private:
     COLORREF surfaceColor_ = RGB(34, 36, 40);
     SurfaceRole surfaceRole_ = SurfaceRole::Auto;
     bool hasCustomSurfaceColor_ = false;
+    SelectionVariant variant_ = SelectionVariant::Default;
     Theme theme_{};
 };
 

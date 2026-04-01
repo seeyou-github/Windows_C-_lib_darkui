@@ -2,7 +2,7 @@
 
 ## Overview
 
-`darkui::Button` is a custom dark owner-draw button for Win32. It preserves the standard Win32 button notification flow while giving application code control over colors, corner radius, and host surface blending.
+`darkui::Button` is a custom dark owner-draw button for Win32. It preserves the standard Win32 button notification flow while giving application code control over semantic button roles, rounded geometry, and host surface blending.
 
 ## Files
 
@@ -18,6 +18,7 @@
 ## Main Features
 
 - Normal, hover, pressed, and disabled states
+- Semantic variants for common button roles
 - Custom border and text colors
 - Configurable corner radius
 - Host surface color support to avoid visible seams around rounded corners
@@ -39,7 +40,7 @@ theme.text = RGB(232, 236, 241);
 darkui::Button button;
 darkui::Button::Options options;
 options.text = L"Run";
-options.cornerRadius = 14;
+options.variant = darkui::ButtonVariant::Secondary;
 
 darkui::Panel card;
 darkui::Panel::Options cardOptions;
@@ -83,7 +84,17 @@ bool Create(HWND parent, int controlId, const Theme& theme, const Button::Option
 ```cpp
 darkui::Button::Options options;
 options.text = L"Run";
-options.cornerRadius = 18;
+options.variant = darkui::ButtonVariant::Primary;
+```
+
+Available variants:
+
+```cpp
+darkui::ButtonVariant::Primary
+darkui::ButtonVariant::Secondary
+darkui::ButtonVariant::Subtle
+darkui::ButtonVariant::Ghost
+darkui::ButtonVariant::Danger
 ```
 
 ### `SetText` / `GetText`
@@ -133,6 +144,7 @@ Purpose:
 
 - For plain window backgrounds, the default surface fallback is usually enough
 - For cards and panels, prefer parenting the button to `darkui::Panel` and keeping `surfaceRole = Auto`
+- Prefer `variant` for common roles and only override `cornerRadius` or `surfaceColor` when the preset is not enough
 - Use `ThemedWindowHost + theme_manager()` when the same page will switch themes repeatedly
 - To disable the control, use `EnableWindow(button.hwnd(), FALSE)`
 

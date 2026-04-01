@@ -121,18 +121,18 @@ void ShowFormDialog(HWND window, DemoState* state) {
     panelOptions.cornerRadius = 18;
     darkui::Static::Options titleLabelOptions;
     titleLabelOptions.text = L"Title";
-    titleLabelOptions.style = WS_CHILD | WS_VISIBLE | SS_LEFT;
+    titleLabelOptions.variant = darkui::StaticVariant::PanelTitle;
     darkui::Static::Options notesLabelOptions = titleLabelOptions;
     notesLabelOptions.text = L"Notes";
     darkui::Edit::Options titleEditOptions;
     titleEditOptions.cueBanner = L"Enter a title";
-    titleEditOptions.cornerRadius = 12;
+    titleEditOptions.variant = darkui::FieldVariant::Panel;
     darkui::Button::Options fillButtonOptions;
     fillButtonOptions.text = L"Fill Sample";
-    fillButtonOptions.cornerRadius = 12;
+    fillButtonOptions.variant = darkui::ButtonVariant::Secondary;
     darkui::Edit::Options notesEditOptions;
     notesEditOptions.cueBanner = L"Write your notes here";
-    notesEditOptions.cornerRadius = 12;
+    notesEditOptions.variant = darkui::FieldVariant::Panel;
     notesEditOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL;
 
     if (!session.formPanel.Create(session.dialog.content_hwnd(), ID_DIALOG_PANEL, state->host.theme(), panelOptions) ||
@@ -181,10 +181,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
 
         darkui::Button::Options messageButtonOptions;
         messageButtonOptions.text = L"Open Message Dialog";
-        messageButtonOptions.cornerRadius = 14;
-        messageButtonOptions.surfaceRole = darkui::SurfaceRole::Background;
+        messageButtonOptions.variant = darkui::ButtonVariant::Primary;
         darkui::Button::Options formButtonOptions = messageButtonOptions;
         formButtonOptions.text = L"Open Form Dialog";
+        formButtonOptions.variant = darkui::ButtonVariant::Secondary;
         const darkui::Theme& theme = created->host.theme();
         if (!created->messageButton.Create(window, ID_OPEN_MESSAGE, theme, messageButtonOptions) ||
             !created->formButton.Create(window, ID_OPEN_FORM, theme, formButtonOptions)) {

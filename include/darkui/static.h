@@ -7,11 +7,26 @@
 
 namespace darkui {
 
+// Semantic text-presentational preset for darkui::Static.
+// Usage:
+// - Prefer a variant for common text hierarchy before manually tuning text format or colors.
+// - Title and PanelTitle are suited for headings.
+// - Body, PanelBody, and Muted cover the common supporting text cases.
+enum class StaticVariant {
+    Default = 0,
+    Title,
+    Body,
+    Muted,
+    PanelTitle,
+    PanelBody
+};
+
 // Dark static control that can render text, an icon, or a bitmap.
 // Usage:
 // - Fill Static::Options and call Create(parent, id, theme, options).
 // - Position it with MoveWindow().
 // - When the static control sits inside darkui::Panel, the default `surfaceRole = Auto` inherits that panel surface.
+// - Prefer `variant` for common text hierarchy before manually tuning formatting.
 // - Bind it through ThemedWindowHost::theme_manager() when the page supports runtime theme changes.
 // - Use SetText(), SetIcon(), or SetBitmap() to switch presentation mode.
 // Notes:
@@ -30,6 +45,7 @@ public:
         HBITMAP bitmap = nullptr;
         COLORREF backgroundColor = CLR_INVALID;
         SurfaceRole surfaceRole = SurfaceRole::Auto;
+        StaticVariant variant = StaticVariant::Default;
         UINT textFormat = DT_LEFT;
         bool ellipsis = true;
         DWORD style = WS_CHILD | WS_VISIBLE | SS_LEFT;
@@ -59,6 +75,8 @@ public:
     ContentMode content_mode() const { return contentMode_; }
     // Returns the background color currently used by the control.
     COLORREF background_color() const { return backgroundColor_; }
+    // Returns the semantic static-text preset currently active on the control.
+    StaticVariant variant() const { return variant_; }
 
     // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
@@ -96,6 +114,8 @@ private:
     COLORREF backgroundColor_ = RGB(34, 36, 40);
     SurfaceRole surfaceRole_ = SurfaceRole::Auto;
     bool hasCustomBackgroundColor_ = false;
+    StaticVariant variant_ = StaticVariant::Default;
+    COLORREF textColor_ = RGB(224, 227, 232);
     UINT textFormat_ = DT_LEFT;
     bool ellipsis_ = true;
 };

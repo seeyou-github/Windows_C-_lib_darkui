@@ -14,6 +14,7 @@ namespace darkui {
 // Notes:
 // - Prefer Panel when several child controls should share one card/panel surface.
 // - This avoids repeating `options.surfaceRole = SurfaceRole::Panel` on every child control.
+// - Child controls can usually rely on their own `variant` presets once they are parented to the panel.
 class Panel {
 public:
     struct Impl;

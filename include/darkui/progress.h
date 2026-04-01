@@ -13,6 +13,9 @@ namespace darkui {
 // - When the progress bar sits inside darkui::Panel, the default `surfaceRole = Auto` inherits that panel surface.
 // - Bind it through ThemedWindowHost::theme_manager() when the page supports runtime theme changes.
 // - Update its state with SetRange() and SetValue().
+// - When the same view also contains action buttons, prefer ButtonVariant presets for those companion controls.
+// - Prefer `variant` for common density/emphasis presets before manually tuning low-level styling:
+//   `Default`, `Panel`, `Emphasis`.
 class ProgressBar {
 public:
     struct Impl;
@@ -23,6 +26,7 @@ public:
         bool showPercentage = true;
         COLORREF surfaceColor = CLR_INVALID;
         SurfaceRole surfaceRole = SurfaceRole::Auto;
+        ProgressVariant variant = ProgressVariant::Default;
         DWORD style = WS_CHILD | WS_VISIBLE;
         DWORD exStyle = 0;
     };
@@ -50,6 +54,7 @@ public:
     const Theme& theme() const { return theme_; }
     // Returns the host surface color used outside the inner progress track.
     COLORREF surface_color() const { return surfaceColor_; }
+    ProgressVariant variant() const { return variant_; }
 
     // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
@@ -113,6 +118,12 @@ private:
     SurfaceRole surfaceRole_ = SurfaceRole::Auto;
     // Tracks whether SetSurfaceColor or Options::surfaceColor overrode inheritance.
     bool hasCustomSurfaceColor_ = false;
+    ProgressVariant variant_ = ProgressVariant::Default;
+    int trackHeight_ = 12;
+    COLORREF backgroundColor_ = RGB(24, 27, 31);
+    COLORREF trackColor_ = RGB(52, 56, 62);
+    COLORREF fillColor_ = RGB(78, 120, 184);
+    COLORREF textColor_ = RGB(232, 236, 241);
     // Theme currently used by the control.
     Theme theme_{};
 };

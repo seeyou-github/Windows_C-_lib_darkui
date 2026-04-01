@@ -2,7 +2,118 @@
 
 #include <commctrl.h>
 
+#include <algorithm>
+
 namespace darkui {
+namespace {
+
+COLORREF ClampColor(int r, int g, int b) {
+    return RGB(std::clamp(r, 0, 255), std::clamp(g, 0, 255), std::clamp(b, 0, 255));
+}
+
+COLORREF AdjustColor(COLORREF color, int delta) {
+    return ClampColor(static_cast<int>(GetRValue(color)) + delta,
+                      static_cast<int>(GetGValue(color)) + delta,
+                      static_cast<int>(GetBValue(color)) + delta);
+}
+
+COLORREF MixColor(COLORREF a, COLORREF b, double ratio) {
+    ratio = std::clamp(ratio, 0.0, 1.0);
+    const auto mix = [ratio](int x, int y) {
+        return static_cast<int>(x + (y - x) * ratio + 0.5);
+    };
+    return RGB(mix(GetRValue(a), GetRValue(b)),
+               mix(GetGValue(a), GetGValue(b)),
+               mix(GetBValue(a), GetBValue(b)));
+}
+
+COLORREF MakeDangerBase(const Theme& theme) {
+    const COLORREF fallback = RGB(170, 62, 62);
+    return MixColor(fallback, theme.accent, 0.18);
+}
+
+int ResolveButtonCornerRadius(ButtonVariant variant) {
+    switch (variant) {
+    case ButtonVariant::Ghost:
+        return 12;
+    case ButtonVariant::Subtle:
+        return 12;
+    case ButtonVariant::Danger:
+        return 14;
+    case ButtonVariant::Secondary:
+        return 14;
+    case ButtonVariant::Primary:
+    default:
+        return 14;
+    }
+}
+
+struct ResolvedButtonVisuals {
+    COLORREF fill = RGB(65, 72, 82);
+    COLORREF fillHover = RGB(72, 80, 92);
+    COLORREF fillHot = RGB(78, 86, 98);
+    COLORREF fillDisabled = RGB(50, 54, 60);
+    COLORREF border = RGB(61, 66, 74);
+    COLORREF text = RGB(245, 247, 250);
+    COLORREF disabledText = RGB(130, 136, 144);
+};
+
+ResolvedButtonVisuals ResolveButtonVisuals(const Theme& theme, COLORREF surface, ButtonVariant variant) {
+    ResolvedButtonVisuals visuals{};
+    switch (variant) {
+    case ButtonVariant::Secondary:
+        visuals.fill = theme.button;
+        visuals.fillHover = theme.buttonHover;
+        visuals.fillHot = theme.buttonHot;
+        visuals.fillDisabled = theme.buttonDisabled;
+        visuals.border = theme.border;
+        visuals.text = theme.text;
+        visuals.disabledText = theme.buttonDisabledText;
+        break;
+    case ButtonVariant::Subtle:
+        visuals.fill = MixColor(surface, theme.text, 0.08);
+        visuals.fillHover = MixColor(surface, theme.text, 0.13);
+        visuals.fillHot = MixColor(surface, theme.text, 0.18);
+        visuals.fillDisabled = MixColor(surface, theme.background, 0.14);
+        visuals.border = MixColor(surface, theme.text, 0.14);
+        visuals.text = theme.text;
+        visuals.disabledText = theme.buttonDisabledText;
+        break;
+    case ButtonVariant::Ghost:
+        visuals.fill = surface;
+        visuals.fillHover = MixColor(surface, theme.text, 0.08);
+        visuals.fillHot = MixColor(surface, theme.text, 0.13);
+        visuals.fillDisabled = surface;
+        visuals.border = MixColor(surface, theme.text, 0.16);
+        visuals.text = theme.text;
+        visuals.disabledText = theme.buttonDisabledText;
+        break;
+    case ButtonVariant::Danger: {
+        const COLORREF base = MakeDangerBase(theme);
+        visuals.fill = base;
+        visuals.fillHover = AdjustColor(base, 10);
+        visuals.fillHot = AdjustColor(base, 18);
+        visuals.fillDisabled = MixColor(base, surface, 0.48);
+        visuals.border = AdjustColor(base, -18);
+        visuals.text = theme.highlightText;
+        visuals.disabledText = MixColor(theme.highlightText, surface, 0.55);
+        break;
+    }
+    case ButtonVariant::Primary:
+    default:
+        visuals.fill = theme.accentSecondary;
+        visuals.fillHover = theme.accent;
+        visuals.fillHot = AdjustColor(theme.accent, 10);
+        visuals.fillDisabled = MixColor(theme.accentSecondary, surface, 0.55);
+        visuals.border = AdjustColor(theme.accentSecondary, -14);
+        visuals.text = theme.highlightText;
+        visuals.disabledText = MixColor(theme.highlightText, surface, 0.52);
+        break;
+    }
+    return visuals;
+}
+
+}  // namespace
 
 struct Button::Impl {
     static constexpr UINT_PTR kAnimationTimerId = 1;
@@ -34,6 +145,15 @@ struct Button::Impl {
     }
 
     void UpdateThemeResources() {
+        const ResolvedButtonVisuals visuals = ResolveButtonVisuals(owner->theme_, owner->surfaceColor_, owner->variant_);
+        owner->fillColor_ = visuals.fill;
+        owner->fillHoverColor_ = visuals.fillHover;
+        owner->fillHotColor_ = visuals.fillHot;
+        owner->fillDisabledColor_ = visuals.fillDisabled;
+        owner->borderColor_ = visuals.border;
+        owner->textColor_ = visuals.text;
+        owner->disabledTextColor_ = visuals.disabledText;
+
         if (font) DeleteObject(font);
         if (brushButton) DeleteObject(brushButton);
         if (brushButtonHover) DeleteObject(brushButtonHover);
@@ -43,12 +163,12 @@ struct Button::Impl {
         if (penBorder) DeleteObject(penBorder);
 
         font = CreateFont(owner->theme_.uiFont);
-        brushButton = CreateSolidBrush(owner->theme_.button);
-        brushButtonHover = CreateSolidBrush(owner->theme_.buttonHover);
-        brushButtonHot = CreateSolidBrush(owner->theme_.buttonHot);
-        brushButtonDisabled = CreateSolidBrush(owner->theme_.buttonDisabled);
-        brushBorder = CreateSolidBrush(owner->theme_.border);
-        penBorder = CreatePen(PS_SOLID, 1, owner->theme_.border);
+        brushButton = CreateSolidBrush(owner->fillColor_);
+        brushButtonHover = CreateSolidBrush(owner->fillHoverColor_);
+        brushButtonHot = CreateSolidBrush(owner->fillHotColor_);
+        brushButtonDisabled = CreateSolidBrush(owner->fillDisabledColor_);
+        brushBorder = CreateSolidBrush(owner->borderColor_);
+        penBorder = CreatePen(PS_SOLID, 1, owner->borderColor_);
 
         if (owner->buttonHwnd_) {
             SendMessageW(owner->buttonHwnd_, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
@@ -118,10 +238,10 @@ struct Button::Impl {
         const bool enabled = IsWindowEnabled(draw->hwndItem) != FALSE;
 
         HBRUSH fillBrush = brushButton;
-        COLORREF textColor = owner->theme_.text;
+        COLORREF textColor = owner->textColor_;
         if (!enabled) {
             fillBrush = brushButtonDisabled;
-            textColor = owner->theme_.buttonDisabledText;
+            textColor = owner->disabledTextColor_;
         } else if (selected) {
             fillBrush = brushButtonHot;
         } else if (hot) {
@@ -275,6 +395,7 @@ bool Button::Create(HWND parent, int controlId, const Theme& theme, const Option
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
     surfaceRole_ = options.surfaceRole;
+    variant_ = options.variant;
     hasCustomSurfaceColor_ = options.surfaceColor != CLR_INVALID;
     surfaceColor_ = hasCustomSurfaceColor_ ? options.surfaceColor : ResolveInheritedSurfaceColor(theme_, parent, surfaceRole_);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
@@ -303,9 +424,7 @@ bool Button::Create(HWND parent, int controlId, const Theme& theme, const Option
 
     SendMessageW(buttonHwnd_, WM_SETFONT, reinterpret_cast<WPARAM>(impl_->font), TRUE);
     impl_->UpdateWindowRegion();
-    if (options.cornerRadius >= 0) {
-        SetCornerRadius(options.cornerRadius);
-    }
+    SetCornerRadius(options.cornerRadius >= 0 ? options.cornerRadius : ResolveButtonCornerRadius(variant_));
     SetWindowSubclass(buttonHwnd_,
                       Impl::ButtonSubclassProc,
                       reinterpret_cast<UINT_PTR>(this),
@@ -371,9 +490,7 @@ void Button::SetCornerRadius(int radius) {
 void Button::SetSurfaceColor(COLORREF color) {
     hasCustomSurfaceColor_ = true;
     surfaceColor_ = color;
-    if (buttonHwnd_) {
-        InvalidateRect(buttonHwnd_, nullptr, TRUE);
-    }
+    impl_->UpdateThemeResources();
 }
 
 }  // namespace darkui

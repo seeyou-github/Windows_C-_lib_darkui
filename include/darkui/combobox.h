@@ -41,6 +41,48 @@ enum class SurfaceRole {
     Panel
 };
 
+// Semantic visual density/shape preset shared by text-entry style controls.
+// Usage:
+// - Prefer the default value for standard top-level forms.
+// - Use Panel when the control is parented to darkui::Panel and should match card-style sections.
+// - Use Dense when you want a more compact field without manually tuning per-control metrics.
+enum class FieldVariant {
+    Default = 0,
+    Panel,
+    Dense
+};
+
+// Semantic emphasis preset shared by checkbox-style selection controls.
+enum class SelectionVariant {
+    Default = 0,
+    Panel,
+    Accent
+};
+
+enum class ProgressVariant {
+    Default = 0,
+    Panel,
+    Emphasis
+};
+
+enum class SliderVariant {
+    Default = 0,
+    Dense,
+    Emphasis
+};
+
+enum class TabVariant {
+    Default = 0,
+    Panel,
+    Accent
+};
+
+enum class ToolbarVariant {
+    Default = 0,
+    Dense,
+    Accent
+};
+
 inline constexpr wchar_t kSurfaceRoleProperty[] = L"DarkUiSurfaceRole";
 
 // Shared visual theme for all darkui controls.
@@ -339,12 +381,15 @@ inline COLORREF ResolveInheritedSurfaceColor(const Theme& theme, HWND parent, Su
 // - Fill items with SetItems/AddItem().
 // - Move the main button with MoveWindow().
 // - When the combo box sits inside a card section, prefer parenting it to darkui::Panel.
+// - Prefer `variant` for common field styles before manually tuning shape or density.
 // - Listen for CBN_SELCHANGE in the parent window.
 class ComboBox {
 public:
     struct Options {
         std::vector<ComboItem> items;
         int selection = -1;
+        int cornerRadius = -1;
+        FieldVariant variant = FieldVariant::Default;
         DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW;
         DWORD exStyle = 0;
     };
@@ -372,6 +417,8 @@ public:
     int control_id() const { return controlId_; }
     // Returns the theme currently stored by the control.
     const Theme& theme() const { return theme_; }
+    // Returns the current corner radius in pixels.
+    int corner_radius() const { return cornerRadius_; }
 
     // Replaces the current theme and repaints the combo box and popup.
     // Parameter:
@@ -412,6 +459,8 @@ public:
     // Notes:
     // - Callers should pass a valid index obtained from GetSelection or GetCount.
     ComboItem GetItem(int index) const;
+    // Sets the outer corner radius of the combo-box button.
+    void SetCornerRadius(int radius);
 
 private:
     struct Impl;
@@ -427,6 +476,12 @@ private:
     HWND popupList_ = nullptr;
     // Child control ID.
     int controlId_ = 0;
+    // Outer corner radius of the main combo-box button.
+    int cornerRadius_ = 10;
+    // Semantic field preset used to derive default geometry.
+    FieldVariant variant_ = FieldVariant::Default;
+    // Effective popup/button item height for this combo-box instance.
+    int itemHeight_ = 24;
     // Theme currently used by the control.
     Theme theme_{};
 };

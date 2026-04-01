@@ -19,6 +19,7 @@
 
 - Dark circle, dot, and text rendering
 - Hover and disabled states
+- Semantic selection variants for default, panel, and accent emphasis
 - Keeps normal `WM_COMMAND + BN_CLICKED`
 - Uses native auto-radio grouping semantics
 
@@ -42,8 +43,10 @@ darkui::RadioButton::Options compactOptions;
 compactOptions.text = L"Compact view";
 compactOptions.checked = true;
 compactOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_GROUP;
+compactOptions.variant = darkui::SelectionVariant::Accent;
 darkui::RadioButton::Options detailedOptions;
 detailedOptions.text = L"Detailed view";
+detailedOptions.variant = darkui::SelectionVariant::Panel;
 
 compact.Create(card.hwnd(), 4401, theme, compactOptions);
 detailed.Create(card.hwnd(), 4402, theme, detailedOptions);
@@ -93,6 +96,15 @@ bool selected = compact.GetChecked();
 ```cpp
 darkui::RadioButton::Options options;
 options.checked = true;
+options.variant = darkui::SelectionVariant::Default;
+```
+
+Available variants:
+
+```cpp
+darkui::SelectionVariant::Default
+darkui::SelectionVariant::Panel
+darkui::SelectionVariant::Accent
 ```
 
 ## Theme Fields Used
@@ -111,6 +123,7 @@ options.checked = true;
 - Use `WS_GROUP` on the first radio button in a group
 - Native auto-radio behavior clears the previously selected sibling
 - Prefer parenting the radio buttons to `darkui::Panel` when they sit on a shared card surface
+- Prefer `variant` for standard selection emphasis and only override surface values for one-off cases
 
 ## Demo Reference
 

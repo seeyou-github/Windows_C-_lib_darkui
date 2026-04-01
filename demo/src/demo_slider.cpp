@@ -225,16 +225,17 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         sliderOptions.value = 38;
         sliderOptions.showTicks = true;
         sliderOptions.tickCount = 11;
+        sliderOptions.variant = darkui::SliderVariant::Emphasis;
         created->slider.Create(window, ID_SLIDER, created->theme, sliderOptions);
 
         darkui::Button::Options pickButtonOptions;
         pickButtonOptions.text = L"Pick Color";
-        pickButtonOptions.cornerRadius = 10;
+        pickButtonOptions.variant = darkui::ButtonVariant::Secondary;
         darkui::Button::Options stepButtonOptions;
-        stepButtonOptions.cornerRadius = 10;
+        stepButtonOptions.variant = darkui::ButtonVariant::Ghost;
         darkui::Button::Options resetButtonOptions;
         resetButtonOptions.text = L"Reset Style";
-        resetButtonOptions.cornerRadius = 12;
+        resetButtonOptions.variant = darkui::ButtonVariant::Primary;
 
         created->buttonBackground.Create(window, ID_PICK_BACKGROUND, created->theme, pickButtonOptions);
         created->buttonTrack.Create(window, ID_PICK_TRACK, created->theme, pickButtonOptions);

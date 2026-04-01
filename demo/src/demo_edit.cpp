@@ -115,21 +115,21 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
 
         darkui::Edit::Options primaryEditOptions;
         primaryEditOptions.text = L"A borderless dark edit control";
-        primaryEditOptions.cornerRadius = 16;
+        primaryEditOptions.variant = darkui::FieldVariant::Default;
         darkui::Edit::Options secondaryEditOptions;
         secondaryEditOptions.text = L"First note line\r\nSecond note line\r\nThird note line";
         secondaryEditOptions.cueBanner = L"Type here. Multiline and vertical scrolling stay dark.";
-        secondaryEditOptions.cornerRadius = 16;
+        secondaryEditOptions.variant = darkui::FieldVariant::Panel;
         secondaryEditOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL;
         darkui::Button::Options changeButtonOptions;
-        changeButtonOptions.cornerRadius = 14;
-        changeButtonOptions.surfaceRole = darkui::SurfaceRole::Background;
+        changeButtonOptions.variant = darkui::ButtonVariant::Secondary;
         darkui::Button::Options increaseButtonOptions = changeButtonOptions;
         increaseButtonOptions.text = L"Increase";
         darkui::Button::Options decreaseButtonOptions = changeButtonOptions;
         decreaseButtonOptions.text = L"Decrease";
         darkui::Button::Options applyButtonOptions = changeButtonOptions;
         applyButtonOptions.text = L"Apply";
+        applyButtonOptions.variant = darkui::ButtonVariant::Primary;
 
         const darkui::Theme& theme = created->host.theme();
         if (!created->primaryEdit.Create(window, ID_EDIT_PRIMARY, theme, primaryEditOptions) ||

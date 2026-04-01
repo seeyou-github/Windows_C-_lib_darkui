@@ -19,6 +19,7 @@
 
 - Dark box, border, and text rendering
 - Checked, unchecked, hover, and disabled states
+- Semantic selection variants for default, panel, and accent emphasis
 - Keeps normal `WM_COMMAND + BN_CLICKED`
 - Supports host surface color blending
 
@@ -37,6 +38,7 @@ darkui::CheckBox remember;
 darkui::CheckBox::Options options;
 options.text = L"Remember last workspace";
 options.checked = true;
+options.variant = darkui::SelectionVariant::Accent;
 
 darkui::Panel card;
 darkui::Panel::Options cardOptions;
@@ -87,6 +89,15 @@ bool checked = remember.GetChecked();
 ```cpp
 darkui::CheckBox::Options options;
 options.checked = true;
+options.variant = darkui::SelectionVariant::Default;
+```
+
+Available variants:
+
+```cpp
+darkui::SelectionVariant::Default
+darkui::SelectionVariant::Panel
+darkui::SelectionVariant::Accent
 ```
 
 ## Theme Fields Used
@@ -105,6 +116,7 @@ options.checked = true;
 - Use `SetChecked()` for initial state setup
 - Disable the control through `EnableWindow(checkbox.hwnd(), FALSE)`
 - Prefer parenting the checkbox to `darkui::Panel` over manually pushing panel colors
+- Prefer `variant` for standard checkbox emphasis and only override surface values for one-off cases
 
 ## Demo Reference
 

@@ -12,6 +12,16 @@ constexpr wchar_t kTabClassName[] = L"DarkUiTabControl";
 ATOM EnsureTabClassRegistered(HINSTANCE instance);
 LRESULT CALLBACK TabWindowProcThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 
+COLORREF MixColor(COLORREF a, COLORREF b, double ratio) {
+    ratio = std::clamp(ratio, 0.0, 1.0);
+    const auto mix = [ratio](int x, int y) {
+        return static_cast<int>(x + (y - x) * ratio + 0.5);
+    };
+    return RGB(mix(GetRValue(a), GetRValue(b)),
+               mix(GetGValue(a), GetGValue(b)),
+               mix(GetBValue(a), GetBValue(b)));
+}
+
 }  // namespace
 
 struct Tab::Impl {
@@ -39,16 +49,40 @@ struct Tab::Impl {
     }
 
     void UpdateThemeResources() {
+        owner->backgroundColor_ = owner->theme_.tabBackground;
+        owner->contentBackgroundColor_ = owner->theme_.background;
+        owner->itemColor_ = owner->theme_.tabItem;
+        owner->itemActiveColor_ = owner->theme_.tabItemActive;
+        owner->itemHotOverlayColor_ = owner->theme_.buttonHover;
+        owner->textColor_ = owner->theme_.tabText;
+        owner->textActiveColor_ = owner->theme_.tabTextActive;
+
+        switch (owner->variant_) {
+        case TabVariant::Panel:
+            owner->contentBackgroundColor_ = owner->theme_.panel;
+            owner->itemColor_ = MixColor(owner->theme_.panel, owner->theme_.tabItem, 0.80);
+            owner->itemHotOverlayColor_ = MixColor(owner->theme_.panel, owner->theme_.buttonHover, 0.65);
+            break;
+        case TabVariant::Accent:
+            owner->itemActiveColor_ = MixColor(owner->theme_.tabItemActive, owner->theme_.accent, 0.45);
+            owner->itemHotOverlayColor_ = MixColor(owner->theme_.buttonHover, owner->theme_.accentSecondary, 0.38);
+            owner->textActiveColor_ = owner->theme_.highlightText;
+            break;
+        case TabVariant::Default:
+        default:
+            break;
+        }
+
         if (brushBackground) DeleteObject(brushBackground);
         if (brushContentBackground) DeleteObject(brushContentBackground);
         if (brushItem) DeleteObject(brushItem);
         if (brushItemActive) DeleteObject(brushItemActive);
         if (font) DeleteObject(font);
 
-        brushBackground = CreateSolidBrush(owner->theme_.tabBackground);
-        brushContentBackground = CreateSolidBrush(owner->theme_.background);
-        brushItem = CreateSolidBrush(owner->theme_.tabItem);
-        brushItemActive = CreateSolidBrush(owner->theme_.tabItemActive);
+        brushBackground = CreateSolidBrush(owner->backgroundColor_);
+        brushContentBackground = CreateSolidBrush(owner->contentBackgroundColor_);
+        brushItem = CreateSolidBrush(owner->itemColor_);
+        brushItemActive = CreateSolidBrush(owner->itemActiveColor_);
         font = CreateFont(owner->theme_.uiFont);
 
         if (owner->tabHwnd_) {
@@ -201,14 +235,14 @@ struct Tab::Impl {
             FillRect(dc, &rc, fill ? fill : reinterpret_cast<HBRUSH>(GetStockObject(DKGRAY_BRUSH)));
 
             if (!active && hot) {
-                HBRUSH overlay = CreateSolidBrush(owner->theme_.buttonHover);
+                HBRUSH overlay = CreateSolidBrush(owner->itemHotOverlayColor_);
                 FillRect(dc, &rc, overlay);
                 DeleteObject(overlay);
             }
 
             rc.left += owner->theme_.textPadding;
             rc.right -= owner->theme_.textPadding;
-            SetTextColor(dc, active ? owner->theme_.tabTextActive : owner->theme_.tabText);
+            SetTextColor(dc, active ? owner->textActiveColor_ : owner->textColor_);
             DrawTextW(dc, items[i].text.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
         }
 
@@ -340,6 +374,7 @@ bool Tab::Create(HWND parent, int controlId, const Theme& theme, const Options& 
     parentHwnd_ = parent;
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
+    variant_ = options.variant;
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);

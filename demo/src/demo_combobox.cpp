@@ -153,6 +153,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             {L"140 - m4a 128k", 4, false},
         };
         comboOptions.selection = 0;
+        comboOptions.variant = darkui::FieldVariant::Panel;
         created->comboFormat.Create(window, ID_FORMAT, created->theme, comboOptions);
         created->themeManager.Bind(created->comboFormat);
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));

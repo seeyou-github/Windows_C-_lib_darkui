@@ -20,6 +20,7 @@
 - Custom-painted button area
 - Custom popup host and list rendering
 - Normal and accent item support
+- Semantic field variants for default, panel, and dense forms
 - Runtime replacement of the full item list
 - Standard `WM_COMMAND + CBN_SELCHANGE` notification flow
 
@@ -63,6 +64,7 @@ options.items = {
     {L"mp3", 2, false},
 };
 options.selection = 0;
+options.variant = darkui::FieldVariant::Panel;
 
 combo.Create(card.hwnd(), 1001, theme, options);
 
@@ -140,6 +142,15 @@ std::size_t count = combo.GetCount();
 darkui::ComboBox::Options options;
 options.items = {{L"A", 1, false}, {L"B", 2, true}};
 options.selection = 0;
+options.variant = darkui::FieldVariant::Default;
+```
+
+Available field variants:
+
+```cpp
+darkui::FieldVariant::Default
+darkui::FieldVariant::Panel
+darkui::FieldVariant::Dense
 ```
 
 ## Theme Fields Used
@@ -167,6 +178,7 @@ options.selection = 0;
 - Use `accent = true` for highlighted or recommended items
 - Use `userData` for enum values, IDs, or application payloads
 - When the combo box sits inside a card section, prefer parenting it to `darkui::Panel`
+- Prefer `variant` for standard field styles and only override `cornerRadius` when you need a one-off shape
 - Layout is still owned by the parent window, typically through `MoveWindow()`
 
 ## Demo Reference

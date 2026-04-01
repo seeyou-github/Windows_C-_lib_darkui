@@ -10,6 +10,30 @@ namespace {
 
 constexpr wchar_t kListBoxHostClassName[] = L"DarkUiListBoxHost";
 
+int ResolveListBoxCornerRadius(FieldVariant variant) {
+    switch (variant) {
+    case FieldVariant::Panel:
+        return 16;
+    case FieldVariant::Dense:
+        return 12;
+    case FieldVariant::Default:
+    default:
+        return 18;
+    }
+}
+
+int ResolveListBoxItemHeight(const Theme& theme, FieldVariant variant) {
+    switch (variant) {
+    case FieldVariant::Dense:
+        return std::max(20, theme.listBoxItemHeight - 4);
+    case FieldVariant::Panel:
+        return std::max(22, theme.listBoxItemHeight - 2);
+    case FieldVariant::Default:
+    default:
+        return std::max(22, theme.listBoxItemHeight);
+    }
+}
+
 ATOM EnsureListBoxHostClassRegistered(HINSTANCE instance);
 LRESULT CALLBACK ListBoxHostWindowProcThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 
@@ -238,7 +262,7 @@ struct ListBox::Impl {
         case WM_MEASUREITEM: {
             auto* measure = reinterpret_cast<MEASUREITEMSTRUCT*>(lParam);
             if (measure && measure->CtlType == ODT_LISTBOX) {
-                measure->itemHeight = std::max(1, self->owner->theme_.listBoxItemHeight);
+                measure->itemHeight = std::max(1, self->owner->itemHeight_);
                 return TRUE;
             }
             break;
@@ -318,6 +342,8 @@ bool ListBox::Create(HWND parent, int controlId, const Theme& theme, const Optio
     parentHwnd_ = parent;
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
+    variant_ = options.variant;
+    itemHeight_ = ResolveListBoxItemHeight(theme_, variant_);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
@@ -374,9 +400,7 @@ bool ListBox::Create(HWND parent, int controlId, const Theme& theme, const Optio
         return false;
     }
 
-    if (options.cornerRadius >= 0) {
-        SetCornerRadius(options.cornerRadius);
-    }
+    SetCornerRadius(options.cornerRadius >= 0 ? options.cornerRadius : ResolveListBoxCornerRadius(variant_));
     if (!options.items.empty()) {
         SetItems(options.items);
     }
@@ -407,13 +431,19 @@ void ListBox::Destroy() {
 void ListBox::SetTheme(const Theme& theme) {
     const Theme previous = theme_;
     theme_ = ResolveTheme(theme);
+    itemHeight_ = ResolveListBoxItemHeight(theme_, variant_);
     if (!impl_->UpdateThemeResources()) {
         theme_ = previous;
+        itemHeight_ = ResolveListBoxItemHeight(theme_, variant_);
         impl_->UpdateThemeResources();
         return;
     }
     if (hostHwnd_) {
         InvalidateRect(hostHwnd_, nullptr, TRUE);
+    }
+    if (listHwnd_) {
+        SendMessageW(listHwnd_, LB_SETITEMHEIGHT, 0, itemHeight_);
+        InvalidateRect(listHwnd_, nullptr, TRUE);
     }
 }
 

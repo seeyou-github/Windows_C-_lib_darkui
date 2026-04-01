@@ -481,17 +481,19 @@ bool CreateOverviewControls(AppState* app) {
     darkui::ComboBox::Options profileOptions;
     profileOptions.items = {{L"Studio Executive", 1, true}, {L"Asset Review", 2, false}, {L"Broadcast Board", 3, false}};
     profileOptions.selection = 0;
+    profileOptions.variant = darkui::FieldVariant::Panel;
     darkui::Button::Options primaryOptions;
     primaryOptions.text = L"Sync Cluster";
-    primaryOptions.cornerRadius = 14;
+    primaryOptions.variant = darkui::ButtonVariant::Primary;
     darkui::Button::Options secondaryOptions = primaryOptions;
     secondaryOptions.text = L"Share Preview";
+    secondaryOptions.variant = darkui::ButtonVariant::Secondary;
     darkui::Static::Options statusOptions;
     statusOptions.text = L"Semantic palette active across every page";
-    statusOptions.style = WS_CHILD | WS_VISIBLE | SS_LEFT;
-    statusOptions.textFormat = DT_LEFT | DT_VCENTER | DT_SINGLELINE;
+    statusOptions.variant = darkui::StaticVariant::Muted;
     darkui::ProgressBar::Options syncOptions;
     syncOptions.minimum = 0; syncOptions.maximum = 100; syncOptions.value = 74;
+    syncOptions.variant = darkui::ProgressVariant::Emphasis;
     darkui::ProgressBar::Options cpuOptions = syncOptions;
     cpuOptions.value = 61;
     cpuOptions.showPercentage = false;
@@ -511,19 +513,21 @@ bool CreateOverviewControls(AppState* app) {
 bool CreateControlsPanel(AppState* app) {
     darkui::Slider::Options exposureOptions;
     exposureOptions.minimum = 0; exposureOptions.maximum = 100; exposureOptions.value = 68; exposureOptions.showTicks = true; exposureOptions.tickCount = 9;
+    exposureOptions.variant = darkui::SliderVariant::Emphasis;
     darkui::Slider::Options balanceOptions = exposureOptions;
     balanceOptions.value = 42; balanceOptions.tickCount = 7;
+    balanceOptions.variant = darkui::SliderVariant::Dense;
     darkui::ScrollBar::Options timelineOptions;
     timelineOptions.vertical = false; timelineOptions.minimum = 0; timelineOptions.maximum = 100; timelineOptions.pageSize = 20; timelineOptions.value = 34;
     darkui::ScrollBar::Options navigatorOptions;
     navigatorOptions.vertical = true; navigatorOptions.minimum = 0; navigatorOptions.maximum = 100; navigatorOptions.pageSize = 18; navigatorOptions.value = 26;
     darkui::Edit::Options searchOptions;
     searchOptions.cueBanner = L"Search sessions";
-    searchOptions.cornerRadius = 14;
+    searchOptions.variant = darkui::FieldVariant::Default;
     darkui::Edit::Options notesOptions;
     notesOptions.text = L"Dark multiline edit\nwith the custom dark vertical scrollbar\nlinked to the shared theme.";
     notesOptions.cueBanner = L"Write notes here";
-    notesOptions.cornerRadius = 16;
+    notesOptions.variant = darkui::FieldVariant::Panel;
     notesOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL;
 
     if (!app->controls.exposure.Create(app->controlsPage, ID_CONTROLS_EXPOSURE, app->theme, exposureOptions)) return false;
@@ -539,15 +543,15 @@ bool CreateDataPanel(AppState* app) {
     darkui::ComboBox::Options filterOptions;
     filterOptions.items = {{L"All transfers", 0, true}, {L"Ready only", 1, false}, {L"Cloud only", 2, false}};
     filterOptions.selection = 0;
+    filterOptions.variant = darkui::FieldVariant::Default;
     darkui::Button::Options refreshOptions;
     refreshOptions.text = L"Refresh";
-    refreshOptions.cornerRadius = 14;
-    refreshOptions.surfaceRole = darkui::SurfaceRole::Background;
+    refreshOptions.variant = darkui::ButtonVariant::Secondary;
     darkui::Table::Options tableOptions;
     tableOptions.columns = {{L"Collection", 220, LVCFMT_LEFT}, {L"Source", 100, LVCFMT_LEFT}, {L"State", 110, LVCFMT_LEFT}, {L"Size", 100, LVCFMT_RIGHT}, {L"Updated", 110, LVCFMT_LEFT}};
     tableOptions.drawEmptyGrid = true;
     darkui::ListBox::Options queueOptions;
-    queueOptions.cornerRadius = 18;
+    queueOptions.variant = darkui::FieldVariant::Panel;
     queueOptions.items = {{L"Queued color pass", 1}, {L"Archive sync", 2}, {L"Proxy rebuild", 3}, {L"Review package", 4}, {L"Audio conform", 5}};
     queueOptions.selection = 0;
 
@@ -565,32 +569,34 @@ bool CreateExpandedPanel(AppState* app) {
     panelOptions.cornerRadius = 24;
     darkui::Static::Options titleOptions;
     titleOptions.text = L"Extended Components";
-    titleOptions.style = WS_CHILD | WS_VISIBLE | SS_LEFT;
-    titleOptions.textFormat = DT_LEFT | DT_VCENTER | DT_SINGLELINE;
+    titleOptions.variant = darkui::StaticVariant::PanelTitle;
     darkui::Static::Options helperOptions;
     helperOptions.text = L"These controls were added after the original showcase and now participate in the same semantic theme system.";
-    helperOptions.style = WS_CHILD | WS_VISIBLE | SS_LEFT;
-    helperOptions.textFormat = DT_LEFT | DT_TOP;
+    helperOptions.variant = darkui::StaticVariant::PanelBody;
     darkui::CheckBox::Options autoSaveOptions;
     autoSaveOptions.text = L"Enable automatic recovery snapshots";
     autoSaveOptions.checked = true;
+    autoSaveOptions.variant = darkui::SelectionVariant::Accent;
     darkui::CheckBox::Options compactOptions;
     compactOptions.text = L"Compact side rails";
+    compactOptions.variant = darkui::SelectionVariant::Panel;
     darkui::RadioButton::Options gridOptions;
     gridOptions.text = L"Grid layout";
     gridOptions.checked = true;
     gridOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_GROUP;
+    gridOptions.variant = darkui::SelectionVariant::Accent;
     darkui::RadioButton::Options focusOptions;
     focusOptions.text = L"Focus layout";
+    focusOptions.variant = darkui::SelectionVariant::Panel;
     darkui::RadioButton::Options flowOptions;
     flowOptions.text = L"Flow layout";
+    flowOptions.variant = darkui::SelectionVariant::Panel;
     darkui::Button::Options dialogButtonOptions;
     dialogButtonOptions.text = L"Open Dialog";
-    dialogButtonOptions.cornerRadius = 14;
+    dialogButtonOptions.variant = darkui::ButtonVariant::Primary;
     darkui::Static::Options resultOptions;
     resultOptions.text = L"";
-    resultOptions.style = WS_CHILD | WS_VISIBLE | SS_LEFT;
-    resultOptions.textFormat = DT_LEFT | DT_WORDBREAK;
+    resultOptions.variant = darkui::StaticVariant::PanelBody;
 
     if (!app->expanded.leftCard.Create(app->expandedPage, ID_EXPANDED_PANEL_LEFT, app->theme, panelOptions)) return false;
     if (!app->expanded.rightCard.Create(app->expandedPage, ID_EXPANDED_PANEL_RIGHT, app->theme, panelOptions)) return false;
@@ -609,7 +615,7 @@ bool CreateExpandedPanel(AppState* app) {
 
 bool CreateShowcase(AppState* state, HWND window) {
     darkui::Button::Options graphiteOptions;
-    graphiteOptions.text = L"Graphite"; graphiteOptions.cornerRadius = 14;
+    graphiteOptions.text = L"Graphite"; graphiteOptions.variant = darkui::ButtonVariant::Subtle;
     darkui::Button::Options emberOptions = graphiteOptions; emberOptions.text = L"Ember";
     darkui::Button::Options glacierOptions = graphiteOptions; glacierOptions.text = L"Glacier";
     darkui::Button::Options mossOptions = graphiteOptions; mossOptions.text = L"Moss";
@@ -617,6 +623,7 @@ bool CreateShowcase(AppState* state, HWND window) {
     darkui::Tab::Options tabOptions;
     tabOptions.items = {{L"Overview", 1}, {L"Controls", 2}, {L"Data", 3}, {L"Expanded", 4}};
     tabOptions.selection = 0;
+    tabOptions.variant = darkui::TabVariant::Accent;
 
     if (!state->themeGraphite.Create(window, ID_THEME_GRAPHITE, state->theme, graphiteOptions)) return false;
     if (!state->themeEmber.Create(window, ID_THEME_EMBER, state->theme, emberOptions)) return false;

@@ -12,6 +12,7 @@ namespace darkui {
 // - Fill Edit::Options and call Create(parent, id, theme, options).
 // - Position the host window with MoveWindow().
 // - When several inputs share one card surface, prefer parenting them to darkui::Panel.
+// - Prefer `variant` for common field styles before manually tuning shape or density.
 // - Bind it through ThemedWindowHost::theme_manager() when the page supports runtime theme changes.
 // - Handle WM_COMMAND notifications such as EN_CHANGE in the parent window.
 // Notes:
@@ -26,6 +27,7 @@ public:
         std::wstring text{};
         std::wstring cueBanner{};
         int cornerRadius = -1;
+        FieldVariant variant = FieldVariant::Default;
         bool readOnly = false;
         DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL;
         DWORD exStyle = 0;
@@ -56,6 +58,8 @@ public:
     const Theme& theme() const { return theme_; }
     // Returns the current corner radius in pixels.
     int corner_radius() const { return cornerRadius_; }
+    // Returns the semantic field preset currently active on the control.
+    FieldVariant variant() const { return variant_; }
 
     // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
@@ -87,6 +91,7 @@ private:
     HWND editHwnd_ = nullptr;
     int controlId_ = 0;
     int cornerRadius_ = 10;
+    FieldVariant variant_ = FieldVariant::Default;
     Theme theme_{};
 };
 

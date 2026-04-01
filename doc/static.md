@@ -19,6 +19,7 @@
 
 - Dark background and themed text rendering
 - Text, icon, and bitmap display modes
+- Semantic text variants for titles, body text, muted text, and panel text
 - Configurable text alignment and ellipsis behavior
 - Keeps normal `STATIC` window usage and optional `SS_NOTIFY`
 
@@ -39,7 +40,7 @@ card.Create(hwnd, 1200, theme, cardOptions);
 darkui::Static title;
 darkui::Static::Options options;
 options.text = L"Repository Overview";
-options.textFormat = DT_LEFT | DT_SINGLELINE;
+options.variant = darkui::StaticVariant::PanelTitle;
 
 title.Create(card.hwnd(), 1201, theme, options);
 
@@ -98,7 +99,18 @@ title.SetBitmap(bitmapHandle);
 
 ```cpp
 darkui::Static::Options options;
-options.textFormat = DT_CENTER | DT_SINGLELINE;
+options.variant = darkui::StaticVariant::Title;
+```
+
+Available variants:
+
+```cpp
+darkui::StaticVariant::Default
+darkui::StaticVariant::Title
+darkui::StaticVariant::Body
+darkui::StaticVariant::Muted
+darkui::StaticVariant::PanelTitle
+darkui::StaticVariant::PanelBody
 ```
 
 ### `SetTextFormat`
@@ -118,6 +130,7 @@ title.SetTextFormat(DT_CENTER | DT_SINGLELINE);
 
 - Use `DT_SINGLELINE` when you want centered title text
 - Omit `DT_SINGLELINE` when you want wrapped paragraph-style text
+- Prefer `variant` for common text hierarchy and only override `textFormat` for one-off alignment needs
 - For icons and bitmaps, the control centers the image inside the client area
 
 ## Demo Reference

@@ -18,7 +18,6 @@ enum ControlId {
 
 struct DemoState {
     darkui::ThemedWindowHost host;
-    darkui::ThemeManager altThemeManager;
     darkui::Button primary;
     darkui::Button secondary;
     int clickCount = 0;
@@ -62,14 +61,6 @@ void DrawTextLine(HDC dc, HFONT font, COLORREF color, RECT rect, const wchar_t* 
     }
 }
 
-void ApplyThemes(DemoState* state) {
-    if (!state) {
-        return;
-    }
-    state->host.theme_manager().Apply();
-    state->altThemeManager.Apply();
-}
-
 LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
     auto* state = reinterpret_cast<DemoState*>(GetWindowLongPtrW(window, GWLP_USERDATA));
 
@@ -86,26 +77,17 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
 
         darkui::Button::Options primaryOptions;
         primaryOptions.text = L"Primary Action";
-        primaryOptions.cornerRadius = 14;
-        darkui::Theme altTheme = created->host.theme();
-        altTheme.button = RGB(70, 44, 58);
-        altTheme.buttonHover = RGB(88, 54, 72);
-        altTheme.buttonHot = RGB(102, 59, 79);
-        altTheme.buttonDisabled = RGB(58, 50, 54);
-        altTheme.buttonDisabledText = RGB(138, 128, 132);
-        altTheme.border = RGB(132, 79, 102);
+        primaryOptions.variant = darkui::ButtonVariant::Primary;
         darkui::Button::Options secondaryOptions;
         secondaryOptions.text = L"Secondary Action";
-        secondaryOptions.cornerRadius = 22;
+        secondaryOptions.variant = darkui::ButtonVariant::Danger;
         if (!created->primary.Create(window, ID_BUTTON_PRIMARY, created->host.theme(), primaryOptions) ||
-            !created->secondary.Create(window, ID_BUTTON_ALT, altTheme, secondaryOptions)) {
+            !created->secondary.Create(window, ID_BUTTON_ALT, created->host.theme(), secondaryOptions)) {
             CleanupState(created);
             return -1;
         }
-        created->host.theme_manager().Bind(created->primary);
-        created->altThemeManager.SetTheme(altTheme);
-        created->altThemeManager.Bind(created->secondary);
-        ApplyThemes(created);
+        created->host.theme_manager().Bind(created->primary, created->secondary);
+        created->host.theme_manager().Apply();
         EnableWindow(created->secondary.hwnd(), FALSE);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
@@ -151,9 +133,9 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             RECT noteRect{32, 248, client.right - 32, 320};
 
             DrawTextLine(dc, state->host.title_font(), state->host.theme().text, titleRect, L"Dark Button Demo");
-            DrawTextLine(dc, state->host.body_font(), state->host.theme().mutedText, descRect, L"Owner-draw dark buttons with hover, press animation, corner radius, and disabled state.");
+            DrawTextLine(dc, state->host.body_font(), state->host.theme().mutedText, descRect, L"Owner-draw dark buttons with semantic variants, hover, press animation, and disabled state.");
             DrawTextW(dc,
-                      L"Primary Action: hover + press animation + 14px radius.\nSecondary Action: 22px radius and disabled-state colors.\nMove the mouse over the primary button to see hover and click motion.",
+                      L"Primary Action uses ButtonVariant::Primary.\nSecondary Action uses ButtonVariant::Danger and stays disabled to show the resolved variant palette.\nMove the mouse over the primary button to see hover and click motion.",
                       -1,
                       &noteRect,
                       DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);

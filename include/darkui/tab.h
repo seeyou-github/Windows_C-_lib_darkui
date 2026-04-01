@@ -22,6 +22,8 @@ struct TabItem {
 // - When the tab area sits on a shared card surface, prefer parenting it to darkui::Panel.
 // - Bind it into ThemeManager when the page supports theme switching, usually through ThemedWindowHost::theme_manager().
 // - Handle TCN_SELCHANGE in the parent window if you need notification.
+// - Prefer `variant` for common strip emphasis presets before manually tuning low-level styling:
+//   `Default`, `Panel`, `Accent`.
 class Tab {
 public:
     struct Impl;
@@ -29,6 +31,7 @@ public:
         bool vertical = false;
         std::vector<TabItem> items;
         int selection = -1;
+        TabVariant variant = TabVariant::Default;
         DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP;
         DWORD exStyle = 0;
     };
@@ -56,6 +59,8 @@ public:
     const Theme& theme() const { return theme_; }
     // Returns whether the tab strip is currently vertical.
     bool vertical() const { return vertical_ ; }
+    // Returns the semantic tab-strip preset currently active on the control.
+    TabVariant variant() const { return variant_; }
 
     // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
@@ -103,6 +108,15 @@ private:
     int controlId_ = 0;
     // Whether the tab strip is vertical.
     bool vertical_ = false;
+    // Semantic tab-strip preset used to derive the effective visuals.
+    TabVariant variant_ = TabVariant::Default;
+    COLORREF backgroundColor_ = RGB(34, 36, 40);
+    COLORREF contentBackgroundColor_ = RGB(34, 36, 40);
+    COLORREF itemColor_ = RGB(52, 56, 62);
+    COLORREF itemActiveColor_ = RGB(78, 86, 98);
+    COLORREF itemHotOverlayColor_ = RGB(72, 80, 92);
+    COLORREF textColor_ = RGB(210, 214, 220);
+    COLORREF textActiveColor_ = RGB(245, 247, 250);
     // Theme currently used by the control.
     Theme theme_{};
 };

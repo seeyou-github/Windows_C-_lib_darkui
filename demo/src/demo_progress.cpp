@@ -91,18 +91,20 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         progressOptions.minimum = 0;
         progressOptions.maximum = 100;
         progressOptions.value = 64;
+        progressOptions.variant = darkui::ProgressVariant::Emphasis;
         if (!created->progress.Create(window, ID_PROGRESS, created->host.theme(), progressOptions)) {
             CleanupState(created);
             return -1;
         }
         darkui::Button::Options buttonOptions;
-        buttonOptions.cornerRadius = 10;
+        buttonOptions.variant = darkui::ButtonVariant::Secondary;
         darkui::Button::Options buttonDecOptions = buttonOptions;
         buttonDecOptions.text = L"-10";
         darkui::Button::Options buttonIncOptions = buttonOptions;
         buttonIncOptions.text = L"+10";
         darkui::Button::Options toggleOptions = buttonOptions;
         toggleOptions.text = L"Toggle Percent";
+        toggleOptions.variant = darkui::ButtonVariant::Primary;
         if (!created->buttonDec.Create(window, ID_BUTTON_DEC, created->host.theme(), buttonDecOptions) ||
             !created->buttonInc.Create(window, ID_BUTTON_INC, created->host.theme(), buttonIncOptions) ||
             !created->buttonToggleText.Create(window, ID_BUTTON_TOGGLE_TEXT, created->host.theme(), toggleOptions)) {

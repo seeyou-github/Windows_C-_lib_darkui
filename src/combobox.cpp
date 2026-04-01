@@ -12,6 +12,30 @@ namespace {
 constexpr wchar_t kPopupClassName[] = L"DarkUiComboPopupHost";
 constexpr int kPopupListId = 0x5D11;
 
+int ResolveComboCornerRadius(FieldVariant variant) {
+    switch (variant) {
+    case FieldVariant::Panel:
+        return 14;
+    case FieldVariant::Dense:
+        return 12;
+    case FieldVariant::Default:
+    default:
+        return 16;
+    }
+}
+
+int ResolveComboItemHeight(const Theme& theme, FieldVariant variant) {
+    switch (variant) {
+    case FieldVariant::Dense:
+        return std::max(20, theme.itemHeight - 4);
+    case FieldVariant::Panel:
+        return std::max(22, theme.itemHeight - 2);
+    case FieldVariant::Default:
+    default:
+        return std::max(22, theme.itemHeight);
+    }
+}
+
 void StripClientEdge(HWND window) {
     const LONG_PTR exStyle = GetWindowLongPtrW(window, GWL_EXSTYLE);
     const LONG_PTR newStyle = exStyle & ~static_cast<LONG_PTR>(WS_EX_CLIENTEDGE) & ~static_cast<LONG_PTR>(WS_EX_STATICEDGE);
@@ -279,12 +303,12 @@ struct ComboBox::Impl {
 
         POINT popupOrigin{comboRect.left, comboRect.bottom + owner->theme_.popupOffsetY};
         const int desiredRows = std::max(1, static_cast<int>(items.size()));
-        const int desiredHeight = std::max(owner->theme_.itemHeight,
-                                           desiredRows * owner->theme_.itemHeight + owner->theme_.popupBorder * 2);
-        const int availableHeight = std::max(owner->theme_.itemHeight,
+        const int desiredHeight = std::max(owner->itemHeight_,
+                                           desiredRows * owner->itemHeight_ + owner->theme_.popupBorder * 2);
+        const int availableHeight = std::max(owner->itemHeight_,
                                              static_cast<int>(workArea.bottom - popupOrigin.y - 8));
-        const int hostHeight = std::max(owner->theme_.itemHeight,
-                                        std::min(desiredHeight, std::max(owner->theme_.itemHeight, availableHeight)));
+        const int hostHeight = std::max(owner->itemHeight_,
+                                        std::min(desiredHeight, std::max(owner->itemHeight_, availableHeight)));
         const int width = comboRect.right - comboRect.left;
         popupOrigin.x = std::max(workArea.left, std::min(popupOrigin.x, workArea.right - width));
         popupOrigin.y = std::max(workArea.top, std::min(popupOrigin.y, workArea.bottom - hostHeight));
@@ -325,6 +349,28 @@ struct ComboBox::Impl {
         }
     }
 
+    void UpdateWindowRegion() {
+        if (!owner->comboHwnd_) {
+            return;
+        }
+
+        RECT rect{};
+        GetClientRect(owner->comboHwnd_, &rect);
+        const int width = rect.right - rect.left;
+        const int height = rect.bottom - rect.top;
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+
+        if (owner->cornerRadius_ <= 0) {
+            SetWindowRgn(owner->comboHwnd_, nullptr, TRUE);
+            return;
+        }
+
+        HRGN region = CreateRoundRectRgn(0, 0, width + 1, height + 1, owner->cornerRadius_ * 2, owner->cornerRadius_ * 2);
+        SetWindowRgn(owner->comboHwnd_, region, TRUE);
+    }
+
     void ApplyPopupSelection() {
         const int selected = static_cast<int>(SendMessageW(owner->popupList_, LB_GETCURSEL, 0, 0));
         if (selected >= 0) {
@@ -355,6 +401,9 @@ struct ComboBox::Impl {
         switch (message) {
         case WM_ERASEBKGND:
             return 1;
+        case WM_SIZE:
+            self->UpdateWindowRegion();
+            break;
         case WM_LBUTTONDOWN:
         case WM_LBUTTONDBLCLK:
             self->TogglePopup();
@@ -407,7 +456,7 @@ struct ComboBox::Impl {
             if (self) {
                 auto* measure = reinterpret_cast<MEASUREITEMSTRUCT*>(lParam);
                 if (measure && measure->CtlID == kPopupListId) {
-                    measure->itemHeight = self->owner->theme_.itemHeight;
+                    measure->itemHeight = self->owner->itemHeight_;
                     return TRUE;
                 }
             }
@@ -506,8 +555,23 @@ struct ComboBox::Impl {
 
     void DrawComboButton(const DRAWITEMSTRUCT* draw) {
         const bool selected = (draw->itemState & ODS_SELECTED) != 0;
-        FillRect(draw->hDC, &draw->rcItem, selected ? brushButtonHot : brushPanel);
-        FrameRect(draw->hDC, &draw->rcItem, brushBorder);
+        HGDIOBJ oldFillBrush = SelectObject(draw->hDC, selected ? brushButtonHot : brushButton);
+        HPEN borderPen = CreatePen(PS_SOLID, 1, owner->theme_.border);
+        HGDIOBJ oldBorderPen = SelectObject(draw->hDC, borderPen);
+        if (owner->cornerRadius_ > 0) {
+            RoundRect(draw->hDC,
+                      draw->rcItem.left,
+                      draw->rcItem.top,
+                      draw->rcItem.right,
+                      draw->rcItem.bottom,
+                      owner->cornerRadius_ * 2,
+                      owner->cornerRadius_ * 2);
+        } else {
+            Rectangle(draw->hDC, draw->rcItem.left, draw->rcItem.top, draw->rcItem.right, draw->rcItem.bottom);
+        }
+        SelectObject(draw->hDC, oldBorderPen);
+        SelectObject(draw->hDC, oldFillBrush);
+        DeleteObject(borderPen);
         HFONT oldFont = SelectControlFont(draw->hDC, draw->hwndItem);
         SetBkMode(draw->hDC, TRANSPARENT);
         SetTextColor(draw->hDC, owner->theme_.text);
@@ -528,11 +592,11 @@ struct ComboBox::Impl {
             {arrowRect.right, centerY - 2},
             {(arrowRect.left + arrowRect.right) / 2, centerY + 4},
         };
-        HGDIOBJ oldBrush = SelectObject(draw->hDC, brushArrow);
-        HGDIOBJ oldPen = SelectObject(draw->hDC, penArrow);
+        HGDIOBJ oldArrowBrush = SelectObject(draw->hDC, brushArrow);
+        HGDIOBJ oldArrowPen = SelectObject(draw->hDC, penArrow);
         Polygon(draw->hDC, pts, 3);
-        SelectObject(draw->hDC, oldPen);
-        SelectObject(draw->hDC, oldBrush);
+        SelectObject(draw->hDC, oldArrowPen);
+        SelectObject(draw->hDC, oldArrowBrush);
         if (oldFont) {
             SelectObject(draw->hDC, oldFont);
         }
@@ -583,6 +647,8 @@ bool ComboBox::Create(HWND parent, int controlId, const Theme& theme, const Opti
     parentHwnd_ = parent;
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
+    variant_ = options.variant;
+    itemHeight_ = ResolveComboItemHeight(theme_, variant_);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
@@ -607,6 +673,7 @@ bool ComboBox::Create(HWND parent, int controlId, const Theme& theme, const Opti
         return false;
     }
     SendMessageW(comboHwnd_, WM_SETFONT, reinterpret_cast<WPARAM>(impl_->font), TRUE);
+    SetCornerRadius(options.cornerRadius >= 0 ? options.cornerRadius : ResolveComboCornerRadius(variant_));
 
     EnsurePopupClassRegistered(impl_->instance, Impl::PopupWindowProc);
     popupHost_ = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
@@ -691,7 +758,15 @@ void ComboBox::Destroy() {
 
 void ComboBox::SetTheme(const Theme& theme) {
     theme_ = ResolveTheme(theme);
+    itemHeight_ = ResolveComboItemHeight(theme_, variant_);
     impl_->UpdateThemeResources();
+    if (comboHwnd_) {
+        impl_->UpdateWindowRegion();
+        InvalidateRect(comboHwnd_, nullptr, TRUE);
+    }
+    if (popupList_) {
+        InvalidateRect(popupList_, nullptr, TRUE);
+    }
 }
 
 void ComboBox::SetItems(const std::vector<ComboItem>& items) {
@@ -751,6 +826,14 @@ ComboItem ComboBox::GetItem(int index) const {
         return {};
     }
     return impl_->items[index];
+}
+
+void ComboBox::SetCornerRadius(int radius) {
+    cornerRadius_ = std::max(0, radius);
+    if (comboHwnd_) {
+        impl_->UpdateWindowRegion();
+        InvalidateRect(comboHwnd_, nullptr, TRUE);
+    }
 }
 
 }  // namespace darkui

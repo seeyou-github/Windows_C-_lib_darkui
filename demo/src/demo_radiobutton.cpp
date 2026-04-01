@@ -75,14 +75,14 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         darkui::RadioButton::Options radioAOptions;
         radioAOptions.text = L"Compact mode";
         radioAOptions.checked = true;
-        radioAOptions.surfaceRole = darkui::SurfaceRole::Background;
+        radioAOptions.variant = darkui::SelectionVariant::Accent;
         radioAOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_GROUP;
         darkui::RadioButton::Options radioBOptions;
         radioBOptions.text = L"Balanced mode";
-        radioBOptions.surfaceRole = darkui::SurfaceRole::Background;
+        radioBOptions.variant = darkui::SelectionVariant::Default;
         darkui::RadioButton::Options radioCOptions;
         radioCOptions.text = L"Detailed mode";
-        radioCOptions.surfaceRole = darkui::SurfaceRole::Background;
+        radioCOptions.variant = darkui::SelectionVariant::Panel;
 
         if (!created->radioA.Create(window, ID_RADIO_A, created->host.theme(), radioAOptions) ||
             !created->radioB.Create(window, ID_RADIO_B, created->host.theme(), radioBOptions) ||

@@ -12,6 +12,8 @@ namespace darkui {
 // - Position it with MoveWindow().
 // - Bind it into ThemeManager when the page supports theme switching, usually through ThemedWindowHost::theme_manager().
 // - Handle value changes through WM_HSCROLL in the parent window.
+// - Prefer `variant` for common density/emphasis presets before manually tuning low-level styling:
+//   `Default`, `Dense`, `Emphasis`.
 class Slider {
 public:
     struct Impl;
@@ -21,6 +23,7 @@ public:
         int value = 0;
         bool showTicks = false;
         int tickCount = 0;
+        SliderVariant variant = SliderVariant::Default;
         DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP;
         DWORD exStyle = 0;
     };
@@ -46,6 +49,8 @@ public:
     int control_id() const { return controlId_; }
     // Returns the theme currently stored by the control.
     const Theme& theme() const { return theme_; }
+    // Returns the semantic slider preset currently active on the control.
+    SliderVariant variant() const { return variant_; }
 
     // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
@@ -104,6 +109,16 @@ private:
     bool showTicks_ = false;
     // Number of tick marks to render.
     int tickCount_ = 0;
+    // Semantic slider preset used to derive the effective visuals.
+    SliderVariant variant_ = SliderVariant::Default;
+    int trackHeight_ = 6;
+    int thumbRadius_ = 9;
+    COLORREF backgroundColor_ = RGB(34, 36, 40);
+    COLORREF trackColor_ = RGB(52, 56, 62);
+    COLORREF fillColor_ = RGB(78, 120, 184);
+    COLORREF thumbColor_ = RGB(224, 227, 232);
+    COLORREF thumbHotColor_ = RGB(245, 247, 250);
+    COLORREF tickColor_ = RGB(92, 100, 112);
     // Theme currently used by the control.
     Theme theme_{};
 };

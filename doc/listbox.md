@@ -20,6 +20,7 @@
 - Rounded dark host surface
 - Native list box keyboard and scroll behavior
 - Owner-drawn dark item rendering
+- Semantic field variants for default, panel, and dense forms
 - Supports both single-selection and multi-selection styles
 
 ## Recommended Usage
@@ -40,7 +41,7 @@ card.Create(hwnd, 2200, theme, cardOptions);
 
 darkui::ListBox listBox;
 darkui::ListBox::Options options;
-options.cornerRadius = 12;
+options.variant = darkui::FieldVariant::Panel;
 options.items = {
     {L"All projects", 1},
     {L"Queued exports", 2},
@@ -67,6 +68,7 @@ MoveWindow(listBox.hwnd(), 20, 20, 280, 180, TRUE);
 ```cpp
 darkui::ListBox multiList;
 darkui::ListBox::Options multiOptions;
+multiOptions.variant = darkui::FieldVariant::Dense;
 multiOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | LBS_EXTENDEDSEL;
 multiList.Create(card.hwnd(), 2202, theme, multiOptions);
 ```
@@ -117,6 +119,14 @@ listBox.SetSelection(2, true);
 listBox.SetCornerRadius(14);
 ```
 
+### `FieldVariant`
+
+```cpp
+darkui::FieldVariant::Default
+darkui::FieldVariant::Panel
+darkui::FieldVariant::Dense
+```
+
 ## Theme Fields Used
 
 - `listBoxBackground`
@@ -133,6 +143,7 @@ listBox.SetCornerRadius(14);
 
 - Move and size the host returned by `listBox.hwnd()`
 - When the list box sits on a grouped card, prefer parenting it to `darkui::Panel`
+- Prefer `variant` for standard field styles and only override `cornerRadius` when you need a one-off shape
 - Use `listBox.list_hwnd()` when you need direct access to the inner native `LISTBOX`
 - For multi-select mode, prefer `GetSelections()` instead of `GetSelection()`
 

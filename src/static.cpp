@@ -2,7 +2,93 @@
 
 #include <commctrl.h>
 
+#include <algorithm>
+
 namespace darkui {
+namespace {
+
+int AdjustFontHeight(int height, int delta) {
+    if (height == 0) {
+        return delta;
+    }
+    if (height < 0) {
+        return std::min(-1, height - delta);
+    }
+    return std::max(1, height + delta);
+}
+
+COLORREF ResolveStaticTextColor(const Theme& theme, StaticVariant variant) {
+    switch (variant) {
+    case StaticVariant::Title:
+    case StaticVariant::PanelTitle:
+        return theme.highlightText;
+    case StaticVariant::Muted:
+        return theme.mutedText;
+    case StaticVariant::Body:
+    case StaticVariant::PanelBody:
+    case StaticVariant::Default:
+    default:
+        return theme.staticText;
+    }
+}
+
+FontSpec ResolveStaticFont(const Theme& theme, StaticVariant variant) {
+    FontSpec spec = theme.uiFont;
+    switch (variant) {
+    case StaticVariant::Title:
+    case StaticVariant::PanelTitle:
+        spec.weight = FW_SEMIBOLD;
+        spec.height = AdjustFontHeight(spec.height, 4);
+        break;
+    case StaticVariant::Muted:
+        spec.height = AdjustFontHeight(spec.height, -1);
+        break;
+    case StaticVariant::PanelBody:
+        spec.height = AdjustFontHeight(spec.height, -1);
+        break;
+    case StaticVariant::Body:
+    case StaticVariant::Default:
+    default:
+        break;
+    }
+    return spec;
+}
+
+SurfaceRole ResolveStaticSurfaceRole(StaticVariant variant, SurfaceRole requested) {
+    if (requested != SurfaceRole::Auto) {
+        return requested;
+    }
+    switch (variant) {
+    case StaticVariant::PanelTitle:
+    case StaticVariant::PanelBody:
+        return SurfaceRole::Panel;
+    case StaticVariant::Title:
+    case StaticVariant::Body:
+    case StaticVariant::Muted:
+    case StaticVariant::Default:
+    default:
+        return SurfaceRole::Auto;
+    }
+}
+
+UINT ResolveStaticTextFormat(StaticVariant variant, UINT requested) {
+    if (requested != DT_LEFT) {
+        return requested;
+    }
+    switch (variant) {
+    case StaticVariant::Title:
+    case StaticVariant::PanelTitle:
+        return DT_LEFT | DT_SINGLELINE;
+    case StaticVariant::Body:
+    case StaticVariant::PanelBody:
+    case StaticVariant::Muted:
+    case StaticVariant::Default:
+    default:
+        return DT_LEFT;
+    }
+}
+
+}  // namespace
 
 struct Static::Impl {
     Static* owner = nullptr;
@@ -24,7 +110,7 @@ struct Static::Impl {
         if (font) DeleteObject(font);
 
         brushBackground = CreateSolidBrush(owner->backgroundColor_);
-        font = CreateFont(owner->theme_.uiFont);
+        font = CreateFont(ResolveStaticFont(owner->theme_, owner->variant_));
         if (owner->staticHwnd_ && font) {
             SendMessageW(owner->staticHwnd_, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
         }
@@ -82,7 +168,7 @@ struct Static::Impl {
 
         HFONT oldFont = font ? reinterpret_cast<HFONT>(SelectObject(dc, font)) : nullptr;
         SetBkMode(dc, TRANSPARENT);
-        SetTextColor(dc, owner->theme_.staticText);
+        SetTextColor(dc, owner->textColor_);
         UINT format = owner->textFormat_ | DT_VCENTER | DT_NOPREFIX;
         if ((format & DT_SINGLELINE) == 0) {
             format |= DT_WORDBREAK;
@@ -141,9 +227,11 @@ bool Static::Create(HWND parent, int controlId, const Theme& theme, const Option
     parentHwnd_ = parent;
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
-    surfaceRole_ = options.surfaceRole;
+    variant_ = options.variant;
+    surfaceRole_ = ResolveStaticSurfaceRole(variant_, options.surfaceRole);
     hasCustomBackgroundColor_ = options.backgroundColor != CLR_INVALID;
     backgroundColor_ = hasCustomBackgroundColor_ ? options.backgroundColor : ResolveInheritedSurfaceColor(theme_, parent, surfaceRole_);
+    textColor_ = ResolveStaticTextColor(theme_, variant_);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
@@ -171,7 +259,7 @@ bool Static::Create(HWND parent, int controlId, const Theme& theme, const Option
                       Impl::StaticSubclassProc,
                       reinterpret_cast<UINT_PTR>(this),
                       reinterpret_cast<DWORD_PTR>(impl_.get()));
-    SetTextFormat(options.textFormat);
+    SetTextFormat(ResolveStaticTextFormat(variant_, options.textFormat));
     SetEllipsis(options.ellipsis);
     if (options.bitmap) {
         SetBitmap(options.bitmap);
@@ -201,6 +289,7 @@ void Static::SetTheme(const Theme& theme) {
     if (!hasCustomBackgroundColor_) {
         backgroundColor_ = ResolveInheritedSurfaceColor(theme_, parentHwnd_, surfaceRole_);
     }
+    textColor_ = ResolveStaticTextColor(theme_, variant_);
     impl_->UpdateThemeResources();
 }
 

@@ -167,6 +167,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         }
 
         darkui::Toolbar::Options toolbarOptions;
+        toolbarOptions.variant = darkui::ToolbarVariant::Dense;
         if (!created->toolbar.Create(window, ID_TOOLBAR, created->theme, toolbarOptions)) {
             CleanupState(created);
             return -1;

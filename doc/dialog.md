@@ -69,14 +69,16 @@ formPanel.Create(dialog.content_hwnd(), 5100, theme, panelOptions);
 
 darkui::Static::Options labelOptions;
 labelOptions.text = L"Title";
+labelOptions.variant = darkui::StaticVariant::PanelTitle;
 darkui::Edit::Options titleOptions;
 titleOptions.cueBanner = L"Enter a title";
+titleOptions.variant = darkui::FieldVariant::Panel;
 darkui::Button::Options fillOptions;
 fillOptions.text = L"Fill Sample";
-fillOptions.cornerRadius = 12;
+fillOptions.variant = darkui::ButtonVariant::Secondary;
 darkui::Edit::Options notesOptions;
 notesOptions.cueBanner = L"Write notes here";
-notesOptions.cornerRadius = 12;
+notesOptions.variant = darkui::FieldVariant::Panel;
 notesOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL;
 
 label.Create(formPanel.hwnd(), 5101, theme, labelOptions);
@@ -151,6 +153,7 @@ dialog.EndDialog(darkui::Dialog::Result::Cancel);
 
 - `ShowModal()` disables the owner window until the popup closes
 - Use `SetMessageVisible(false)` when you want a fully custom body
+- Prefer per-control `variant` fields for button, static, and input styling inside custom dialog bodies
 - Unknown `WM_COMMAND` and `WM_NOTIFY` traffic from custom child controls is forwarded to the owner window
 
 ## Demo Reference

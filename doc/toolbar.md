@@ -71,6 +71,7 @@ options.items = {
     {L"Share", 8103, iconShare, nullptr, 0, false, false, false, true},
     {L"Layout", 8105, iconLayout, layoutMenu, 0, false, false, false, true, false, true},
 };
+options.variant = darkui::ToolbarVariant::Accent;
 
 toolbar.Create(hwnd, 8001, theme, options);
 
@@ -195,6 +196,16 @@ themeManager.Bind(toolbar);
 themeManager.Apply();
 ```
 
+### `variant`
+
+Prefer semantic presets before hand-tuning spacing and emphasis:
+
+```cpp
+options.variant = darkui::ToolbarVariant::Default;
+options.variant = darkui::ToolbarVariant::Dense;
+options.variant = darkui::ToolbarVariant::Accent;
+```
+
 ### `GetCount` / `GetItem`
 
 ```cpp
@@ -227,6 +238,8 @@ auto item = toolbar.GetItem(0);
 - When `dropDown = true`, `popupMenu` must be a valid application-owned `HMENU`
 - `alignRight = true` is useful for secondary tools or far-edge actions
 - The same control can be used as a menu-bar style surface
+- `ToolbarVariant::Dense` is the preferred preset for compact utility strips and menu-bar-adjacent tool rows
+- `ToolbarVariant::Accent` is the preferred preset when the active command group should read as the primary top action bar
 
 ## Drop-Down and Overflow Behavior
 

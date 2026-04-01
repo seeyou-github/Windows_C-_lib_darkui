@@ -57,6 +57,7 @@ options.items = {
     {L"Notes", 3},
 };
 options.selection = 0;
+options.variant = darkui::TabVariant::Accent;
 
 tab.Create(card.hwnd(), 7001, theme, options);
 
@@ -133,6 +134,16 @@ int index = tab.GetSelection();
 RECT contentRect = tab.GetContentRect();
 ```
 
+### `variant`
+
+Prefer semantic presets before hand-tuning strip emphasis:
+
+```cpp
+options.variant = darkui::TabVariant::Default;
+options.variant = darkui::TabVariant::Panel;
+options.variant = darkui::TabVariant::Accent;
+```
+
 ### `ThemedWindowHost \+ ThemeManager`
 
 ```cpp
@@ -164,6 +175,8 @@ themeManager.Apply();
 - When the tab area sits on a shared card surface, prefer parenting it to `darkui::Panel`
 - Vertical layout works well for left navigation
 - Horizontal layout works well for classic tabbed windows
+- `TabVariant::Panel` is the preferred preset when the whole tab control lives inside a card surface
+- `TabVariant::Accent` is the preferred preset when the selected tab should carry stronger navigation emphasis
 
 ## Demo Reference
 

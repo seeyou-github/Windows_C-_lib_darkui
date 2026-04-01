@@ -88,7 +88,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         }
 
         darkui::ListBox::Options singleOptions;
-        singleOptions.cornerRadius = 14;
+        singleOptions.variant = darkui::FieldVariant::Default;
         singleOptions.items = {
             {L"Overview", 1},
             {L"Transfers", 2},
@@ -98,7 +98,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         };
         singleOptions.selection = 0;
         darkui::ListBox::Options multiOptions;
-        multiOptions.cornerRadius = 14;
+        multiOptions.variant = darkui::FieldVariant::Dense;
         multiOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | LBS_EXTENDEDSEL;
         multiOptions.items = {
             {L"Render queue", 10},

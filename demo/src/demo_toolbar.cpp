@@ -171,18 +171,22 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         fontSliderOptions.value = created->fontPixelSize;
         fontSliderOptions.showTicks = true;
         fontSliderOptions.tickCount = 10;
+        fontSliderOptions.variant = darkui::SliderVariant::Dense;
         darkui::Slider::Options heightSliderOptions;
         heightSliderOptions.minimum = 32;
         heightSliderOptions.maximum = 72;
         heightSliderOptions.value = created->toolbarButtonHeight;
         heightSliderOptions.showTicks = true;
         heightSliderOptions.tickCount = 9;
+        heightSliderOptions.variant = darkui::SliderVariant::Dense;
 
         created->fontSlider.Create(window, ID_SLIDER_FONT, created->theme, fontSliderOptions);
         created->toolbarHeightSlider.Create(window, ID_SLIDER_TOOLBAR_HEIGHT, created->theme, heightSliderOptions);
 
         darkui::Toolbar::Options toolbarOptions;
+        toolbarOptions.variant = darkui::ToolbarVariant::Accent;
         darkui::Toolbar::Options compareToolbarOptions;
+        compareToolbarOptions.variant = darkui::ToolbarVariant::Dense;
         if (!created->toolbar.Create(window, ID_TOOLBAR, created->theme, toolbarOptions) ||
             !created->compareToolbar.Create(window, ID_TOOLBAR_COMPARE, created->theme, compareToolbarOptions)) {
             CleanupState(created);

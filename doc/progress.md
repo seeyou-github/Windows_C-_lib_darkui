@@ -39,6 +39,7 @@ darkui::ProgressBar::Options options;
 options.minimum = 0;
 options.maximum = 100;
 options.value = 64;
+options.variant = darkui::ProgressVariant::Emphasis;
 
 darkui::Panel card;
 darkui::Panel::Options cardOptions;
@@ -84,6 +85,17 @@ progress.SetShowPercentage(true);
 darkui::ProgressBar::Options options;
 options.minimum = 0;
 options.maximum = 100;
+options.variant = darkui::ProgressVariant::Panel;
+```
+
+### `variant`
+
+Prefer semantic presets before hand-tuning low-level track geometry:
+
+```cpp
+options.variant = darkui::ProgressVariant::Default;
+options.variant = darkui::ProgressVariant::Panel;
+options.variant = darkui::ProgressVariant::Emphasis;
 ```
 
 ### `ThemedWindowHost \+ ThemeManager`
@@ -96,6 +108,20 @@ host.Attach(hwnd, hostOptions);
 auto& themeManager = host.theme_manager();
 themeManager.Bind(progress);
 themeManager.Apply();
+```
+
+### Button companions
+
+When the page also uses action buttons near the progress bar, prefer semantic button variants:
+
+```cpp
+darkui::Button::Options decreaseOptions;
+decreaseOptions.text = L"-10";
+decreaseOptions.variant = darkui::ButtonVariant::Secondary;
+
+darkui::Button::Options toggleOptions;
+toggleOptions.text = L"Toggle Percent";
+toggleOptions.variant = darkui::ButtonVariant::Primary;
 ```
 
 ## Reading State
@@ -120,6 +146,8 @@ bool showText = progress.show_percentage();
 ## Usage Notes
 
 - When the control sits on a custom card, prefer parenting it to `darkui::Panel` and keeping `surfaceRole = Auto`
+- `ProgressVariant::Panel` is the preferred preset for dashboard cards and grouped status panels
+- `ProgressVariant::Emphasis` is the preferred preset when one progress bar should read as the primary metric in a view
 - Changing the logical range automatically clamps the current value
 
 ## Demo Reference

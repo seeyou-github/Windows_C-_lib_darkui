@@ -41,7 +41,7 @@ card.Create(hwnd, 1100, host.theme(), cardOptions);
 darkui::Button button;
 darkui::Button::Options buttonOptions;
 buttonOptions.text = L"Apply";
-buttonOptions.cornerRadius = 14;
+buttonOptions.variant = darkui::ButtonVariant::Primary;
 
 button.Create(card.hwnd(), 1101, host.theme(), buttonOptions);
 
@@ -90,6 +90,7 @@ card.SetCornerRadius(28);
 
 - The default `Panel::Options::role` is already `SurfaceRole::Panel`
 - Child controls created under `panel.hwnd()` can usually keep their default `surfaceRole = Auto`
+- Prefer child control `variant` presets before manually tuning radius or low-level styling
 - Bind the panel itself into `ThemeManager` so its background updates with the rest of the page
 
 ## Demo Reference

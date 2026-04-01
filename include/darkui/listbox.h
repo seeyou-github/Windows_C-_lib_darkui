@@ -23,6 +23,7 @@ struct ListBoxItem {
 // - Fill it with SetItems() or AddItem().
 // - Position the host window with MoveWindow().
 // - When the list box sits on a grouped card surface, prefer parenting it to darkui::Panel.
+// - Prefer `variant` for common field styles before manually tuning shape or density.
 // - Bind it through ThemedWindowHost::theme_manager() when the page supports runtime theme changes.
 // - Listen for LBN_SELCHANGE in the parent window.
 // Notes:
@@ -36,6 +37,7 @@ public:
         std::vector<ListBoxItem> items;
         int selection = -1;
         int cornerRadius = -1;
+        FieldVariant variant = FieldVariant::Default;
         DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL;
         DWORD exStyle = 0;
     };
@@ -63,6 +65,8 @@ public:
     const Theme& theme() const { return theme_; }
     // Returns the current corner radius in pixels.
     int corner_radius() const { return cornerRadius_; }
+    // Returns the semantic field preset currently active on the control.
+    FieldVariant variant() const { return variant_; }
 
     // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
@@ -95,6 +99,8 @@ private:
     HWND listHwnd_ = nullptr;
     int controlId_ = 0;
     int cornerRadius_ = 10;
+    int itemHeight_ = 26;
+    FieldVariant variant_ = FieldVariant::Default;
     Theme theme_{};
 };
 

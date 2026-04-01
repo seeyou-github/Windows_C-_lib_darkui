@@ -13,6 +13,7 @@ namespace darkui {
 // - Fill Dialog::Options and call Create(owner, id, theme, options).
 // - Use ThemedWindowHost for the owner window when you want one shared top-level theme workflow.
 // - For custom grouped body sections, parent child controls to darkui::Panel inside content_hwnd().
+// - Inside custom bodies, prefer per-control `variant` presets before manually tuning low-level styling.
 // - Use SetMessage() for a simple centered message body, or create your own child
 //   controls inside content_hwnd() for custom layouts.
 // - Call ShowModal() to display the popup and run a local modal message loop.

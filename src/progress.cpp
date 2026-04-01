@@ -11,6 +11,16 @@ constexpr wchar_t kProgressClassName[] = L"DarkUiProgressBarControl";
 ATOM EnsureProgressClassRegistered(HINSTANCE instance);
 LRESULT CALLBACK ProgressWindowProcThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 
+COLORREF MixColor(COLORREF a, COLORREF b, double ratio) {
+    ratio = std::clamp(ratio, 0.0, 1.0);
+    const auto mix = [ratio](int x, int y) {
+        return static_cast<int>(x + (y - x) * ratio + 0.5);
+    };
+    return RGB(mix(GetRValue(a), GetRValue(b)),
+               mix(GetGValue(a), GetGValue(b)),
+               mix(GetBValue(a), GetBValue(b)));
+}
+
 }  // namespace
 
 struct ProgressBar::Impl {
@@ -31,14 +41,36 @@ struct ProgressBar::Impl {
     }
 
     void UpdateThemeResources() {
+        owner->trackHeight_ = std::max(8, owner->theme_.progressHeight);
+        owner->backgroundColor_ = owner->theme_.progressBackground;
+        owner->trackColor_ = owner->theme_.progressTrack;
+        owner->fillColor_ = owner->theme_.progressFill;
+        owner->textColor_ = owner->theme_.progressText;
+
+        switch (owner->variant_) {
+        case ProgressVariant::Panel:
+            owner->trackHeight_ = std::max(8, owner->theme_.progressHeight - 2);
+            owner->backgroundColor_ = MixColor(owner->surfaceColor_, owner->theme_.progressBackground, 0.72);
+            owner->trackColor_ = MixColor(owner->surfaceColor_, owner->theme_.progressTrack, 0.80);
+            break;
+        case ProgressVariant::Emphasis:
+            owner->trackHeight_ = std::max(10, owner->theme_.progressHeight + 2);
+            owner->fillColor_ = MixColor(owner->theme_.progressFill, owner->theme_.accent, 0.45);
+            owner->textColor_ = owner->theme_.highlightText;
+            break;
+        case ProgressVariant::Default:
+        default:
+            break;
+        }
+
         if (brushBackground) DeleteObject(brushBackground);
         if (brushTrack) DeleteObject(brushTrack);
         if (brushFill) DeleteObject(brushFill);
         if (font) DeleteObject(font);
 
-        brushBackground = CreateSolidBrush(owner->theme_.progressBackground);
-        brushTrack = CreateSolidBrush(owner->theme_.progressTrack);
-        brushFill = CreateSolidBrush(owner->theme_.progressFill);
+        brushBackground = CreateSolidBrush(owner->backgroundColor_);
+        brushTrack = CreateSolidBrush(owner->trackColor_);
+        brushFill = CreateSolidBrush(owner->fillColor_);
         font = CreateFont(owner->theme_.uiFont);
 
         if (owner->progressHwnd_) {
@@ -49,7 +81,7 @@ struct ProgressBar::Impl {
     RECT GetTrackRect() const {
         RECT client{};
         GetClientRect(owner->progressHwnd_, &client);
-        const int trackHeight = std::max(4, owner->theme_.progressHeight);
+        const int trackHeight = std::max(4, owner->trackHeight_);
         const int top = static_cast<int>(client.top) +
                         std::max(0, static_cast<int>(client.bottom - client.top - trackHeight) / 2);
         return RECT{client.left, top, client.right, top + trackHeight};
@@ -105,7 +137,7 @@ struct ProgressBar::Impl {
 
         HFONT oldFont = font ? reinterpret_cast<HFONT>(SelectObject(targetDc, font)) : nullptr;
         SetBkMode(targetDc, TRANSPARENT);
-        SetTextColor(targetDc, owner->theme_.progressText);
+        SetTextColor(targetDc, owner->textColor_);
         DrawTextW(targetDc, text.c_str(), -1, &client, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
         if (oldFont) {
             SelectObject(targetDc, oldFont);
@@ -184,6 +216,7 @@ bool ProgressBar::Create(HWND parent, int controlId, const Theme& theme, const O
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
     surfaceRole_ = options.surfaceRole;
+    variant_ = options.variant;
     hasCustomSurfaceColor_ = options.surfaceColor != CLR_INVALID;
     surfaceColor_ = hasCustomSurfaceColor_ ? options.surfaceColor : ResolveInheritedSurfaceColor(theme_, parent, surfaceRole_);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));

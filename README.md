@@ -216,7 +216,7 @@ host.Attach(hwnd, hostOptions);
 darkui::Button button;
 darkui::Button::Options options;
 options.text = L"Refresh";
-options.cornerRadius = 14;
+options.variant = darkui::ButtonVariant::Secondary;
 
 darkui::Panel card;
 darkui::Panel::Options cardOptions;
@@ -226,6 +226,17 @@ button.Create(card.hwnd(), 1001, host.theme(), options);
 host.theme_manager().Bind(card, button);
 host.theme_manager().Apply();
 ```
+
+For the most common control styles, prefer semantic variants before hand-tuning low-level fields:
+
+- `ButtonVariant::Primary / Secondary / Subtle / Ghost / Danger`
+- `FieldVariant::Default / Panel / Dense` for `Edit`, `ComboBox`, and `ListBox`
+- `StaticVariant::Title / Body / Muted / PanelTitle / PanelBody`
+- `SelectionVariant::Default / Panel / Accent` for `CheckBox` and `RadioButton`
+- `ProgressVariant::Default / Panel / Emphasis` for `ProgressBar`
+- `SliderVariant::Default / Dense / Emphasis` for `Slider`
+- `TabVariant::Default / Panel / Accent` for `Tab`
+- `ToolbarVariant::Default / Dense / Accent` for `Toolbar`
 
 Ready-made preset theme:
 

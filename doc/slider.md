@@ -44,6 +44,7 @@ options.maximum = 100;
 options.value = 38;
 options.showTicks = true;
 options.tickCount = 11;
+options.variant = darkui::SliderVariant::Emphasis;
 
 slider.Create(hwnd, 4001, theme, options);
 
@@ -91,6 +92,16 @@ slider.SetShowTicks(true);
 slider.SetTickCount(11);
 ```
 
+### `variant`
+
+Prefer semantic presets before hand-tuning density or emphasis:
+
+```cpp
+options.variant = darkui::SliderVariant::Default;
+options.variant = darkui::SliderVariant::Dense;
+options.variant = darkui::SliderVariant::Emphasis;
+```
+
 ### `ThemedWindowHost \+ ThemeManager`
 
 ```cpp
@@ -129,6 +140,8 @@ int tickCount = slider.tick_count();
 - Suitable for continuous numeric values
 - Use `WM_HSCROLL` to keep application state synchronized
 - Fine-grained stepping can be implemented in application code
+- `SliderVariant::Dense` works well for compact utility rows such as toolbar-side tuning controls
+- `SliderVariant::Emphasis` works well for hero controls such as exposure, balance, or intensity
 
 ## Demo Reference
 

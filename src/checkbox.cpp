@@ -2,11 +2,23 @@
 
 #include <commctrl.h>
 
+#include <algorithm>
+
 namespace darkui {
 
 namespace {
 
 constexpr wchar_t kCheckBoxStateProperty[] = L"DarkUiCheckBoxState";
+
+COLORREF MixColor(COLORREF a, COLORREF b, double ratio) {
+    ratio = std::clamp(ratio, 0.0, 1.0);
+    const auto mix = [ratio](int x, int y) {
+        return static_cast<int>(x + (y - x) * ratio + 0.5);
+    };
+    return RGB(mix(GetRValue(a), GetRValue(b)),
+               mix(GetGValue(a), GetGValue(b)),
+               mix(GetBValue(a), GetBValue(b)));
+}
 
 }
 
@@ -45,13 +57,36 @@ struct CheckBox::Impl {
         if (brushBoxHot) DeleteObject(brushBoxHot);
         if (brushAccent) DeleteObject(brushAccent);
 
+        COLORREF borderColor = owner->theme_.checkBorder;
+        COLORREF boxColor = owner->theme_.checkBackground;
+        COLORREF boxHotColor = owner->theme_.checkBackgroundHot;
+        COLORREF accentColor = owner->theme_.checkAccent;
+        COLORREF checkmarkColor = RGB(245, 247, 250);
+        switch (owner->variant_) {
+        case SelectionVariant::Panel:
+            boxColor = MixColor(owner->surfaceColor_, owner->theme_.checkBackground, 0.72);
+            boxHotColor = MixColor(owner->surfaceColor_, owner->theme_.checkBackgroundHot, 0.76);
+            borderColor = MixColor(owner->surfaceColor_, owner->theme_.checkBorder, 0.78);
+            break;
+        case SelectionVariant::Accent:
+            borderColor = MixColor(owner->theme_.checkAccent, owner->theme_.checkBorder, 0.38);
+            boxColor = MixColor(owner->theme_.checkBackground, owner->theme_.checkAccent, 0.14);
+            boxHotColor = MixColor(owner->theme_.checkBackgroundHot, owner->theme_.checkAccent, 0.22);
+            accentColor = owner->theme_.checkAccent;
+            checkmarkColor = owner->theme_.highlightText;
+            break;
+        case SelectionVariant::Default:
+        default:
+            break;
+        }
+
         font = CreateFont(owner->theme_.uiFont);
-        penBorder = CreatePen(PS_SOLID, 1, owner->theme_.checkBorder);
-        penAccent = CreatePen(PS_SOLID, 2, RGB(245, 247, 250));
+        penBorder = CreatePen(PS_SOLID, 1, borderColor);
+        penAccent = CreatePen(PS_SOLID, 2, checkmarkColor);
         brushSurface = CreateSolidBrush(owner->surfaceColor_);
-        brushBox = CreateSolidBrush(owner->theme_.checkBackground);
-        brushBoxHot = CreateSolidBrush(owner->theme_.checkBackgroundHot);
-        brushAccent = CreateSolidBrush(owner->theme_.checkAccent);
+        brushBox = CreateSolidBrush(boxColor);
+        brushBoxHot = CreateSolidBrush(boxHotColor);
+        brushAccent = CreateSolidBrush(accentColor);
 
         if (owner->checkboxHwnd_) {
             SendMessageW(owner->checkboxHwnd_, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
@@ -235,6 +270,7 @@ bool CheckBox::Create(HWND parent, int controlId, const Theme& theme, const Opti
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
     surfaceRole_ = options.surfaceRole;
+    variant_ = options.variant;
     hasCustomSurfaceColor_ = options.surfaceColor != CLR_INVALID;
     surfaceColor_ = hasCustomSurfaceColor_ ? options.surfaceColor : ResolveInheritedSurfaceColor(theme_, parent, surfaceRole_);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));

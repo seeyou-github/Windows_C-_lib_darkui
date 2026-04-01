@@ -61,11 +61,14 @@ struct ToolbarItem {
 // - Position it with MoveWindow().
 // - Bind it into ThemeManager when the page supports theme switching, usually through ThemedWindowHost::theme_manager().
 // - Handle WM_COMMAND in the parent window for item clicks.
+// - Prefer `variant` for common density/emphasis presets before manually tuning low-level styling:
+//   `Default`, `Dense`, `Accent`.
 class Toolbar {
 public:
     struct Impl;
     struct Options {
         std::vector<ToolbarItem> items;
+        ToolbarVariant variant = ToolbarVariant::Default;
         DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP;
         DWORD exStyle = 0;
     };
@@ -91,6 +94,8 @@ public:
     int control_id() const { return controlId_; }
     // Returns the theme currently stored by the control.
     const Theme& theme() const { return theme_; }
+    // Returns the semantic toolbar preset currently active on the control.
+    ToolbarVariant variant() const { return variant_; }
 
     // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
@@ -136,6 +141,17 @@ private:
     HWND popupList_ = nullptr;
     // Child control ID.
     int controlId_ = 0;
+    // Semantic toolbar preset used to derive the effective visuals.
+    ToolbarVariant variant_ = ToolbarVariant::Default;
+    int itemGap_ = 6;
+    int buttonSideInset_ = 14;
+    int itemHeight_ = 28;
+    COLORREF backgroundColor_ = RGB(34, 36, 40);
+    COLORREF itemColor_ = RGB(52, 56, 62);
+    COLORREF itemHotColor_ = RGB(72, 80, 92);
+    COLORREF itemActiveColor_ = RGB(78, 120, 184);
+    COLORREF textColor_ = RGB(224, 227, 232);
+    COLORREF textActiveColor_ = RGB(245, 247, 250);
     // Theme currently used by the control.
     Theme theme_{};
 };

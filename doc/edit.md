@@ -20,6 +20,7 @@
 - Dark background and text rendering
 - Custom placeholder color
 - Rounded outer shape
+- Semantic field variants for default, panel, and dense forms
 - Read-only mode
 - Supports multiline input with `ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL`
 - Standard forwarded `EN_*` notifications
@@ -42,7 +43,7 @@ card.Create(hwnd, 9000, theme, cardOptions);
 darkui::Edit edit;
 darkui::Edit::Options options;
 options.cueBanner = L"Search or enter text";
-options.cornerRadius = 16;
+options.variant = darkui::FieldVariant::Panel;
 
 edit.Create(card.hwnd(), 9001, theme, options);
 
@@ -82,7 +83,15 @@ bool Create(HWND parent, int controlId, const Theme& theme, const Edit::Options&
 ```cpp
 darkui::Edit::Options options;
 options.cueBanner = L"Placeholder";
-options.cornerRadius = 16;
+options.variant = darkui::FieldVariant::Default;
+```
+
+Available field variants:
+
+```cpp
+darkui::FieldVariant::Default
+darkui::FieldVariant::Panel
+darkui::FieldVariant::Dense
 ```
 
 ### `SetText` / `GetText`
@@ -117,7 +126,7 @@ darkui::Edit notes;
 darkui::Edit::Options notesOptions;
 notesOptions.text = L"Line 1\r\nLine 2\r\nLine 3";
 notesOptions.cueBanner = L"Write notes here";
-notesOptions.cornerRadius = 16;
+notesOptions.variant = darkui::FieldVariant::Panel;
 notesOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL;
 notes.Create(card.hwnd(), 9002, theme, notesOptions);
 MoveWindow(notes.hwnd(), 20, 72, 280, 140, TRUE);
@@ -141,6 +150,7 @@ HWND nativeEdit = edit.edit_hwnd();
 
 - Move and size the host returned by `edit.hwnd()`
 - When several inputs share one card surface, prefer parenting them to `darkui::Panel`
+- Prefer `variant` for standard field styles and only override `cornerRadius` when you need a one-off shape
 - Use `edit.edit_hwnd()` when you need direct access to the inner native `EDIT`
 - Read-only mode keeps the same dark appearance
 - Multiline mode is enabled by filling `Edit::Options::style` with normal Win32 edit flags

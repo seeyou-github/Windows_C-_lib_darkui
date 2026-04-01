@@ -28,6 +28,16 @@ ATOM EnsureToolbarPopupClassRegistered(HINSTANCE instance);
 LRESULT CALLBACK ToolbarWindowProcThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK ToolbarPopupWindowProcThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 
+COLORREF MixColor(COLORREF a, COLORREF b, double ratio) {
+    ratio = std::clamp(ratio, 0.0, 1.0);
+    const auto mix = [ratio](int x, int y) {
+        return static_cast<int>(x + (y - x) * ratio + 0.5);
+    };
+    return RGB(mix(GetRValue(a), GetRValue(b)),
+               mix(GetGValue(a), GetGValue(b)),
+               mix(GetBValue(a), GetBValue(b)));
+}
+
 SIZE QueryIconSize(HICON icon) {
     SIZE size{kToolbarIconSize, kToolbarIconSize};
     if (!icon) {
@@ -144,10 +154,36 @@ struct Toolbar::Impl {
     }
 
     bool UpdateThemeResources() {
-        HBRUSH newBrushBackground = CreateSolidBrush(owner->theme_.toolbarBackground);
-        HBRUSH newBrushItem = CreateSolidBrush(owner->theme_.toolbarItem);
-        HBRUSH newBrushItemHot = CreateSolidBrush(owner->theme_.toolbarItemHot);
-        HBRUSH newBrushItemActive = CreateSolidBrush(owner->theme_.toolbarItemActive);
+        owner->itemGap_ = kToolbarButtonGap;
+        owner->buttonSideInset_ = kToolbarButtonSideInset;
+        owner->itemHeight_ = std::max(owner->theme_.toolbarHeight - 12, 28);
+        owner->backgroundColor_ = owner->theme_.toolbarBackground;
+        owner->itemColor_ = owner->theme_.toolbarItem;
+        owner->itemHotColor_ = owner->theme_.toolbarItemHot;
+        owner->itemActiveColor_ = owner->theme_.toolbarItemActive;
+        owner->textColor_ = owner->theme_.toolbarText;
+        owner->textActiveColor_ = owner->theme_.toolbarTextActive;
+
+        switch (owner->variant_) {
+        case ToolbarVariant::Dense:
+            owner->itemGap_ = 4;
+            owner->buttonSideInset_ = 10;
+            owner->itemHeight_ = std::max(owner->itemHeight_ - 4, 24);
+            break;
+        case ToolbarVariant::Accent:
+            owner->itemActiveColor_ = MixColor(owner->theme_.toolbarItemActive, owner->theme_.accent, 0.45);
+            owner->itemHotColor_ = MixColor(owner->theme_.toolbarItemHot, owner->theme_.accentSecondary, 0.28);
+            owner->textActiveColor_ = owner->theme_.highlightText;
+            break;
+        case ToolbarVariant::Default:
+        default:
+            break;
+        }
+
+        HBRUSH newBrushBackground = CreateSolidBrush(owner->backgroundColor_);
+        HBRUSH newBrushItem = CreateSolidBrush(owner->itemColor_);
+        HBRUSH newBrushItemHot = CreateSolidBrush(owner->itemHotColor_);
+        HBRUSH newBrushItemActive = CreateSolidBrush(owner->itemActiveColor_);
         HBRUSH newBrushPopupPanel = CreateSolidBrush(owner->theme_.panel);
         HBRUSH newBrushPopupItem = CreateSolidBrush(owner->theme_.popupItem);
         HBRUSH newBrushPopupItemHot = CreateSolidBrush(owner->theme_.popupItemHot);
@@ -279,11 +315,11 @@ struct Toolbar::Impl {
 
     int CurrentItemHeight() const {
         if (!owner->toolbarHwnd_) {
-            return std::max(owner->theme_.toolbarHeight - 12, 28);
+            return owner->itemHeight_;
         }
         RECT client{};
         GetClientRect(owner->toolbarHwnd_, &client);
-        return std::max(28, static_cast<int>(client.bottom - client.top) - 12);
+        return std::max(owner->itemHeight_, static_cast<int>(client.bottom - client.top) - 12);
     }
 
     int ItemWidth(HDC dc, const ToolbarItem& item) const {
@@ -293,7 +329,7 @@ struct Toolbar::Impl {
         // Measure against the active font so icon/text/drop-down combinations scale
         // consistently across different DPI settings and font families.
         const int baseHeight = CurrentItemHeight();
-        const int sideInset = std::max(owner->theme_.textPadding, kToolbarButtonSideInset);
+        const int sideInset = std::max(owner->theme_.textPadding, owner->buttonSideInset_);
         int iconFootprintWidth = 0;
         if (item.icon) {
             ResolvedIconLayout iconLayout = ResolveIconLayout(item, IconBoundsForMeasurement(item, baseHeight));
@@ -316,7 +352,7 @@ struct Toolbar::Impl {
     }
 
     int OverflowWidth() const {
-        return std::max(40, std::max(owner->theme_.toolbarHeight - 8, 34));
+        return std::max(40, std::max(owner->itemHeight_ + 4, 34));
     }
 
     bool HasOverflow() const {
@@ -366,7 +402,7 @@ struct Toolbar::Impl {
             const int width = ItemWidth(dc, items[index]);
             rightX -= width;
             itemRects[index] = RECT{rightX, top, rightX + width, bottom};
-            rightX -= kToolbarButtonGap;
+            rightX -= owner->itemGap_;
         }
 
         const int maxLeftBoundary = std::max(leftStart, rightX);
@@ -376,7 +412,7 @@ struct Toolbar::Impl {
             const int nextRight = leftX + width;
             if (nextRight <= maxLeftBoundary) {
                 itemRects[index] = RECT{leftX, top, nextRight, bottom};
-                leftX = nextRight + kToolbarButtonGap;
+                leftX = nextRight + owner->itemGap_;
                 itemVisible[index] = true;
                 continue;
             }
@@ -407,7 +443,7 @@ struct Toolbar::Impl {
                 }
                 itemVisible[recovered] = false;
                 overflowIndices.insert(overflowIndices.begin(), recovered);
-                overflowRect.left -= (itemRects[recovered].right - itemRects[recovered].left) + kToolbarButtonGap;
+                overflowRect.left -= (itemRects[recovered].right - itemRects[recovered].left) + owner->itemGap_;
                 overflowRect.right = overflowRect.left + overflowWidth;
             }
         }
@@ -899,11 +935,11 @@ struct Toolbar::Impl {
             }
 
             HBRUSH fill = brushItem;
-            COLORREF textColor = owner->theme_.toolbarText;
+            COLORREF textColor = owner->textColor_;
             const bool popupOwnerActive = IsPopupVisible() && !popupFromOverflow && popupSourceIndex == i;
             if (item.checked || i == pressedIndex || popupOwnerActive) {
                 fill = brushItemActive;
-                textColor = owner->theme_.toolbarTextActive;
+                textColor = owner->textActiveColor_;
             } else if (i == hotIndex) {
                 fill = brushItemHot;
             }
@@ -975,11 +1011,11 @@ struct Toolbar::Impl {
 
         if (HasOverflow()) {
             HBRUSH overflowFill = brushItem;
-            COLORREF overflowText = owner->theme_.toolbarText;
+            COLORREF overflowText = owner->textColor_;
             const bool popupOverflowActive = IsPopupVisible() && popupFromOverflow;
             if (popupOverflowActive || hotIndex == kOverflowCommandId || pressedIndex == kOverflowCommandId) {
                 overflowFill = (pressedIndex == kOverflowCommandId || popupOverflowActive) ? brushItemActive : brushItemHot;
-                overflowText = (pressedIndex == kOverflowCommandId || popupOverflowActive) ? owner->theme_.toolbarTextActive : owner->theme_.toolbarText;
+                overflowText = (pressedIndex == kOverflowCommandId || popupOverflowActive) ? owner->textActiveColor_ : owner->textColor_;
             }
             HGDIOBJ oldBrush = SelectObject(dc, overflowFill ? overflowFill : reinterpret_cast<HBRUSH>(GetStockObject(DKGRAY_BRUSH)));
             HPEN oldPen = reinterpret_cast<HPEN>(SelectObject(dc, GetStockObject(NULL_PEN)));
@@ -1464,6 +1500,7 @@ bool Toolbar::Create(HWND parent, int controlId, const Theme& theme, const Optio
     parentHwnd_ = parent;
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
+    variant_ = options.variant;
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);

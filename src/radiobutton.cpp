@@ -2,12 +2,24 @@
 
 #include <commctrl.h>
 
+#include <algorithm>
+
 namespace darkui {
 
 namespace {
 
 constexpr wchar_t kRadioMarkerProperty[] = L"DarkUiRadioButtonMarker";
 constexpr wchar_t kRadioStateProperty[] = L"DarkUiRadioButtonState";
+
+COLORREF MixColor(COLORREF a, COLORREF b, double ratio) {
+    ratio = std::clamp(ratio, 0.0, 1.0);
+    const auto mix = [ratio](int x, int y) {
+        return static_cast<int>(x + (y - x) * ratio + 0.5);
+    };
+    return RGB(mix(GetRValue(a), GetRValue(b)),
+               mix(GetGValue(a), GetGValue(b)),
+               mix(GetBValue(a), GetBValue(b)));
+}
 
 }
 
@@ -43,12 +55,33 @@ struct RadioButton::Impl {
         if (brushCircleHot) DeleteObject(brushCircleHot);
         if (brushDot) DeleteObject(brushDot);
 
+        COLORREF borderColor = owner->theme_.radioBorder;
+        COLORREF circleColor = owner->theme_.radioBackground;
+        COLORREF circleHotColor = owner->theme_.radioBackgroundHot;
+        COLORREF dotColor = owner->theme_.radioAccent;
+        switch (owner->variant_) {
+        case SelectionVariant::Panel:
+            circleColor = MixColor(owner->surfaceColor_, owner->theme_.radioBackground, 0.72);
+            circleHotColor = MixColor(owner->surfaceColor_, owner->theme_.radioBackgroundHot, 0.76);
+            borderColor = MixColor(owner->surfaceColor_, owner->theme_.radioBorder, 0.78);
+            break;
+        case SelectionVariant::Accent:
+            borderColor = MixColor(owner->theme_.radioAccent, owner->theme_.radioBorder, 0.38);
+            circleColor = MixColor(owner->theme_.radioBackground, owner->theme_.radioAccent, 0.12);
+            circleHotColor = MixColor(owner->theme_.radioBackgroundHot, owner->theme_.radioAccent, 0.20);
+            dotColor = owner->theme_.radioAccent;
+            break;
+        case SelectionVariant::Default:
+        default:
+            break;
+        }
+
         font = CreateFont(owner->theme_.uiFont);
-        penBorder = CreatePen(PS_SOLID, 1, owner->theme_.radioBorder);
+        penBorder = CreatePen(PS_SOLID, 1, borderColor);
         brushSurface = CreateSolidBrush(owner->surfaceColor_);
-        brushCircle = CreateSolidBrush(owner->theme_.radioBackground);
-        brushCircleHot = CreateSolidBrush(owner->theme_.radioBackgroundHot);
-        brushDot = CreateSolidBrush(owner->theme_.radioAccent);
+        brushCircle = CreateSolidBrush(circleColor);
+        brushCircleHot = CreateSolidBrush(circleHotColor);
+        brushDot = CreateSolidBrush(dotColor);
 
         if (owner->radioHwnd_) {
             SendMessageW(owner->radioHwnd_, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
@@ -258,6 +291,7 @@ bool RadioButton::Create(HWND parent, int controlId, const Theme& theme, const O
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
     surfaceRole_ = options.surfaceRole;
+    variant_ = options.variant;
     hasCustomSurfaceColor_ = options.surfaceColor != CLR_INVALID;
     surfaceColor_ = hasCustomSurfaceColor_ ? options.surfaceColor : ResolveInheritedSurfaceColor(theme_, parent, surfaceRole_);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));

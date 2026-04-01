@@ -18,6 +18,30 @@ constexpr int kEditScrollBarId = 0x61A8;
 constexpr wchar_t kEditDebugLogPath[] = L"demo\\build\\edit_layout_debug.log";
 constexpr UINT kEditSyncScrollMessage = WM_APP + 17;
 
+int ResolveEditCornerRadius(FieldVariant variant) {
+    switch (variant) {
+    case FieldVariant::Panel:
+        return 14;
+    case FieldVariant::Dense:
+        return 12;
+    case FieldVariant::Default:
+    default:
+        return 16;
+    }
+}
+
+int ResolveEditInsetAdjustment(FieldVariant variant) {
+    switch (variant) {
+    case FieldVariant::Panel:
+        return -1;
+    case FieldVariant::Dense:
+        return -3;
+    case FieldVariant::Default:
+    default:
+        return 0;
+    }
+}
+
 ATOM EnsureEditHostClassRegistered(HINSTANCE instance);
 LRESULT CALLBACK EditHostWindowProcThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 
@@ -155,7 +179,8 @@ struct Edit::Impl {
         const TEXTMETRICW fontMetrics = CurrentFontMetrics();
         const bool multiline = IsMultiline();
         const int textInsetX = textMetrics.cx > 0 ? static_cast<int>(textMetrics.cx) : 0;
-        const int insetX = std::max(10, std::max(owner->cornerRadius_ / 2 + 4, textInsetX));
+        const int insetAdjust = ResolveEditInsetAdjustment(owner->variant_);
+        const int insetX = std::max(8, std::max(owner->cornerRadius_ / 2 + 4 + insetAdjust, textInsetX + std::min(0, insetAdjust)));
         rect.left += insetX;
         rect.right -= insetX;
         if (multiline && useCustomVScroll) {
@@ -163,8 +188,9 @@ struct Edit::Impl {
         }
 
         if (multiline) {
-            rect.top += 8;
-            rect.bottom -= 8;
+            const int verticalInset = std::max(5, 8 + insetAdjust);
+            rect.top += verticalInset;
+            rect.bottom -= verticalInset;
         } else {
             const int clientHeight = std::max(1, static_cast<int>(rect.bottom - rect.top));
             const int textHeight = std::max(1, static_cast<int>(textMetrics.cy));
@@ -522,6 +548,7 @@ bool Edit::Create(HWND parent, int controlId, const Theme& theme, const Options&
     parentHwnd_ = parent;
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
+    variant_ = options.variant;
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
@@ -624,9 +651,7 @@ bool Edit::Create(HWND parent, int controlId, const Theme& theme, const Options&
     if (!options.cueBanner.empty()) {
         SetCueBanner(options.cueBanner);
     }
-    if (options.cornerRadius >= 0) {
-        SetCornerRadius(options.cornerRadius);
-    }
+    SetCornerRadius(options.cornerRadius >= 0 ? options.cornerRadius : ResolveEditCornerRadius(variant_));
     if (options.readOnly) {
         SetReadOnly(true);
     }

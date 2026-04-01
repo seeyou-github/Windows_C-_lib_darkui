@@ -110,11 +110,13 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         panelOptions.cornerRadius = 22;
         darkui::Static::Options titleOptions;
         titleOptions.text = L"Dark static text block";
-        titleOptions.textFormat = DT_LEFT | DT_SINGLELINE;
+        titleOptions.variant = darkui::StaticVariant::PanelTitle;
         darkui::Static::Options iconOptions;
         iconOptions.icon = LoadIconW(nullptr, IDI_INFORMATION);
+        iconOptions.variant = darkui::StaticVariant::PanelBody;
         darkui::Static::Options bitmapOptions;
         bitmapOptions.bitmap = created->previewBitmap;
+        bitmapOptions.variant = darkui::StaticVariant::PanelBody;
 
         if (!created->card.Create(window, ID_PANEL_CARD, created->host.theme(), panelOptions) ||
             !created->title.Create(created->card.hwnd(), ID_STATIC_TITLE, created->host.theme(), titleOptions) ||

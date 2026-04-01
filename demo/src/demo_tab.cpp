@@ -93,6 +93,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             {L"Notes", 3},
         };
         tabOptions.selection = 0;
+        tabOptions.variant = darkui::TabVariant::Accent;
         if (!created->tab.Create(window, ID_TAB, created->host.theme(), tabOptions)) {
             CleanupState(created);
             return -1;
