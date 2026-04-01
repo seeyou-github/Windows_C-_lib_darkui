@@ -38,6 +38,7 @@ enum ControlId {
 struct DemoState {
     darkui::Theme theme;
     darkui::Theme defaultTheme;
+    darkui::ThemeManager themeManager;
     darkui::Slider slider;
     HBRUSH brushBackground = nullptr;
     HFONT titleFont = nullptr;
@@ -117,17 +118,8 @@ void RecreateBackgroundBrush(DemoState* state) {
 
 void ApplySliderTheme(HWND window, DemoState* state, bool repaintAll = true) {
     RecreateBackgroundBrush(state);
-    state->slider.SetTheme(state->theme);
-    state->buttonBackground.SetTheme(state->theme);
-    state->buttonTrack.SetTheme(state->theme);
-    state->buttonFill.SetTheme(state->theme);
-    state->buttonThumb.SetTheme(state->theme);
-    state->buttonThumbHot.SetTheme(state->theme);
-    state->buttonTrackMinus.SetTheme(state->theme);
-    state->buttonTrackPlus.SetTheme(state->theme);
-    state->buttonRadiusMinus.SetTheme(state->theme);
-    state->buttonRadiusPlus.SetTheme(state->theme);
-    state->buttonReset.SetTheme(state->theme);
+    state->themeManager.SetTheme(state->theme);
+    state->themeManager.Apply();
     if (repaintAll) {
         InvalidateRect(window, nullptr, TRUE);
     } else {
@@ -227,34 +219,50 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         created->titleFont = darkui::CreateFont(titleSpec);
         created->textFont = darkui::CreateFont(created->theme.uiFont);
 
-        created->slider.Create(window, ID_SLIDER, created->theme);
-        created->slider.SetRange(0, 100);
-        created->slider.SetValue(38);
-        created->slider.SetShowTicks(true);
-        created->slider.SetTickCount(11);
+        darkui::Slider::Options sliderOptions;
+        sliderOptions.minimum = 0;
+        sliderOptions.maximum = 100;
+        sliderOptions.value = 38;
+        sliderOptions.showTicks = true;
+        sliderOptions.tickCount = 11;
+        created->slider.Create(window, ID_SLIDER, created->theme, sliderOptions);
 
-        HINSTANCE instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(window, GWLP_HINSTANCE));
-        created->buttonBackground.Create(window, ID_PICK_BACKGROUND, L"Pick Color", created->theme);
-        created->buttonTrack.Create(window, ID_PICK_TRACK, L"Pick Color", created->theme);
-        created->buttonFill.Create(window, ID_PICK_FILL, L"Pick Color", created->theme);
-        created->buttonThumb.Create(window, ID_PICK_THUMB, L"Pick Color", created->theme);
-        created->buttonThumbHot.Create(window, ID_PICK_THUMB_HOT, L"Pick Color", created->theme);
-        created->buttonTrackMinus.Create(window, ID_TRACK_MINUS, L"-", created->theme);
-        created->buttonTrackPlus.Create(window, ID_TRACK_PLUS, L"+", created->theme);
-        created->buttonRadiusMinus.Create(window, ID_RADIUS_MINUS, L"-", created->theme);
-        created->buttonRadiusPlus.Create(window, ID_RADIUS_PLUS, L"+", created->theme);
-        created->buttonReset.Create(window, ID_RESET_THEME, L"Reset Style", created->theme);
+        darkui::Button::Options pickButtonOptions;
+        pickButtonOptions.text = L"Pick Color";
+        pickButtonOptions.cornerRadius = 10;
+        darkui::Button::Options stepButtonOptions;
+        stepButtonOptions.cornerRadius = 10;
+        darkui::Button::Options resetButtonOptions;
+        resetButtonOptions.text = L"Reset Style";
+        resetButtonOptions.cornerRadius = 12;
 
-        created->buttonBackground.SetCornerRadius(10);
-        created->buttonTrack.SetCornerRadius(10);
-        created->buttonFill.SetCornerRadius(10);
-        created->buttonThumb.SetCornerRadius(10);
-        created->buttonThumbHot.SetCornerRadius(10);
-        created->buttonTrackMinus.SetCornerRadius(10);
-        created->buttonTrackPlus.SetCornerRadius(10);
-        created->buttonRadiusMinus.SetCornerRadius(10);
-        created->buttonRadiusPlus.SetCornerRadius(10);
-        created->buttonReset.SetCornerRadius(12);
+        created->buttonBackground.Create(window, ID_PICK_BACKGROUND, created->theme, pickButtonOptions);
+        created->buttonTrack.Create(window, ID_PICK_TRACK, created->theme, pickButtonOptions);
+        created->buttonFill.Create(window, ID_PICK_FILL, created->theme, pickButtonOptions);
+        created->buttonThumb.Create(window, ID_PICK_THUMB, created->theme, pickButtonOptions);
+        created->buttonThumbHot.Create(window, ID_PICK_THUMB_HOT, created->theme, pickButtonOptions);
+
+        darkui::Button::Options minusOptions = stepButtonOptions;
+        minusOptions.text = L"-";
+        darkui::Button::Options plusOptions = stepButtonOptions;
+        plusOptions.text = L"+";
+        created->buttonTrackMinus.Create(window, ID_TRACK_MINUS, created->theme, minusOptions);
+        created->buttonTrackPlus.Create(window, ID_TRACK_PLUS, created->theme, plusOptions);
+        created->buttonRadiusMinus.Create(window, ID_RADIUS_MINUS, created->theme, minusOptions);
+        created->buttonRadiusPlus.Create(window, ID_RADIUS_PLUS, created->theme, plusOptions);
+        created->buttonReset.Create(window, ID_RESET_THEME, created->theme, resetButtonOptions);
+
+        created->themeManager.Bind(created->slider,
+                                   created->buttonBackground,
+                                   created->buttonTrack,
+                                   created->buttonFill,
+                                   created->buttonThumb,
+                                   created->buttonThumbHot,
+                                   created->buttonTrackMinus,
+                                   created->buttonTrackPlus,
+                                   created->buttonRadiusMinus,
+                                   created->buttonRadiusPlus,
+                                   created->buttonReset);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);

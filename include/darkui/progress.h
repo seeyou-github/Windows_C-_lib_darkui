@@ -20,6 +20,7 @@ public:
         int value = 0;
         bool showPercentage = true;
         COLORREF surfaceColor = CLR_INVALID;
+        SurfaceRole surfaceRole = SurfaceRole::Auto;
         DWORD style = WS_CHILD | WS_VISIBLE;
         DWORD exStyle = 0;
     };
@@ -53,9 +54,7 @@ public:
         SetRange(options.minimum, options.maximum);
         SetValue(options.value);
         SetShowPercentage(options.showPercentage);
-        if (options.surfaceColor != CLR_INVALID) {
-            SetSurfaceColor(options.surfaceColor);
-        }
+        SetSurfaceColor(options.surfaceColor != CLR_INVALID ? options.surfaceColor : ResolveSurfaceColor(theme, options.surfaceRole));
         return true;
     }
     // Destroys the progress-bar window and resets wrapper state.

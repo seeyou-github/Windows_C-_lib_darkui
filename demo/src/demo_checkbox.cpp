@@ -16,6 +16,7 @@ enum ControlId {
 
 struct DemoState {
     darkui::Theme theme;
+    darkui::ThemeManager themeManager;
     darkui::CheckBox checkA;
     darkui::CheckBox checkB;
     darkui::CheckBox checkC;
@@ -83,17 +84,25 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             return -1;
         }
 
-        if (!created->checkA.Create(window, ID_CHECK_A, L"Enable automatic thumbnail generation", created->theme) ||
-            !created->checkB.Create(window, ID_CHECK_B, L"Pin inspector on startup", created->theme) ||
-            !created->checkC.Create(window, ID_CHECK_C, L"Download proxy media in background", created->theme)) {
+        darkui::CheckBox::Options checkAOptions;
+        checkAOptions.text = L"Enable automatic thumbnail generation";
+        checkAOptions.checked = true;
+        checkAOptions.surfaceRole = darkui::SurfaceRole::Background;
+        darkui::CheckBox::Options checkBOptions;
+        checkBOptions.text = L"Pin inspector on startup";
+        checkBOptions.surfaceRole = darkui::SurfaceRole::Background;
+        darkui::CheckBox::Options checkCOptions;
+        checkCOptions.text = L"Download proxy media in background";
+        checkCOptions.surfaceRole = darkui::SurfaceRole::Background;
+
+        if (!created->checkA.Create(window, ID_CHECK_A, created->theme, checkAOptions) ||
+            !created->checkB.Create(window, ID_CHECK_B, created->theme, checkBOptions) ||
+            !created->checkC.Create(window, ID_CHECK_C, created->theme, checkCOptions)) {
             CleanupState(created);
             return -1;
         }
-
-        created->checkA.SetSurfaceColor(created->theme.background);
-        created->checkB.SetSurfaceColor(created->theme.background);
-        created->checkC.SetSurfaceColor(created->theme.background);
-        created->checkA.SetChecked(true);
+        created->themeManager.SetTheme(created->theme);
+        created->themeManager.Bind(created->checkA, created->checkB, created->checkC);
         EnableWindow(created->checkC.hwnd(), FALSE);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));

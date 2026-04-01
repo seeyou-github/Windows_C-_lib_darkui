@@ -202,7 +202,7 @@ darkui::Button button;
 darkui::Button::Options options;
 options.text = L"Refresh";
 options.cornerRadius = 14;
-options.surfaceColor = theme.panel;
+options.surfaceRole = darkui::SurfaceRole::Panel;
 
 button.Create(hwnd, 1001, theme, options);
 ```
@@ -231,6 +231,17 @@ Batch theme update:
 
 ```cpp
 darkui::ApplyTheme(theme, buttonA, buttonB, editA, listBoxA);
+```
+
+Remembered theme binding:
+
+```cpp
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(buttonA, buttonB, editA, listBoxA);
+themeManager.Apply();
+
+themeManager.SetTheme(darkui::MakePresetTheme(darkui::ThemePreset::Moss));
+themeManager.Apply();
 ```
 
 One-shot dark dialog:

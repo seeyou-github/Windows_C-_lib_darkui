@@ -2,7 +2,9 @@
 
 #include "darkui/dialog.h"
 
+#include <functional>
 #include <string>
+#include <vector>
 
 namespace darkui {
 
@@ -61,6 +63,73 @@ template <typename... Controls>
 void ApplyTheme(const Theme& theme, Controls&... controls) {
     (controls.SetTheme(theme), ...);
 }
+
+// Lightweight binder that remembers controls and reapplies one theme to all of them.
+class ThemeBinder {
+public:
+    ThemeBinder() = default;
+
+    template <typename Control>
+    void Bind(Control& control) {
+        bindings_.push_back([&control](const Theme& theme) { control.SetTheme(theme); });
+    }
+
+    template <typename First, typename... Rest>
+    void Bind(First& first, Rest&... rest) {
+        Bind(first);
+        (Bind(rest), ...);
+    }
+
+    void Clear() {
+        bindings_.clear();
+    }
+
+    void Apply(const Theme& theme) const {
+        for (const auto& binding : bindings_) {
+            binding(theme);
+        }
+    }
+
+private:
+    std::vector<std::function<void(const Theme&)>> bindings_;
+};
+
+// Stores the current theme and a binder list so callers can update all registered controls at once.
+class ThemeManager {
+public:
+    ThemeManager() = default;
+    explicit ThemeManager(const Theme& theme) : theme_(theme) {}
+
+    void SetTheme(const Theme& theme) {
+        theme_ = theme;
+    }
+
+    const Theme& theme() const {
+        return theme_;
+    }
+
+    template <typename... Controls>
+    void Bind(Controls&... controls) {
+        binder_.Bind(controls...);
+    }
+
+    void Clear() {
+        binder_.Clear();
+    }
+
+    void Apply() const {
+        binder_.Apply(theme_);
+    }
+
+    template <typename... Controls>
+    void ApplyTo(Controls&... controls) const {
+        ApplyTheme(theme_, controls...);
+    }
+
+private:
+    Theme theme_{};
+    ThemeBinder binder_{};
+};
 
 // Opens a simple dark message dialog with one helper call.
 using DialogOptions = Dialog::Options;

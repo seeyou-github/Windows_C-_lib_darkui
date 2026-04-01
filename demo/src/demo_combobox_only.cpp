@@ -13,6 +13,7 @@ constexpr int kComboIds[kComboCount] = {1001, 1002, 1003, 1004};
 struct DemoCombo {
     const wchar_t* label = L"";
     darkui::Theme theme;
+    darkui::ThemeManager themeManager;
     darkui::ComboBox combo;
 };
 
@@ -126,14 +127,17 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         created->combos[3].label = L"Rose";
         created->combos[3].theme = MakeRoseTheme();
         for (int i = 0; i < kComboCount; ++i) {
-            created->combos[i].combo.Create(window, kComboIds[i], created->combos[i].theme);
-            created->combos[i].combo.SetItems({
+            darkui::ComboBox::Options comboOptions;
+            comboOptions.items = {
                 {std::wstring(created->combos[i].label) + L" / bestaudio", 1, false},
                 {std::wstring(created->combos[i].label) + L" / bestvideo", 2, true},
                 {std::wstring(created->combos[i].label) + L" / 137 - mp4 1080p", 3, true},
                 {std::wstring(created->combos[i].label) + L" / 140 - m4a 128k", 4, false},
-            });
-            created->combos[i].combo.SetSelection(0);
+            };
+            comboOptions.selection = 0;
+            created->combos[i].combo.Create(window, kComboIds[i], created->combos[i].theme, comboOptions);
+            created->combos[i].themeManager.SetTheme(created->combos[i].theme);
+            created->combos[i].themeManager.Bind(created->combos[i].combo);
         }
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);

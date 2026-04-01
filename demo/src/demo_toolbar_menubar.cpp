@@ -23,6 +23,7 @@ enum ControlId {
 
 struct DemoState {
     darkui::Theme theme;
+    darkui::ThemeManager themeManager;
     darkui::Toolbar toolbar;
     HBRUSH brushBackground = nullptr;
     HBRUSH brushPanel = nullptr;
@@ -165,7 +166,8 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             return -1;
         }
 
-        if (!created->toolbar.Create(window, ID_TOOLBAR, created->theme)) {
+        darkui::Toolbar::Options toolbarOptions;
+        if (!created->toolbar.Create(window, ID_TOOLBAR, created->theme, toolbarOptions)) {
             CleanupState(created);
             return -1;
         }
@@ -180,6 +182,8 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             {L"Theme", ID_CMD_THEME, nullptr, nullptr, 0, false, false, false, true, false, false},
             {L"Share", ID_CMD_SHARE, nullptr, nullptr, 0, false, false, false, true, false, false}
         });
+
+        created->themeManager.Bind(created->toolbar);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);

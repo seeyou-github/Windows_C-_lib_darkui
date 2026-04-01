@@ -1,8 +1,3 @@
-// Legacy shim kept only to avoid path confusion.
-// The active table demo source is demo_table_options.cpp.
-#include "demo_table_options.cpp"
-
-#if 0
 #include <windows.h>
 #include <commctrl.h>
 #include <commdlg.h>
@@ -76,32 +71,16 @@ darkui::Theme MakeTableTheme() {
     return theme;
 }
 
-void PopulateTable(DemoState* state) {
-    state->table.SetColumns({
-        {L"Control", 120},
-        {L"Area", 120},
-        {L"State", 120},
-        {L"Notes", 120},
-    });
-
-    state->table.SetRows({
-        {L"Table", L"Body", L"Dark", L"Custom painted body background"},
-        {L"Table", L"Header", L"Dark", L"Header background and text are configurable"},
-        {L"Theme", L"Grid", L"Live", L"Grid color updates immediately"},
-        {L"Theme", L"Text", L"Live", L"Body text and header text are separate"},
-        {L"Demo", L"Layout", L"Fixed", L"Table size stays fixed while window resizes"},
-        {L"Demo", L"Style", L"Editable", L"Use the right panel to test customization"},
-        {L"表格", L"表体", L"深色", L"自定义绘制中文内容与背景"},
-        {L"表格", L"表头", L"已启用", L"表头文字和颜色都可以单独配置"},
-        {L"主题", L"网格线", L"实时", L"修改主题后表格会立即刷新显示"},
-        {L"演示", L"说明", L"中文", L"用于验证中文字体与省略号绘制效果"},
-    });
+void CleanupState(DemoState* state) {
+    if (!state) return;
+    if (state->brushBackground) DeleteObject(state->brushBackground);
+    if (state->titleFont) DeleteObject(state->titleFont);
+    if (state->textFont) DeleteObject(state->textFont);
+    delete state;
 }
 
 void RecreateBackgroundBrush(DemoState* state) {
-    if (state->brushBackground) {
-        DeleteObject(state->brushBackground);
-    }
+    if (state->brushBackground) DeleteObject(state->brushBackground);
     state->brushBackground = CreateSolidBrush(state->theme.background);
 }
 
@@ -138,9 +117,7 @@ bool PickColor(HWND window, DemoState* state, COLORREF* color) {
     cc.rgbResult = *color;
     cc.lpCustColors = state->customColors.data();
     cc.Flags = CC_FULLOPEN | CC_RGBINIT;
-    if (!ChooseColorW(&cc)) {
-        return false;
-    }
+    if (!ChooseColorW(&cc)) return false;
     *color = cc.rgbResult;
     return true;
 }
@@ -150,9 +127,7 @@ void DrawTextLine(HDC dc, HFONT font, COLORREF color, RECT rect, const wchar_t* 
     SetBkMode(dc, TRANSPARENT);
     SetTextColor(dc, color);
     DrawTextW(dc, text, -1, &rect, format | DT_TOP | DT_NOPREFIX | DT_SINGLELINE);
-    if (oldFont) {
-        SelectObject(dc, oldFont);
-    }
+    if (oldFont) SelectObject(dc, oldFont);
 }
 
 void DrawColorSwatch(HDC dc, int x, int y, COLORREF color, COLORREF border) {
@@ -176,6 +151,7 @@ void DrawStylePanel(HDC dc, DemoState* state) {
         const wchar_t* label;
         COLORREF color;
     };
+
     const RowInfo rows[] = {
         {L"Body", state->theme.tableBackground},
         {L"Body Text", state->theme.tableText},
@@ -196,7 +172,7 @@ void DrawStylePanel(HDC dc, DemoState* state) {
     SetBkMode(dc, TRANSPARENT);
     SetTextColor(dc, state->theme.mutedText);
     DrawTextW(dc,
-              L"Customizable areas: body background, body text, header background, header text, grid lines, and whether empty expanded space keeps drawing grid lines.",
+              L"Customize body, header, and grid colors in real time. The empty-grid option below still controls whether the lower unused area keeps drawing table lines.",
               -1,
               &infoRect,
               DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
@@ -217,6 +193,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         titleSpec.weight = FW_SEMIBOLD;
         created->titleFont = darkui::CreateFont(titleSpec);
         created->textFont = darkui::CreateFont(created->theme.uiFont);
+        if (!created->brushBackground || !created->titleFont || !created->textFont) {
+            CleanupState(created);
+            return -1;
+        }
 
         HINSTANCE instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(window, GWLP_HINSTANCE));
         darkui::Table::Options tableOptions;
@@ -233,13 +213,16 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             {L"Theme", L"Text", L"Live", L"Body text and header text are separate"},
             {L"Demo", L"Layout", L"Fixed", L"Table size stays fixed while window resizes"},
             {L"Demo", L"Style", L"Editable", L"Use the right panel to test customization"},
-            {L"琛ㄦ牸", L"琛ㄤ綋", L"娣辫壊", L"鑷畾涔夌粯鍒朵腑鏂囧唴瀹逛笌鑳屾櫙"},
-            {L"琛ㄦ牸", L"琛ㄥご", L"宸插惎鐢?, L"琛ㄥご鏂囧瓧鍜岄鑹查兘鍙互鍗曠嫭閰嶇疆"},
-            {L"涓婚", L"缃戞牸绾?, L"瀹炴椂", L"淇敼涓婚鍚庤〃鏍间細绔嬪嵆鍒锋柊鏄剧ず"},
-            {L"婕旂ず", L"璇存槑", L"涓枃", L"鐢ㄤ簬楠岃瘉涓枃瀛椾綋涓庣渷鐣ュ彿缁樺埗鏁堟灉"},
+            {L"Sample", L"Row A", L"Preview", L"Additional rows keep the body density visible"},
+            {L"Sample", L"Row B", L"Preview", L"Header, body, and grid colors stay independent"},
+            {L"Sample", L"Row C", L"Preview", L"Empty-grid drawing can still be toggled live"},
+            {L"Sample", L"Row D", L"Preview", L"Options-based creation now owns the initial setup"},
         };
         tableOptions.drawEmptyGrid = true;
-        created->table.Create(window, ID_TABLE, created->theme, tableOptions);
+        if (!created->table.Create(window, ID_TABLE, created->theme, tableOptions)) {
+            CleanupState(created);
+            return -1;
+        }
         created->themeManager.Bind(created->table);
 
         created->buttonTableBg = CreateWindowExW(0, L"BUTTON", L"Pick Color", WS_CHILD | WS_VISIBLE | WS_TABSTOP,
@@ -271,39 +254,25 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         return 0;
     }
     case WM_SIZE:
-        if (state) {
-            Layout(state);
-        }
+        if (state) Layout(state);
         return 0;
     case WM_COMMAND:
-        if (!state || HIWORD(wParam) != BN_CLICKED) {
-            break;
-        }
+        if (!state || HIWORD(wParam) != BN_CLICKED) break;
         switch (LOWORD(wParam)) {
         case ID_PICK_TABLE_BG:
-            if (PickColor(window, state, &state->theme.tableBackground)) {
-                ApplyTheme(window, state);
-            }
+            if (PickColor(window, state, &state->theme.tableBackground)) ApplyTheme(window, state);
             return 0;
         case ID_PICK_TABLE_TEXT:
-            if (PickColor(window, state, &state->theme.tableText)) {
-                ApplyTheme(window, state);
-            }
+            if (PickColor(window, state, &state->theme.tableText)) ApplyTheme(window, state);
             return 0;
         case ID_PICK_HEADER_BG:
-            if (PickColor(window, state, &state->theme.tableHeaderBackground)) {
-                ApplyTheme(window, state);
-            }
+            if (PickColor(window, state, &state->theme.tableHeaderBackground)) ApplyTheme(window, state);
             return 0;
         case ID_PICK_HEADER_TEXT:
-            if (PickColor(window, state, &state->theme.tableHeaderText)) {
-                ApplyTheme(window, state);
-            }
+            if (PickColor(window, state, &state->theme.tableHeaderText)) ApplyTheme(window, state);
             return 0;
         case ID_PICK_GRID:
-            if (PickColor(window, state, &state->theme.tableGrid)) {
-                ApplyTheme(window, state);
-            }
+            if (PickColor(window, state, &state->theme.tableGrid)) ApplyTheme(window, state);
             return 0;
         case ID_TOGGLE_EMPTY_GRID:
             state->table.SetDrawEmptyGrid(SendMessageW(state->checkEmptyGrid, BM_GETCHECK, 0, 0) == BST_CHECKED);
@@ -341,7 +310,6 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         if (state) {
             PAINTSTRUCT ps{};
             HDC dc = BeginPaint(window, &ps);
-
             RECT client{};
             GetClientRect(window, &client);
             FillRect(dc, &client, state->brushBackground);
@@ -349,7 +317,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             RECT titleRect{24, 20, client.right - 24, 54};
             RECT descRect{24, 58, client.right - 24, 84};
             DrawTextLine(dc, state->titleFont, state->theme.text, titleRect, L"Dark Table Style Demo");
-            DrawTextLine(dc, state->textFont, state->theme.mutedText, descRect,
+            DrawTextLine(dc,
+                         state->textFont,
+                         state->theme.mutedText,
+                         descRect,
                          L"The table size is fixed. Use the right panel to modify each customizable table color in real time.");
             DrawStylePanel(dc, state);
 
@@ -358,18 +329,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         }
         break;
     case WM_DESTROY:
-        if (state) {
-            if (state->brushBackground) {
-                DeleteObject(state->brushBackground);
-            }
-            if (state->titleFont) {
-                DeleteObject(state->titleFont);
-            }
-            if (state->textFont) {
-                DeleteObject(state->textFont);
-            }
-        }
-        delete state;
+        CleanupState(state);
         SetWindowLongPtrW(window, GWLP_USERDATA, 0);
         PostQuitMessage(0);
         return 0;
@@ -392,9 +352,7 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     wc.lpszClassName = kDemoClassName;
     wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     wc.hbrBackground = nullptr;
-    if (!RegisterClassExW(&wc)) {
-        return 0;
-    }
+    if (!RegisterClassExW(&wc)) return 0;
 
     HWND window = CreateWindowExW(0,
                                   kDemoClassName,
@@ -408,9 +366,7 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
                                   nullptr,
                                   instance,
                                   nullptr);
-    if (!window) {
-        return 0;
-    }
+    if (!window) return 0;
 
     ShowWindow(window, showCommand);
     UpdateWindow(window);
@@ -422,4 +378,3 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     }
     return static_cast<int>(msg.wParam);
 }
-#endif

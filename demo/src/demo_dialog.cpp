@@ -22,6 +22,7 @@ enum ControlId {
 };
 
 struct CustomDialogSession {
+    darkui::ThemeManager themeManager;
     darkui::Dialog dialog;
     darkui::Static titleLabel;
     darkui::Static notesLabel;
@@ -32,6 +33,7 @@ struct CustomDialogSession {
 
 struct DemoState {
     darkui::Theme theme;
+    darkui::ThemeManager themeManager;
     darkui::Button messageButton;
     darkui::Button formButton;
     HBRUSH brushBackground = nullptr;
@@ -89,19 +91,14 @@ void DrawLine(HDC dc, HFONT font, COLORREF color, RECT rect, const wchar_t* text
 }
 
 void ShowMessageDialog(HWND window, DemoState* state) {
-    darkui::Dialog dialog;
-    if (!dialog.Create(window, 4001, L"Delete Snapshot", state->theme, 460, 230)) {
-        state->status = L"Dialog creation failed";
-        InvalidateRect(window, nullptr, FALSE);
-        return;
-    }
-
-    dialog.SetTitle(L"Confirm Delete");
-    dialog.SetMessage(L"Delete the selected snapshot permanently?\nThis action cannot be undone.");
-    dialog.SetConfirmText(L"Delete");
-    dialog.SetCancelText(L"Cancel");
-
-    const darkui::Dialog::Result result = dialog.ShowModal();
+    darkui::Dialog::Options options;
+    options.title = L"Confirm Delete";
+    options.message = L"Delete the selected snapshot permanently?\nThis action cannot be undone.";
+    options.confirmText = L"Delete";
+    options.cancelText = L"Cancel";
+    options.width = 460;
+    options.height = 230;
+    const darkui::Dialog::Result result = darkui::ShowMessageDialog(window, 4001, state->theme, options);
     state->status = (result == darkui::Dialog::Result::Confirm) ? L"Message dialog confirmed" : L"Message dialog cancelled";
     InvalidateRect(window, nullptr, FALSE);
 }
@@ -109,41 +106,50 @@ void ShowMessageDialog(HWND window, DemoState* state) {
 void ShowFormDialog(HWND window, DemoState* state) {
     state->activeDialog = std::make_unique<CustomDialogSession>();
     auto& session = *state->activeDialog;
-    if (!session.dialog.Create(window, 4002, L"Create Dark Note", state->theme, 580, 400)) {
+    darkui::Dialog::Options dialogOptions;
+    dialogOptions.title = L"Create Note Form";
+    dialogOptions.width = 580;
+    dialogOptions.height = 400;
+    dialogOptions.messageVisible = false;
+    dialogOptions.confirmText = L"Save";
+    dialogOptions.cancelText = L"Cancel";
+    session.themeManager.SetTheme(state->theme);
+    if (!session.dialog.Create(window, 4002, state->theme, dialogOptions)) {
         state->status = L"Form dialog creation failed";
         state->activeDialog.reset();
         InvalidateRect(window, nullptr, FALSE);
         return;
     }
 
-    session.dialog.SetTitle(L"Create Note Form");
-    session.dialog.SetMessageVisible(false);
-    session.dialog.SetConfirmText(L"Save");
-    session.dialog.SetCancelText(L"Cancel");
+    darkui::Static::Options titleLabelOptions;
+    titleLabelOptions.text = L"Title";
+    titleLabelOptions.style = WS_CHILD | WS_VISIBLE | SS_LEFT;
+    titleLabelOptions.surfaceRole = darkui::SurfaceRole::Panel;
+    darkui::Static::Options notesLabelOptions = titleLabelOptions;
+    notesLabelOptions.text = L"Notes";
+    darkui::Edit::Options titleEditOptions;
+    titleEditOptions.cueBanner = L"Enter a title";
+    titleEditOptions.cornerRadius = 12;
+    darkui::Button::Options fillButtonOptions;
+    fillButtonOptions.text = L"Fill Sample";
+    fillButtonOptions.cornerRadius = 12;
+    fillButtonOptions.surfaceRole = darkui::SurfaceRole::Panel;
+    darkui::Edit::Options notesEditOptions;
+    notesEditOptions.cueBanner = L"Write your notes here";
+    notesEditOptions.cornerRadius = 12;
+    notesEditOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL;
 
-    if (!session.titleLabel.Create(session.dialog.content_hwnd(), ID_DIALOG_LABEL_TITLE, L"Title", state->theme, WS_CHILD | WS_VISIBLE | SS_LEFT) ||
-        !session.notesLabel.Create(session.dialog.content_hwnd(), ID_DIALOG_LABEL_NOTES, L"Notes", state->theme, WS_CHILD | WS_VISIBLE | SS_LEFT) ||
-        !session.titleEdit.Create(session.dialog.content_hwnd(), ID_DIALOG_TITLE, L"", state->theme) ||
-        !session.fillButton.Create(session.dialog.content_hwnd(), ID_DIALOG_FILL, L"Fill Sample", state->theme) ||
-        !session.notesEdit.Create(session.dialog.content_hwnd(),
-                                  ID_DIALOG_NOTES,
-                                  L"",
-                                  state->theme,
-                                  WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL)) {
+    if (!session.titleLabel.Create(session.dialog.content_hwnd(), ID_DIALOG_LABEL_TITLE, state->theme, titleLabelOptions) ||
+        !session.notesLabel.Create(session.dialog.content_hwnd(), ID_DIALOG_LABEL_NOTES, state->theme, notesLabelOptions) ||
+        !session.titleEdit.Create(session.dialog.content_hwnd(), ID_DIALOG_TITLE, state->theme, titleEditOptions) ||
+        !session.fillButton.Create(session.dialog.content_hwnd(), ID_DIALOG_FILL, state->theme, fillButtonOptions) ||
+        !session.notesEdit.Create(session.dialog.content_hwnd(), ID_DIALOG_NOTES, state->theme, notesEditOptions)) {
         state->status = L"Form controls creation failed";
         state->activeDialog.reset();
         InvalidateRect(window, nullptr, FALSE);
         return;
     }
-
-    session.titleLabel.SetBackgroundColor(state->theme.panel);
-    session.notesLabel.SetBackgroundColor(state->theme.panel);
-    session.fillButton.SetCornerRadius(12);
-    session.fillButton.SetSurfaceColor(state->theme.panel);
-    session.titleEdit.SetCornerRadius(12);
-    session.notesEdit.SetCornerRadius(12);
-    session.titleEdit.SetCueBanner(L"Enter a title");
-    session.notesEdit.SetCueBanner(L"Write your notes here");
+    session.themeManager.Bind(session.dialog, session.titleLabel, session.notesLabel, session.titleEdit, session.fillButton, session.notesEdit);
 
     MoveWindow(session.titleLabel.hwnd(), 16, 14, 120, 22, TRUE);
     MoveWindow(session.titleEdit.hwnd(), 16, 40, 390, 38, TRUE);
@@ -180,15 +186,19 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             return -1;
         }
 
-        if (!created->messageButton.Create(window, ID_OPEN_MESSAGE, L"Open Message Dialog", created->theme) ||
-            !created->formButton.Create(window, ID_OPEN_FORM, L"Open Form Dialog", created->theme)) {
+        darkui::Button::Options messageButtonOptions;
+        messageButtonOptions.text = L"Open Message Dialog";
+        messageButtonOptions.cornerRadius = 14;
+        messageButtonOptions.surfaceRole = darkui::SurfaceRole::Background;
+        darkui::Button::Options formButtonOptions = messageButtonOptions;
+        formButtonOptions.text = L"Open Form Dialog";
+        if (!created->messageButton.Create(window, ID_OPEN_MESSAGE, created->theme, messageButtonOptions) ||
+            !created->formButton.Create(window, ID_OPEN_FORM, created->theme, formButtonOptions)) {
             CleanupState(created);
             return -1;
         }
-        created->messageButton.SetCornerRadius(14);
-        created->formButton.SetCornerRadius(14);
-        created->messageButton.SetSurfaceColor(created->theme.background);
-        created->formButton.SetSurfaceColor(created->theme.background);
+        created->themeManager.SetTheme(created->theme);
+        created->themeManager.Bind(created->messageButton, created->formButton);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);

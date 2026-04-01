@@ -21,6 +21,7 @@ enum ControlId {
 
 struct DemoState {
     darkui::Theme theme;
+    darkui::ThemeManager themeManager;
     darkui::ProgressBar progress;
     darkui::Button buttonDec;
     darkui::Button buttonInc;
@@ -83,10 +84,8 @@ RECT GetValueRect(HWND window) {
 
 void ApplyTheme(HWND window, DemoState* state) {
     RecreateBackgroundBrush(state);
-    state->progress.SetTheme(state->theme);
-    state->buttonDec.SetTheme(state->theme);
-    state->buttonInc.SetTheme(state->theme);
-    state->buttonToggleText.SetTheme(state->theme);
+    state->themeManager.SetTheme(state->theme);
+    state->themeManager.Apply();
     InvalidateRect(window, nullptr, TRUE);
 }
 
@@ -109,22 +108,30 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             return -1;
         }
 
-        if (!created->progress.Create(window, ID_PROGRESS, created->theme)) {
+        darkui::ProgressBar::Options progressOptions;
+        progressOptions.minimum = 0;
+        progressOptions.maximum = 100;
+        progressOptions.value = 64;
+        if (!created->progress.Create(window, ID_PROGRESS, created->theme, progressOptions)) {
             CleanupState(created);
             return -1;
         }
-        created->progress.SetRange(0, 100);
-        created->progress.SetValue(64);
-
-        if (!created->buttonDec.Create(window, ID_BUTTON_DEC, L"-10", created->theme) ||
-            !created->buttonInc.Create(window, ID_BUTTON_INC, L"+10", created->theme) ||
-            !created->buttonToggleText.Create(window, ID_BUTTON_TOGGLE_TEXT, L"Toggle Percent", created->theme)) {
+        darkui::Button::Options buttonOptions;
+        buttonOptions.cornerRadius = 10;
+        darkui::Button::Options buttonDecOptions = buttonOptions;
+        buttonDecOptions.text = L"-10";
+        darkui::Button::Options buttonIncOptions = buttonOptions;
+        buttonIncOptions.text = L"+10";
+        darkui::Button::Options toggleOptions = buttonOptions;
+        toggleOptions.text = L"Toggle Percent";
+        if (!created->buttonDec.Create(window, ID_BUTTON_DEC, created->theme, buttonDecOptions) ||
+            !created->buttonInc.Create(window, ID_BUTTON_INC, created->theme, buttonIncOptions) ||
+            !created->buttonToggleText.Create(window, ID_BUTTON_TOGGLE_TEXT, created->theme, toggleOptions)) {
             CleanupState(created);
             return -1;
         }
-        created->buttonDec.SetCornerRadius(10);
-        created->buttonInc.SetCornerRadius(10);
-        created->buttonToggleText.SetCornerRadius(10);
+        created->themeManager.SetTheme(created->theme);
+        created->themeManager.Bind(created->progress, created->buttonDec, created->buttonInc, created->buttonToggleText);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);

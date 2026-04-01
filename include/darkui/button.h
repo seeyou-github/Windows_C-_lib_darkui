@@ -18,6 +18,7 @@ public:
         std::wstring text{};
         int cornerRadius = -1;
         COLORREF surfaceColor = CLR_INVALID;
+        SurfaceRole surfaceRole = SurfaceRole::Auto;
         DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW;
         DWORD exStyle = 0;
     };
@@ -52,9 +53,7 @@ public:
         if (options.cornerRadius >= 0) {
             SetCornerRadius(options.cornerRadius);
         }
-        if (options.surfaceColor != CLR_INVALID) {
-            SetSurfaceColor(options.surfaceColor);
-        }
+        SetSurfaceColor(options.surfaceColor != CLR_INVALID ? options.surfaceColor : ResolveSurfaceColor(theme, options.surfaceRole));
         return true;
     }
     // Destroys the underlying button window and resets the wrapper state.

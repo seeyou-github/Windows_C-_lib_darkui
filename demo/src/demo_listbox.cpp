@@ -18,6 +18,7 @@ enum ControlId {
 
 struct DemoState {
     darkui::Theme theme;
+    darkui::ThemeManager themeManager;
     darkui::ListBox singleList;
     darkui::ListBox multiList;
     HBRUSH brushBackground = nullptr;
@@ -98,33 +99,35 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             return -1;
         }
 
-        if (!created->singleList.Create(window, ID_LIST_SINGLE, created->theme) ||
-            !created->multiList.Create(window,
-                                       ID_LIST_MULTI,
-                                       created->theme,
-                                       WS_CHILD | WS_VISIBLE | WS_TABSTOP | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | LBS_EXTENDEDSEL)) {
-            CleanupState(created);
-            return -1;
-        }
-
-        created->singleList.SetCornerRadius(14);
-        created->multiList.SetCornerRadius(14);
-        created->singleList.SetItems({
+        darkui::ListBox::Options singleOptions;
+        singleOptions.cornerRadius = 14;
+        singleOptions.items = {
             {L"Overview", 1},
             {L"Transfers", 2},
             {L"Snapshots", 3},
             {L"Exports", 4},
             {L"Audit Trail", 5}
-        });
-        created->multiList.SetItems({
+        };
+        singleOptions.selection = 0;
+        darkui::ListBox::Options multiOptions;
+        multiOptions.cornerRadius = 14;
+        multiOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | LBS_EXTENDEDSEL;
+        multiOptions.items = {
             {L"Render queue", 10},
             {L"Cloud sync", 11},
             {L"Archive jobs", 12},
             {L"Review links", 13},
             {L"Local cache", 14},
             {L"Proxy build", 15}
-        });
-        created->singleList.SetSelection(0);
+        };
+
+        if (!created->singleList.Create(window, ID_LIST_SINGLE, created->theme, singleOptions) ||
+            !created->multiList.Create(window, ID_LIST_MULTI, created->theme, multiOptions)) {
+            CleanupState(created);
+            return -1;
+        }
+        created->themeManager.SetTheme(created->theme);
+        created->themeManager.Bind(created->singleList, created->multiList);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);

@@ -17,6 +17,7 @@ enum ControlId {
 
 struct DemoState {
     darkui::Theme theme;
+    darkui::ThemeManager themeManager;
     darkui::ScrollBar horizontal;
     darkui::ScrollBar vertical;
     HBRUSH brushBackground = nullptr;
@@ -95,18 +96,25 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             return -1;
         }
 
-        if (!created->horizontal.Create(window, ID_SCROLL_H, false, created->theme) ||
-            !created->vertical.Create(window, ID_SCROLL_V, true, created->theme)) {
+        darkui::ScrollBar::Options horizontalOptions;
+        horizontalOptions.vertical = false;
+        horizontalOptions.minimum = 0;
+        horizontalOptions.maximum = 100;
+        horizontalOptions.pageSize = 20;
+        horizontalOptions.value = created->horizontalValue;
+        darkui::ScrollBar::Options verticalOptions;
+        verticalOptions.vertical = true;
+        verticalOptions.minimum = 0;
+        verticalOptions.maximum = 100;
+        verticalOptions.pageSize = 24;
+        verticalOptions.value = created->verticalValue;
+        if (!created->horizontal.Create(window, ID_SCROLL_H, created->theme, horizontalOptions) ||
+            !created->vertical.Create(window, ID_SCROLL_V, created->theme, verticalOptions)) {
             CleanupState(created);
             return -1;
         }
-
-        created->horizontal.SetRange(0, 100);
-        created->horizontal.SetPageSize(20);
-        created->horizontal.SetValue(created->horizontalValue);
-        created->vertical.SetRange(0, 100);
-        created->vertical.SetPageSize(24);
-        created->vertical.SetValue(created->verticalValue);
+        created->themeManager.SetTheme(created->theme);
+        created->themeManager.Bind(created->horizontal, created->vertical);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);

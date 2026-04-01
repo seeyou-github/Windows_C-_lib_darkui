@@ -126,7 +126,7 @@ bool drawEmptyGrid = table.draw_empty_grid();
 
 For complete examples, see:
 
-- `../demo/src/demo_table.cpp`
+- `../demo/src/demo_table_options.cpp`
 - `../demo/src/demo_showcase.cpp`
 
 ## Current Limitations

@@ -16,6 +16,7 @@ enum ControlId {
 
 struct DemoState {
     darkui::Theme theme;
+    darkui::ThemeManager themeManager;
     darkui::Static title;
     darkui::Static iconView;
     darkui::Static bitmapView;
@@ -109,19 +110,25 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             return -1;
         }
 
-        if (!created->title.Create(window, ID_STATIC_TITLE, L"Dark static text block", created->theme) ||
-            !created->iconView.Create(window, ID_STATIC_ICON, L"", created->theme) ||
-            !created->bitmapView.Create(window, ID_STATIC_BITMAP, L"", created->theme)) {
+        darkui::Static::Options titleOptions;
+        titleOptions.text = L"Dark static text block";
+        titleOptions.surfaceRole = darkui::SurfaceRole::Panel;
+        titleOptions.textFormat = DT_LEFT | DT_SINGLELINE;
+        darkui::Static::Options iconOptions;
+        iconOptions.surfaceRole = darkui::SurfaceRole::Panel;
+        iconOptions.icon = LoadIconW(nullptr, IDI_INFORMATION);
+        darkui::Static::Options bitmapOptions;
+        bitmapOptions.surfaceRole = darkui::SurfaceRole::Panel;
+        bitmapOptions.bitmap = created->previewBitmap;
+
+        if (!created->title.Create(window, ID_STATIC_TITLE, created->theme, titleOptions) ||
+            !created->iconView.Create(window, ID_STATIC_ICON, created->theme, iconOptions) ||
+            !created->bitmapView.Create(window, ID_STATIC_BITMAP, created->theme, bitmapOptions)) {
             CleanupState(created);
             return -1;
         }
-
-        created->title.SetBackgroundColor(created->theme.panel);
-        created->title.SetTextFormat(DT_LEFT | DT_SINGLELINE);
-        created->iconView.SetBackgroundColor(created->theme.panel);
-        created->bitmapView.SetBackgroundColor(created->theme.panel);
-        created->iconView.SetIcon(LoadIconW(nullptr, IDI_INFORMATION));
-        created->bitmapView.SetBitmap(created->previewBitmap);
+        created->themeManager.SetTheme(created->theme);
+        created->themeManager.Bind(created->title, created->iconView, created->bitmapView);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);

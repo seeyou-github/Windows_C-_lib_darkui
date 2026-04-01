@@ -22,6 +22,7 @@ enum ControlId {
 
 struct DemoState {
     darkui::Theme theme;
+    darkui::ThemeManager themeManager;
     HWND labelUrl = nullptr;
     HWND editUrl = nullptr;
     HWND labelFormat = nullptr;
@@ -82,7 +83,8 @@ void ApplyTheme(DemoState* state) {
     if (state->brushPanel) DeleteObject(state->brushPanel);
     state->brushBackground = CreateSolidBrush(state->theme.background);
     state->brushPanel = CreateSolidBrush(state->theme.panel);
-    state->comboFormat.SetTheme(state->theme);
+    state->themeManager.SetTheme(state->theme);
+    state->themeManager.Apply();
     SetWindowTextW(state->buttonTheme, state->warmTheme ? L"Switch To Cool Theme" : L"Switch To Warm Theme");
     InvalidateRect(GetParent(state->labelUrl), nullptr, TRUE);
 }
@@ -138,14 +140,16 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         SendMessageW(created->labelFormat, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
         SendMessageW(created->buttonTheme, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
         SendMessageW(created->listLog, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
-        created->comboFormat.Create(window, ID_FORMAT, created->theme);
-        created->comboFormat.SetItems({
+        darkui::ComboBox::Options comboOptions;
+        comboOptions.items = {
             {L"bestaudio", 1, false},
             {L"bestvideo", 2, true},
             {L"137 - mp4 1080p", 3, true},
             {L"140 - m4a 128k", 4, false},
-        });
-        created->comboFormat.SetSelection(0);
+        };
+        comboOptions.selection = 0;
+        created->comboFormat.Create(window, ID_FORMAT, created->theme, comboOptions);
+        created->themeManager.Bind(created->comboFormat);
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);
         AppendLog(created->listLog, L"demo ready");

@@ -16,6 +16,7 @@ enum ControlId {
 
 struct DemoState {
     darkui::Theme theme;
+    darkui::ThemeManager themeManager;
     darkui::RadioButton radioA;
     darkui::RadioButton radioB;
     darkui::RadioButton radioC;
@@ -83,17 +84,26 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             return -1;
         }
 
-        if (!created->radioA.Create(window, ID_RADIO_A, L"Compact mode", created->theme, WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_GROUP) ||
-            !created->radioB.Create(window, ID_RADIO_B, L"Balanced mode", created->theme) ||
-            !created->radioC.Create(window, ID_RADIO_C, L"Detailed mode", created->theme)) {
+        darkui::RadioButton::Options radioAOptions;
+        radioAOptions.text = L"Compact mode";
+        radioAOptions.checked = true;
+        radioAOptions.surfaceRole = darkui::SurfaceRole::Background;
+        radioAOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_GROUP;
+        darkui::RadioButton::Options radioBOptions;
+        radioBOptions.text = L"Balanced mode";
+        radioBOptions.surfaceRole = darkui::SurfaceRole::Background;
+        darkui::RadioButton::Options radioCOptions;
+        radioCOptions.text = L"Detailed mode";
+        radioCOptions.surfaceRole = darkui::SurfaceRole::Background;
+
+        if (!created->radioA.Create(window, ID_RADIO_A, created->theme, radioAOptions) ||
+            !created->radioB.Create(window, ID_RADIO_B, created->theme, radioBOptions) ||
+            !created->radioC.Create(window, ID_RADIO_C, created->theme, radioCOptions)) {
             CleanupState(created);
             return -1;
         }
-
-        created->radioA.SetSurfaceColor(created->theme.background);
-        created->radioB.SetSurfaceColor(created->theme.background);
-        created->radioC.SetSurfaceColor(created->theme.background);
-        created->radioA.SetChecked(true);
+        created->themeManager.SetTheme(created->theme);
+        created->themeManager.Bind(created->radioA, created->radioB, created->radioC);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);

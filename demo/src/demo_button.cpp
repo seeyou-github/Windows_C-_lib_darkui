@@ -18,6 +18,8 @@ enum ControlId {
 
 struct DemoState {
     darkui::Theme theme;
+    darkui::ThemeManager themeManager;
+    darkui::ThemeManager altThemeManager;
     darkui::Button primary;
     darkui::Button secondary;
     HBRUSH brushBackground = nullptr;
@@ -72,8 +74,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         created->titleFont = darkui::CreateFont(titleSpec);
         created->textFont = darkui::CreateFont(created->theme.uiFont);
 
-        created->primary.Create(window, ID_BUTTON_PRIMARY, L"Primary Action", created->theme);
-        created->primary.SetCornerRadius(14);
+        darkui::Button::Options primaryOptions;
+        primaryOptions.text = L"Primary Action";
+        primaryOptions.cornerRadius = 14;
+        created->primary.Create(window, ID_BUTTON_PRIMARY, created->theme, primaryOptions);
         darkui::Theme altTheme = created->theme;
         altTheme.button = RGB(70, 44, 58);
         altTheme.buttonHover = RGB(88, 54, 72);
@@ -81,9 +85,15 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         altTheme.buttonDisabled = RGB(58, 50, 54);
         altTheme.buttonDisabledText = RGB(138, 128, 132);
         altTheme.border = RGB(132, 79, 102);
-        created->secondary.Create(window, ID_BUTTON_ALT, L"Secondary Action", altTheme);
-        created->secondary.SetCornerRadius(22);
+        darkui::Button::Options secondaryOptions;
+        secondaryOptions.text = L"Secondary Action";
+        secondaryOptions.cornerRadius = 22;
+        created->secondary.Create(window, ID_BUTTON_ALT, altTheme, secondaryOptions);
         EnableWindow(created->secondary.hwnd(), FALSE);
+        created->themeManager.SetTheme(created->theme);
+        created->themeManager.Bind(created->primary);
+        created->altThemeManager.SetTheme(altTheme);
+        created->altThemeManager.Bind(created->secondary);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);

@@ -20,6 +20,7 @@ public:
         std::wstring text{};
         bool checked = false;
         COLORREF surfaceColor = CLR_INVALID;
+        SurfaceRole surfaceRole = SurfaceRole::Auto;
         DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP;
         DWORD exStyle = 0;
     };
@@ -44,9 +45,7 @@ public:
         if (!Create(parent, controlId, options.text, theme, options.style, options.exStyle)) {
             return false;
         }
-        if (options.surfaceColor != CLR_INVALID) {
-            SetSurfaceColor(options.surfaceColor);
-        }
+        SetSurfaceColor(options.surfaceColor != CLR_INVALID ? options.surfaceColor : ResolveSurfaceColor(theme, options.surfaceRole));
         if (options.checked) {
             SetChecked(true);
         }

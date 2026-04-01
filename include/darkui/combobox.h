@@ -27,6 +27,13 @@ struct FontSpec {
     bool monospace = false;
 };
 
+// Semantic background role used by option-based control creation.
+enum class SurfaceRole {
+    Auto = 0,
+    Background,
+    Panel
+};
+
 // Shared visual theme for all darkui controls.
 // Usage:
 // - Create one Theme instance, customize the fields you care about, then pass
@@ -261,6 +268,17 @@ HFONT CreateFont(const FontSpec& spec);
 // - When true, semantic colors and typography are expanded into the legacy
 //   per-control fields so all controls share one visual system.
 Theme ResolveTheme(const Theme& theme);
+// Resolves a semantic surface role into a concrete background color.
+inline COLORREF ResolveSurfaceColor(const Theme& theme, SurfaceRole role) {
+    switch (role) {
+    case SurfaceRole::Panel:
+        return theme.panel;
+    case SurfaceRole::Background:
+    case SurfaceRole::Auto:
+    default:
+        return theme.background;
+    }
+}
 
 // Custom dark combo box built from a button plus popup list.
 // Usage:

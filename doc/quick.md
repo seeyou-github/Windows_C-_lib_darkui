@@ -47,10 +47,12 @@ darkui::Button button;
 darkui::Button::Options options;
 options.text = L"Apply";
 options.cornerRadius = 14;
-options.surfaceColor = theme.panel;
+options.surfaceRole = darkui::SurfaceRole::Panel;
 
 button.Create(hwnd, 4101, theme, options);
 ```
+
+If you need an explicit color, `surfaceColor` still overrides `surfaceRole`.
 
 Available presets:
 
@@ -83,6 +85,21 @@ darkui::ApplyTheme(theme, buttonA, buttonB, editA, listBoxA, radioA);
 ```
 
 This helper calls `SetTheme(theme)` on each control in the parameter list.
+
+## ThemeManager
+
+Use `ThemeManager` when the same control set needs repeated theme switching:
+
+```cpp
+darkui::ThemeManager themeManager(darkui::MakePresetTheme());
+themeManager.Bind(buttonA, buttonB, editA, listBoxA);
+themeManager.Apply();
+
+themeManager.SetTheme(darkui::MakePresetTheme(darkui::ThemePreset::Moss));
+themeManager.Apply();
+```
+
+Use `ThemeBinder` when you only want the remembered binding list without storing the current theme separately.
 
 ## One-Shot Message Dialog
 

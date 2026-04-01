@@ -19,6 +19,7 @@ enum ControlId {
 
 struct DemoState {
     darkui::Theme theme;
+    darkui::ThemeManager themeManager;
     darkui::Tab tab;
     HWND pageOne = nullptr;
     HWND pageTwo = nullptr;
@@ -104,16 +105,19 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             return -1;
         }
 
-        if (!created->tab.Create(window, ID_TAB, created->theme)) {
-            CleanupState(created);
-            return -1;
-        }
-
-        created->tab.SetItems({
+        darkui::Tab::Options tabOptions;
+        tabOptions.items = {
             {L"Overview", 1},
             {L"Metrics", 2},
             {L"Notes", 3},
-        });
+        };
+        tabOptions.selection = 0;
+        if (!created->tab.Create(window, ID_TAB, created->theme, tabOptions)) {
+            CleanupState(created);
+            return -1;
+        }
+        created->themeManager.SetTheme(created->theme);
+        created->themeManager.Bind(created->tab);
 
         created->pageOne = CreatePage(created->tab.hwnd(), ID_PAGE_ONE, L"Overview page content", created->textFont);
         created->pageTwo = CreatePage(created->tab.hwnd(), ID_PAGE_TWO, L"Metrics page content", created->textFont);
@@ -126,8 +130,6 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         created->tab.AttachPage(0, created->pageOne);
         created->tab.AttachPage(1, created->pageTwo);
         created->tab.AttachPage(2, created->pageThree);
-        created->tab.SetSelection(0, false);
-
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);
         return 0;

@@ -109,6 +109,7 @@ struct ExpandedPanel {
 struct AppState {
     darkui::Theme theme;
     int themeIndex = 0;
+    darkui::ThemeManager themeManager;
 
     darkui::Tab tab;
     darkui::Button themeGraphite;
@@ -314,41 +315,28 @@ void ApplyTheme(AppState* state, HWND window, int themeIndex) {
 }
 
 void ApplyThemeToControls(AppState* state) {
-    state->tab.SetTheme(state->theme);
-    state->themeGraphite.SetTheme(state->theme); state->themeGraphite.SetSurfaceColor(state->themeIndex == 0 ? state->theme.panel : state->theme.background);
-    state->themeEmber.SetTheme(state->theme); state->themeEmber.SetSurfaceColor(state->themeIndex == 1 ? state->theme.panel : state->theme.background);
-    state->themeGlacier.SetTheme(state->theme); state->themeGlacier.SetSurfaceColor(state->themeIndex == 2 ? state->theme.panel : state->theme.background);
-    state->themeMoss.SetTheme(state->theme); state->themeMoss.SetSurfaceColor(state->themeIndex == 3 ? state->theme.panel : state->theme.background);
-    state->themeMono.SetTheme(state->theme); state->themeMono.SetSurfaceColor(state->themeIndex == 4 ? state->theme.panel : state->theme.background);
-
-    state->overview.profile.SetTheme(state->theme);
-    state->overview.primary.SetTheme(state->theme); state->overview.primary.SetSurfaceColor(state->theme.panel);
-    state->overview.secondary.SetTheme(state->theme); state->overview.secondary.SetSurfaceColor(state->theme.panel);
-    state->overview.status.SetTheme(state->theme); state->overview.status.SetBackgroundColor(state->theme.panel);
-    state->overview.sync.SetTheme(state->theme); state->overview.sync.SetSurfaceColor(state->theme.panel);
-    state->overview.cpu.SetTheme(state->theme); state->overview.cpu.SetSurfaceColor(state->theme.panel);
-
-    state->controls.exposure.SetTheme(state->theme);
-    state->controls.balance.SetTheme(state->theme);
-    state->controls.timeline.SetTheme(state->theme);
-    state->controls.navigator.SetTheme(state->theme);
-    state->controls.search.SetTheme(state->theme);
-    state->controls.notes.SetTheme(state->theme);
-
-    state->data.filter.SetTheme(state->theme);
-    state->data.refresh.SetTheme(state->theme); state->data.refresh.SetSurfaceColor(state->theme.background);
-    state->data.table.SetTheme(state->theme);
-    state->data.queue.SetTheme(state->theme);
-
-    state->expanded.headline.SetTheme(state->theme); state->expanded.headline.SetBackgroundColor(state->theme.panel);
-    state->expanded.helper.SetTheme(state->theme); state->expanded.helper.SetBackgroundColor(state->theme.panel);
-    state->expanded.autoSave.SetTheme(state->theme); state->expanded.autoSave.SetSurfaceColor(state->theme.panel);
-    state->expanded.compact.SetTheme(state->theme); state->expanded.compact.SetSurfaceColor(state->theme.panel);
-    state->expanded.grid.SetTheme(state->theme); state->expanded.grid.SetSurfaceColor(state->theme.panel);
-    state->expanded.focus.SetTheme(state->theme); state->expanded.focus.SetSurfaceColor(state->theme.panel);
-    state->expanded.flow.SetTheme(state->theme); state->expanded.flow.SetSurfaceColor(state->theme.panel);
-    state->expanded.dialogButton.SetTheme(state->theme); state->expanded.dialogButton.SetSurfaceColor(state->theme.panel);
-    state->expanded.result.SetTheme(state->theme); state->expanded.result.SetBackgroundColor(state->theme.panel);
+    state->themeManager.SetTheme(state->theme);
+    state->themeManager.Apply();
+    state->themeGraphite.SetSurfaceColor(state->themeIndex == 0 ? state->theme.panel : state->theme.background);
+    state->themeEmber.SetSurfaceColor(state->themeIndex == 1 ? state->theme.panel : state->theme.background);
+    state->themeGlacier.SetSurfaceColor(state->themeIndex == 2 ? state->theme.panel : state->theme.background);
+    state->themeMoss.SetSurfaceColor(state->themeIndex == 3 ? state->theme.panel : state->theme.background);
+    state->themeMono.SetSurfaceColor(state->themeIndex == 4 ? state->theme.panel : state->theme.background);
+    state->overview.primary.SetSurfaceColor(state->theme.panel);
+    state->overview.secondary.SetSurfaceColor(state->theme.panel);
+    state->overview.status.SetBackgroundColor(state->theme.panel);
+    state->overview.sync.SetSurfaceColor(state->theme.panel);
+    state->overview.cpu.SetSurfaceColor(state->theme.panel);
+    state->data.refresh.SetSurfaceColor(state->theme.background);
+    state->expanded.headline.SetBackgroundColor(state->theme.panel);
+    state->expanded.helper.SetBackgroundColor(state->theme.panel);
+    state->expanded.autoSave.SetSurfaceColor(state->theme.panel);
+    state->expanded.compact.SetSurfaceColor(state->theme.panel);
+    state->expanded.grid.SetSurfaceColor(state->theme.panel);
+    state->expanded.focus.SetSurfaceColor(state->theme.panel);
+    state->expanded.flow.SetSurfaceColor(state->theme.panel);
+    state->expanded.dialogButton.SetSurfaceColor(state->theme.panel);
+    state->expanded.result.SetBackgroundColor(state->theme.panel);
     UpdateExpandedSummary(state);
 }
 
@@ -561,89 +549,155 @@ bool CreatePageWindow(HWND parent, int controlId, PageKind kind, AppState* app, 
 }
 
 bool CreateOverviewControls(AppState* app) {
-    if (!app->overview.profile.Create(app->overviewPage, ID_OVERVIEW_PROFILE, app->theme)) return false;
-    if (!app->overview.primary.Create(app->overviewPage, ID_OVERVIEW_PRIMARY, L"Sync Cluster", app->theme)) return false;
-    if (!app->overview.secondary.Create(app->overviewPage, ID_OVERVIEW_SECONDARY, L"Share Preview", app->theme)) return false;
-    if (!app->overview.status.Create(app->overviewPage, ID_OVERVIEW_STATUS, L"Semantic palette active across every page", app->theme, WS_CHILD | WS_VISIBLE | SS_LEFT)) return false;
-    if (!app->overview.sync.Create(app->overviewPage, ID_OVERVIEW_SYNC, app->theme)) return false;
-    if (!app->overview.cpu.Create(app->overviewPage, ID_OVERVIEW_CPU, app->theme)) return false;
-    app->overview.primary.SetCornerRadius(14); app->overview.primary.SetSurfaceColor(app->theme.panel);
-    app->overview.secondary.SetCornerRadius(14); app->overview.secondary.SetSurfaceColor(app->theme.panel);
-    app->overview.status.SetBackgroundColor(app->theme.panel); app->overview.status.SetTextFormat(DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-    app->overview.profile.SetItems({{L"Studio Executive", 1, true}, {L"Asset Review", 2, false}, {L"Broadcast Board", 3, false}});
-    app->overview.profile.SetSelection(0);
-    app->overview.sync.SetRange(0, 100); app->overview.sync.SetValue(74); app->overview.sync.SetSurfaceColor(app->theme.panel);
-    app->overview.cpu.SetRange(0, 100); app->overview.cpu.SetValue(61); app->overview.cpu.SetSurfaceColor(app->theme.panel); app->overview.cpu.SetShowPercentage(false);
+    darkui::ComboBox::Options profileOptions;
+    profileOptions.items = {{L"Studio Executive", 1, true}, {L"Asset Review", 2, false}, {L"Broadcast Board", 3, false}};
+    profileOptions.selection = 0;
+    darkui::Button::Options primaryOptions;
+    primaryOptions.text = L"Sync Cluster";
+    primaryOptions.cornerRadius = 14;
+    primaryOptions.surfaceRole = darkui::SurfaceRole::Panel;
+    darkui::Button::Options secondaryOptions = primaryOptions;
+    secondaryOptions.text = L"Share Preview";
+    darkui::Static::Options statusOptions;
+    statusOptions.text = L"Semantic palette active across every page";
+    statusOptions.style = WS_CHILD | WS_VISIBLE | SS_LEFT;
+    statusOptions.surfaceRole = darkui::SurfaceRole::Panel;
+    statusOptions.textFormat = DT_LEFT | DT_VCENTER | DT_SINGLELINE;
+    darkui::ProgressBar::Options syncOptions;
+    syncOptions.minimum = 0; syncOptions.maximum = 100; syncOptions.value = 74; syncOptions.surfaceRole = darkui::SurfaceRole::Panel;
+    darkui::ProgressBar::Options cpuOptions = syncOptions;
+    cpuOptions.value = 61;
+    cpuOptions.showPercentage = false;
+
+    if (!app->overview.profile.Create(app->overviewPage, ID_OVERVIEW_PROFILE, app->theme, profileOptions)) return false;
+    if (!app->overview.primary.Create(app->overviewPage, ID_OVERVIEW_PRIMARY, app->theme, primaryOptions)) return false;
+    if (!app->overview.secondary.Create(app->overviewPage, ID_OVERVIEW_SECONDARY, app->theme, secondaryOptions)) return false;
+    if (!app->overview.status.Create(app->overviewPage, ID_OVERVIEW_STATUS, app->theme, statusOptions)) return false;
+    if (!app->overview.sync.Create(app->overviewPage, ID_OVERVIEW_SYNC, app->theme, syncOptions)) return false;
+    if (!app->overview.cpu.Create(app->overviewPage, ID_OVERVIEW_CPU, app->theme, cpuOptions)) return false;
     return true;
 }
 
 bool CreateControlsPanel(AppState* app) {
-    if (!app->controls.exposure.Create(app->controlsPage, ID_CONTROLS_EXPOSURE, app->theme)) return false;
-    if (!app->controls.balance.Create(app->controlsPage, ID_CONTROLS_BALANCE, app->theme)) return false;
-    if (!app->controls.timeline.Create(app->controlsPage, ID_CONTROLS_SCROLL_H, false, app->theme)) return false;
-    if (!app->controls.navigator.Create(app->controlsPage, ID_CONTROLS_SCROLL_V, true, app->theme)) return false;
-    if (!app->controls.search.Create(app->controlsPage, ID_CONTROLS_SEARCH, L"", app->theme)) return false;
-    if (!app->controls.notes.Create(app->controlsPage, ID_CONTROLS_NOTES, L"Dark multiline edit\nwith the custom dark vertical scrollbar\nlinked to the shared theme.", app->theme, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL)) return false;
-    app->controls.exposure.SetRange(0, 100); app->controls.exposure.SetValue(68); app->controls.exposure.SetShowTicks(true); app->controls.exposure.SetTickCount(9);
-    app->controls.balance.SetRange(0, 100); app->controls.balance.SetValue(42); app->controls.balance.SetShowTicks(true); app->controls.balance.SetTickCount(7);
-    app->controls.timeline.SetRange(0, 100); app->controls.timeline.SetPageSize(20); app->controls.timeline.SetValue(34);
-    app->controls.navigator.SetRange(0, 100); app->controls.navigator.SetPageSize(18); app->controls.navigator.SetValue(26);
-    app->controls.search.SetCueBanner(L"Search sessions"); app->controls.search.SetCornerRadius(14);
-    app->controls.notes.SetCueBanner(L"Write notes here"); app->controls.notes.SetCornerRadius(16);
+    darkui::Slider::Options exposureOptions;
+    exposureOptions.minimum = 0; exposureOptions.maximum = 100; exposureOptions.value = 68; exposureOptions.showTicks = true; exposureOptions.tickCount = 9;
+    darkui::Slider::Options balanceOptions = exposureOptions;
+    balanceOptions.value = 42; balanceOptions.tickCount = 7;
+    darkui::ScrollBar::Options timelineOptions;
+    timelineOptions.vertical = false; timelineOptions.minimum = 0; timelineOptions.maximum = 100; timelineOptions.pageSize = 20; timelineOptions.value = 34;
+    darkui::ScrollBar::Options navigatorOptions;
+    navigatorOptions.vertical = true; navigatorOptions.minimum = 0; navigatorOptions.maximum = 100; navigatorOptions.pageSize = 18; navigatorOptions.value = 26;
+    darkui::Edit::Options searchOptions;
+    searchOptions.cueBanner = L"Search sessions";
+    searchOptions.cornerRadius = 14;
+    darkui::Edit::Options notesOptions;
+    notesOptions.text = L"Dark multiline edit\nwith the custom dark vertical scrollbar\nlinked to the shared theme.";
+    notesOptions.cueBanner = L"Write notes here";
+    notesOptions.cornerRadius = 16;
+    notesOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL;
+
+    if (!app->controls.exposure.Create(app->controlsPage, ID_CONTROLS_EXPOSURE, app->theme, exposureOptions)) return false;
+    if (!app->controls.balance.Create(app->controlsPage, ID_CONTROLS_BALANCE, app->theme, balanceOptions)) return false;
+    if (!app->controls.timeline.Create(app->controlsPage, ID_CONTROLS_SCROLL_H, app->theme, timelineOptions)) return false;
+    if (!app->controls.navigator.Create(app->controlsPage, ID_CONTROLS_SCROLL_V, app->theme, navigatorOptions)) return false;
+    if (!app->controls.search.Create(app->controlsPage, ID_CONTROLS_SEARCH, app->theme, searchOptions)) return false;
+    if (!app->controls.notes.Create(app->controlsPage, ID_CONTROLS_NOTES, app->theme, notesOptions)) return false;
     return true;
 }
 
 bool CreateDataPanel(AppState* app) {
-    if (!app->data.filter.Create(app->dataPage, ID_DATA_FILTER, app->theme)) return false;
-    if (!app->data.refresh.Create(app->dataPage, ID_DATA_REFRESH, L"Refresh", app->theme)) return false;
-    if (!app->data.table.Create(app->dataPage, ID_DATA_TABLE, app->theme)) return false;
-    if (!app->data.queue.Create(app->dataPage, ID_DATA_QUEUE, app->theme)) return false;
-    app->data.refresh.SetCornerRadius(14); app->data.refresh.SetSurfaceColor(app->theme.background);
-    app->data.filter.SetItems({{L"All transfers", 0, true}, {L"Ready only", 1, false}, {L"Cloud only", 2, false}}); app->data.filter.SetSelection(0);
-    app->data.table.SetColumns({{L"Collection", 220, LVCFMT_LEFT}, {L"Source", 100, LVCFMT_LEFT}, {L"State", 110, LVCFMT_LEFT}, {L"Size", 100, LVCFMT_RIGHT}, {L"Updated", 110, LVCFMT_LEFT}});
-    app->data.table.SetDrawEmptyGrid(true);
-    app->data.queue.SetCornerRadius(18);
-    app->data.queue.SetItems({{L"Queued color pass", 1}, {L"Archive sync", 2}, {L"Proxy rebuild", 3}, {L"Review package", 4}, {L"Audio conform", 5}});
-    app->data.queue.SetSelection(0);
+    darkui::ComboBox::Options filterOptions;
+    filterOptions.items = {{L"All transfers", 0, true}, {L"Ready only", 1, false}, {L"Cloud only", 2, false}};
+    filterOptions.selection = 0;
+    darkui::Button::Options refreshOptions;
+    refreshOptions.text = L"Refresh";
+    refreshOptions.cornerRadius = 14;
+    refreshOptions.surfaceRole = darkui::SurfaceRole::Background;
+    darkui::Table::Options tableOptions;
+    tableOptions.columns = {{L"Collection", 220, LVCFMT_LEFT}, {L"Source", 100, LVCFMT_LEFT}, {L"State", 110, LVCFMT_LEFT}, {L"Size", 100, LVCFMT_RIGHT}, {L"Updated", 110, LVCFMT_LEFT}};
+    tableOptions.drawEmptyGrid = true;
+    darkui::ListBox::Options queueOptions;
+    queueOptions.cornerRadius = 18;
+    queueOptions.items = {{L"Queued color pass", 1}, {L"Archive sync", 2}, {L"Proxy rebuild", 3}, {L"Review package", 4}, {L"Audio conform", 5}};
+    queueOptions.selection = 0;
+
+    if (!app->data.filter.Create(app->dataPage, ID_DATA_FILTER, app->theme, filterOptions)) return false;
+    if (!app->data.refresh.Create(app->dataPage, ID_DATA_REFRESH, app->theme, refreshOptions)) return false;
+    if (!app->data.table.Create(app->dataPage, ID_DATA_TABLE, app->theme, tableOptions)) return false;
+    if (!app->data.queue.Create(app->dataPage, ID_DATA_QUEUE, app->theme, queueOptions)) return false;
     RefreshDataRows(app);
     return true;
 }
 
 bool CreateExpandedPanel(AppState* app) {
-    if (!app->expanded.headline.Create(app->expandedPage, ID_EXPANDED_STATIC_TITLE, L"Extended Components", app->theme, WS_CHILD | WS_VISIBLE | SS_LEFT)) return false;
-    if (!app->expanded.helper.Create(app->expandedPage, ID_EXPANDED_STATIC_HELPER, L"These controls were added after the original showcase and now participate in the same semantic theme system.", app->theme, WS_CHILD | WS_VISIBLE | SS_LEFT)) return false;
-    if (!app->expanded.autoSave.Create(app->expandedPage, ID_EXPANDED_CHECK_AUTOSAVE, L"Enable automatic recovery snapshots", app->theme)) return false;
-    if (!app->expanded.compact.Create(app->expandedPage, ID_EXPANDED_CHECK_COMPACT, L"Compact side rails", app->theme)) return false;
-    if (!app->expanded.grid.Create(app->expandedPage, ID_EXPANDED_RADIO_GRID, L"Grid layout", app->theme, WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_GROUP)) return false;
-    if (!app->expanded.focus.Create(app->expandedPage, ID_EXPANDED_RADIO_FOCUS, L"Focus layout", app->theme)) return false;
-    if (!app->expanded.flow.Create(app->expandedPage, ID_EXPANDED_RADIO_FLOW, L"Flow layout", app->theme)) return false;
-    if (!app->expanded.dialogButton.Create(app->expandedPage, ID_EXPANDED_DIALOG, L"Open Dialog", app->theme)) return false;
-    if (!app->expanded.result.Create(app->expandedPage, ID_EXPANDED_RESULT, L"", app->theme, WS_CHILD | WS_VISIBLE | SS_LEFT)) return false;
-    app->expanded.headline.SetBackgroundColor(app->theme.panel); app->expanded.headline.SetTextFormat(DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-    app->expanded.helper.SetBackgroundColor(app->theme.panel); app->expanded.helper.SetTextFormat(DT_LEFT | DT_TOP);
-    app->expanded.autoSave.SetSurfaceColor(app->theme.panel); app->expanded.compact.SetSurfaceColor(app->theme.panel);
-    app->expanded.grid.SetSurfaceColor(app->theme.panel); app->expanded.focus.SetSurfaceColor(app->theme.panel); app->expanded.flow.SetSurfaceColor(app->theme.panel);
-    app->expanded.dialogButton.SetCornerRadius(14); app->expanded.dialogButton.SetSurfaceColor(app->theme.panel);
-    app->expanded.result.SetBackgroundColor(app->theme.panel); app->expanded.result.SetTextFormat(DT_LEFT | DT_WORDBREAK);
-    app->expanded.autoSave.SetChecked(true); app->expanded.grid.SetChecked(true); UpdateExpandedSummary(app);
+    darkui::Static::Options titleOptions;
+    titleOptions.text = L"Extended Components";
+    titleOptions.style = WS_CHILD | WS_VISIBLE | SS_LEFT;
+    titleOptions.surfaceRole = darkui::SurfaceRole::Panel;
+    titleOptions.textFormat = DT_LEFT | DT_VCENTER | DT_SINGLELINE;
+    darkui::Static::Options helperOptions;
+    helperOptions.text = L"These controls were added after the original showcase and now participate in the same semantic theme system.";
+    helperOptions.style = WS_CHILD | WS_VISIBLE | SS_LEFT;
+    helperOptions.surfaceRole = darkui::SurfaceRole::Panel;
+    helperOptions.textFormat = DT_LEFT | DT_TOP;
+    darkui::CheckBox::Options autoSaveOptions;
+    autoSaveOptions.text = L"Enable automatic recovery snapshots";
+    autoSaveOptions.checked = true;
+    autoSaveOptions.surfaceRole = darkui::SurfaceRole::Panel;
+    darkui::CheckBox::Options compactOptions;
+    compactOptions.text = L"Compact side rails";
+    compactOptions.surfaceRole = darkui::SurfaceRole::Panel;
+    darkui::RadioButton::Options gridOptions;
+    gridOptions.text = L"Grid layout";
+    gridOptions.checked = true;
+    gridOptions.surfaceRole = darkui::SurfaceRole::Panel;
+    gridOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_GROUP;
+    darkui::RadioButton::Options focusOptions;
+    focusOptions.text = L"Focus layout";
+    focusOptions.surfaceRole = darkui::SurfaceRole::Panel;
+    darkui::RadioButton::Options flowOptions;
+    flowOptions.text = L"Flow layout";
+    flowOptions.surfaceRole = darkui::SurfaceRole::Panel;
+    darkui::Button::Options dialogButtonOptions;
+    dialogButtonOptions.text = L"Open Dialog";
+    dialogButtonOptions.cornerRadius = 14;
+    dialogButtonOptions.surfaceRole = darkui::SurfaceRole::Panel;
+    darkui::Static::Options resultOptions;
+    resultOptions.text = L"";
+    resultOptions.style = WS_CHILD | WS_VISIBLE | SS_LEFT;
+    resultOptions.surfaceRole = darkui::SurfaceRole::Panel;
+    resultOptions.textFormat = DT_LEFT | DT_WORDBREAK;
+
+    if (!app->expanded.headline.Create(app->expandedPage, ID_EXPANDED_STATIC_TITLE, app->theme, titleOptions)) return false;
+    if (!app->expanded.helper.Create(app->expandedPage, ID_EXPANDED_STATIC_HELPER, app->theme, helperOptions)) return false;
+    if (!app->expanded.autoSave.Create(app->expandedPage, ID_EXPANDED_CHECK_AUTOSAVE, app->theme, autoSaveOptions)) return false;
+    if (!app->expanded.compact.Create(app->expandedPage, ID_EXPANDED_CHECK_COMPACT, app->theme, compactOptions)) return false;
+    if (!app->expanded.grid.Create(app->expandedPage, ID_EXPANDED_RADIO_GRID, app->theme, gridOptions)) return false;
+    if (!app->expanded.focus.Create(app->expandedPage, ID_EXPANDED_RADIO_FOCUS, app->theme, focusOptions)) return false;
+    if (!app->expanded.flow.Create(app->expandedPage, ID_EXPANDED_RADIO_FLOW, app->theme, flowOptions)) return false;
+    if (!app->expanded.dialogButton.Create(app->expandedPage, ID_EXPANDED_DIALOG, app->theme, dialogButtonOptions)) return false;
+    if (!app->expanded.result.Create(app->expandedPage, ID_EXPANDED_RESULT, app->theme, resultOptions)) return false;
+    UpdateExpandedSummary(app);
     return true;
 }
 
 bool CreateShowcase(AppState* state, HWND window) {
-    if (!state->themeGraphite.Create(window, ID_THEME_GRAPHITE, L"Graphite", state->theme)) return false;
-    if (!state->themeEmber.Create(window, ID_THEME_EMBER, L"Ember", state->theme)) return false;
-    if (!state->themeGlacier.Create(window, ID_THEME_GLACIER, L"Glacier", state->theme)) return false;
-    if (!state->themeMoss.Create(window, ID_THEME_MOSS, L"Moss", state->theme)) return false;
-    if (!state->themeMono.Create(window, ID_THEME_MONO, L"Mono", state->theme)) return false;
-    if (!state->tab.Create(window, ID_MAIN_TAB, state->theme)) return false;
+    darkui::Button::Options graphiteOptions;
+    graphiteOptions.text = L"Graphite"; graphiteOptions.cornerRadius = 14;
+    darkui::Button::Options emberOptions = graphiteOptions; emberOptions.text = L"Ember";
+    darkui::Button::Options glacierOptions = graphiteOptions; glacierOptions.text = L"Glacier";
+    darkui::Button::Options mossOptions = graphiteOptions; mossOptions.text = L"Moss";
+    darkui::Button::Options monoOptions = graphiteOptions; monoOptions.text = L"Mono";
+    darkui::Tab::Options tabOptions;
+    tabOptions.items = {{L"Overview", 1}, {L"Controls", 2}, {L"Data", 3}, {L"Expanded", 4}};
+    tabOptions.selection = 0;
 
-    state->themeGraphite.SetCornerRadius(14);
-    state->themeEmber.SetCornerRadius(14);
-    state->themeGlacier.SetCornerRadius(14);
-    state->themeMoss.SetCornerRadius(14);
-    state->themeMono.SetCornerRadius(14);
-
-    state->tab.SetItems({{L"Overview", 1}, {L"Controls", 2}, {L"Data", 3}, {L"Expanded", 4}});
+    if (!state->themeGraphite.Create(window, ID_THEME_GRAPHITE, state->theme, graphiteOptions)) return false;
+    if (!state->themeEmber.Create(window, ID_THEME_EMBER, state->theme, emberOptions)) return false;
+    if (!state->themeGlacier.Create(window, ID_THEME_GLACIER, state->theme, glacierOptions)) return false;
+    if (!state->themeMoss.Create(window, ID_THEME_MOSS, state->theme, mossOptions)) return false;
+    if (!state->themeMono.Create(window, ID_THEME_MONO, state->theme, monoOptions)) return false;
+    if (!state->tab.Create(window, ID_MAIN_TAB, state->theme, tabOptions)) return false;
 
     if (!CreatePageWindow(state->tab.hwnd(), ID_PAGE_OVERVIEW, PageKind::Overview, state, &state->overviewPage)) return false;
     if (!CreatePageWindow(state->tab.hwnd(), ID_PAGE_CONTROLS, PageKind::Controls, state, &state->controlsPage)) return false;
@@ -654,12 +708,42 @@ bool CreateShowcase(AppState* state, HWND window) {
     state->tab.AttachPage(1, state->controlsPage);
     state->tab.AttachPage(2, state->dataPage);
     state->tab.AttachPage(3, state->expandedPage);
-    state->tab.SetSelection(0, false);
-
     if (!CreateOverviewControls(state)) return false;
     if (!CreateControlsPanel(state)) return false;
     if (!CreateDataPanel(state)) return false;
     if (!CreateExpandedPanel(state)) return false;
+
+    state->themeManager.Bind(state->tab,
+                             state->themeGraphite,
+                             state->themeEmber,
+                             state->themeGlacier,
+                             state->themeMoss,
+                             state->themeMono,
+                             state->overview.profile,
+                             state->overview.primary,
+                             state->overview.secondary,
+                             state->overview.status,
+                             state->overview.sync,
+                             state->overview.cpu,
+                             state->controls.exposure,
+                             state->controls.balance,
+                             state->controls.timeline,
+                             state->controls.navigator,
+                             state->controls.search,
+                             state->controls.notes,
+                             state->data.filter,
+                             state->data.refresh,
+                             state->data.table,
+                             state->data.queue,
+                             state->expanded.headline,
+                             state->expanded.helper,
+                             state->expanded.autoSave,
+                             state->expanded.compact,
+                             state->expanded.grid,
+                             state->expanded.focus,
+                             state->expanded.flow,
+                             state->expanded.dialogButton,
+                             state->expanded.result);
 
     ApplyThemeToControls(state);
     LayoutMainWindow(window, state);

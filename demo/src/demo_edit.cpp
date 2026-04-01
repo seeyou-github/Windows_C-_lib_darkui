@@ -22,6 +22,7 @@ enum ControlId {
 
 struct DemoState {
     darkui::Theme theme;
+    darkui::ThemeManager themeManager;
     darkui::Edit primaryEdit;
     darkui::Edit secondaryEdit;
     darkui::Button applyButton;
@@ -40,6 +41,17 @@ void CleanupState(DemoState* state) {
     if (state->titleFont) DeleteObject(state->titleFont);
     if (state->textFont) DeleteObject(state->textFont);
     delete state;
+}
+
+void RecreateFonts(DemoState* state) {
+    if (!state) return;
+    if (state->titleFont) DeleteObject(state->titleFont);
+    if (state->textFont) DeleteObject(state->textFont);
+    darkui::FontSpec titleSpec = state->theme.uiFont;
+    titleSpec.height = -30;
+    titleSpec.weight = FW_SEMIBOLD;
+    state->titleFont = darkui::CreateFont(titleSpec);
+    state->textFont = darkui::CreateFont(state->theme.uiFont);
 }
 
 darkui::Theme MakeTheme() {
@@ -69,8 +81,9 @@ int GetEditPixelHeight(const DemoState* state) {
 void UpdateEditFont(DemoState* state, int newHeight) {
     if (!state) return;
     state->theme.uiFont.height = newHeight;
-    state->primaryEdit.SetTheme(state->theme);
-    state->secondaryEdit.SetTheme(state->theme);
+    state->themeManager.SetTheme(state->theme);
+    state->themeManager.Apply();
+    RecreateFonts(state);
 }
 
 void UpdateDebugInfo(DemoState* state) {
@@ -113,39 +126,40 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         auto* created = new DemoState();
         created->theme = MakeTheme();
         created->brushBackground = CreateSolidBrush(created->theme.background);
-
-        darkui::FontSpec titleSpec = created->theme.uiFont;
-        titleSpec.height = -30;
-        titleSpec.weight = FW_SEMIBOLD;
-        created->titleFont = darkui::CreateFont(titleSpec);
-        created->textFont = darkui::CreateFont(created->theme.uiFont);
+        RecreateFonts(created);
         if (!created->brushBackground || !created->titleFont || !created->textFont) {
             CleanupState(created);
             return -1;
         }
 
-        if (!created->primaryEdit.Create(window, ID_EDIT_PRIMARY, L"A borderless dark edit control", created->theme) ||
-            !created->secondaryEdit.Create(window,
-                                           ID_EDIT_SECONDARY,
-                                           L"First note line\r\nSecond note line\r\nThird note line",
-                                           created->theme,
-                                           WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL) ||
-            !created->increaseButton.Create(window, ID_BUTTON_INCREASE, L"Increase", created->theme) ||
-            !created->decreaseButton.Create(window, ID_BUTTON_DECREASE, L"Decrease", created->theme) ||
-            !created->applyButton.Create(window, ID_BUTTON_APPLY, L"Apply", created->theme)) {
+        darkui::Edit::Options primaryEditOptions;
+        primaryEditOptions.text = L"A borderless dark edit control";
+        primaryEditOptions.cornerRadius = 16;
+        darkui::Edit::Options secondaryEditOptions;
+        secondaryEditOptions.text = L"First note line\r\nSecond note line\r\nThird note line";
+        secondaryEditOptions.cueBanner = L"Type here. Multiline and vertical scrolling stay dark.";
+        secondaryEditOptions.cornerRadius = 16;
+        secondaryEditOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL;
+        darkui::Button::Options changeButtonOptions;
+        changeButtonOptions.cornerRadius = 14;
+        changeButtonOptions.surfaceRole = darkui::SurfaceRole::Background;
+        darkui::Button::Options increaseButtonOptions = changeButtonOptions;
+        increaseButtonOptions.text = L"Increase";
+        darkui::Button::Options decreaseButtonOptions = changeButtonOptions;
+        decreaseButtonOptions.text = L"Decrease";
+        darkui::Button::Options applyButtonOptions = changeButtonOptions;
+        applyButtonOptions.text = L"Apply";
+
+        if (!created->primaryEdit.Create(window, ID_EDIT_PRIMARY, created->theme, primaryEditOptions) ||
+            !created->secondaryEdit.Create(window, ID_EDIT_SECONDARY, created->theme, secondaryEditOptions) ||
+            !created->increaseButton.Create(window, ID_BUTTON_INCREASE, created->theme, increaseButtonOptions) ||
+            !created->decreaseButton.Create(window, ID_BUTTON_DECREASE, created->theme, decreaseButtonOptions) ||
+            !created->applyButton.Create(window, ID_BUTTON_APPLY, created->theme, applyButtonOptions)) {
             CleanupState(created);
             return -1;
         }
 
-        created->secondaryEdit.SetCueBanner(L"Type here. Multiline and vertical scrolling stay dark.");
-        created->primaryEdit.SetCornerRadius(16);
-        created->secondaryEdit.SetCornerRadius(16);
-        created->increaseButton.SetCornerRadius(14);
-        created->decreaseButton.SetCornerRadius(14);
-        created->applyButton.SetCornerRadius(14);
-        created->increaseButton.SetSurfaceColor(created->theme.background);
-        created->decreaseButton.SetSurfaceColor(created->theme.background);
-        created->applyButton.SetSurfaceColor(created->theme.background);
+        created->themeManager.Bind(created->primaryEdit, created->secondaryEdit, created->increaseButton, created->decreaseButton, created->applyButton);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);

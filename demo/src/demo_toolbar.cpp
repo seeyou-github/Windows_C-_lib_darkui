@@ -25,6 +25,7 @@ enum ControlId {
 
 struct DemoState {
     darkui::Theme theme;
+    darkui::ThemeManager themeManager;
     darkui::Toolbar toolbar;
     darkui::Toolbar compareToolbar;
     darkui::Slider fontSlider;
@@ -168,10 +169,8 @@ void ApplyToolbarTheme(HWND window, DemoState* state) {
     state->theme.uiFont.height = -state->fontPixelSize;
     state->theme.toolbarHeight = state->toolbarButtonHeight;
     RebuildFonts(state);
-    state->toolbar.SetTheme(state->theme);
-    state->compareToolbar.SetTheme(state->theme);
-    state->fontSlider.SetTheme(state->theme);
-    state->toolbarHeightSlider.SetTheme(state->theme);
+    state->themeManager.SetTheme(state->theme);
+    state->themeManager.Apply();
     Layout(window, state);
     InvalidateRect(window, nullptr, TRUE);
 }
@@ -191,19 +190,26 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             return -1;
         }
 
-        created->fontSlider.Create(window, ID_SLIDER_FONT, created->theme);
-        created->fontSlider.SetRange(12, 30);
-        created->fontSlider.SetValue(created->fontPixelSize);
-        created->fontSlider.SetShowTicks(true);
-        created->fontSlider.SetTickCount(10);
-        created->toolbarHeightSlider.Create(window, ID_SLIDER_TOOLBAR_HEIGHT, created->theme);
-        created->toolbarHeightSlider.SetRange(32, 72);
-        created->toolbarHeightSlider.SetValue(created->toolbarButtonHeight);
-        created->toolbarHeightSlider.SetShowTicks(true);
-        created->toolbarHeightSlider.SetTickCount(9);
+        darkui::Slider::Options fontSliderOptions;
+        fontSliderOptions.minimum = 12;
+        fontSliderOptions.maximum = 30;
+        fontSliderOptions.value = created->fontPixelSize;
+        fontSliderOptions.showTicks = true;
+        fontSliderOptions.tickCount = 10;
+        darkui::Slider::Options heightSliderOptions;
+        heightSliderOptions.minimum = 32;
+        heightSliderOptions.maximum = 72;
+        heightSliderOptions.value = created->toolbarButtonHeight;
+        heightSliderOptions.showTicks = true;
+        heightSliderOptions.tickCount = 9;
 
-        if (!created->toolbar.Create(window, ID_TOOLBAR, created->theme) ||
-            !created->compareToolbar.Create(window, ID_TOOLBAR_COMPARE, created->theme)) {
+        created->fontSlider.Create(window, ID_SLIDER_FONT, created->theme, fontSliderOptions);
+        created->toolbarHeightSlider.Create(window, ID_SLIDER_TOOLBAR_HEIGHT, created->theme, heightSliderOptions);
+
+        darkui::Toolbar::Options toolbarOptions;
+        darkui::Toolbar::Options compareToolbarOptions;
+        if (!created->toolbar.Create(window, ID_TOOLBAR, created->theme, toolbarOptions) ||
+            !created->compareToolbar.Create(window, ID_TOOLBAR_COMPARE, created->theme, compareToolbarOptions)) {
             CleanupState(created);
             return -1;
         }
@@ -240,6 +246,11 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             {L"Layout", ID_CMD_LAYOUT, created->iconLayout, created->layoutMenu, 0, false, false, false, false, false, true},
             {L"Export", ID_CMD_EXPORT, created->iconExport, nullptr, 0, false, false, true, false, false, false}
         });
+
+        created->themeManager.Bind(created->toolbar,
+                                   created->compareToolbar,
+                                   created->fontSlider,
+                                   created->toolbarHeightSlider);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);

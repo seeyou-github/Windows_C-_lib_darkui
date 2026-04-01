@@ -27,6 +27,7 @@ public:
         HICON icon = nullptr;
         HBITMAP bitmap = nullptr;
         COLORREF backgroundColor = CLR_INVALID;
+        SurfaceRole surfaceRole = SurfaceRole::Auto;
         UINT textFormat = DT_LEFT;
         bool ellipsis = true;
         DWORD style = WS_CHILD | WS_VISIBLE | SS_LEFT;
@@ -58,9 +59,7 @@ public:
         }
         SetTextFormat(options.textFormat);
         SetEllipsis(options.ellipsis);
-        if (options.backgroundColor != CLR_INVALID) {
-            SetBackgroundColor(options.backgroundColor);
-        }
+        SetBackgroundColor(options.backgroundColor != CLR_INVALID ? options.backgroundColor : ResolveSurfaceColor(theme, options.surfaceRole));
         if (options.bitmap) {
             SetBitmap(options.bitmap);
         } else if (options.icon) {
