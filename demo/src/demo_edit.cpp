@@ -21,37 +21,19 @@ enum ControlId {
 };
 
 struct DemoState {
-    darkui::Theme theme;
-    darkui::ThemeManager themeManager;
+    darkui::ThemedWindowHost host;
     darkui::Edit primaryEdit;
     darkui::Edit secondaryEdit;
     darkui::Button applyButton;
     darkui::Button increaseButton;
     darkui::Button decreaseButton;
-    HBRUSH brushBackground = nullptr;
-    HFONT titleFont = nullptr;
-    HFONT textFont = nullptr;
     std::wstring status = L"Ready";
     std::wstring debugInfo;
 };
 
 void CleanupState(DemoState* state) {
     if (!state) return;
-    if (state->brushBackground) DeleteObject(state->brushBackground);
-    if (state->titleFont) DeleteObject(state->titleFont);
-    if (state->textFont) DeleteObject(state->textFont);
     delete state;
-}
-
-void RecreateFonts(DemoState* state) {
-    if (!state) return;
-    if (state->titleFont) DeleteObject(state->titleFont);
-    if (state->textFont) DeleteObject(state->textFont);
-    darkui::FontSpec titleSpec = state->theme.uiFont;
-    titleSpec.height = -30;
-    titleSpec.weight = FW_SEMIBOLD;
-    state->titleFont = darkui::CreateFont(titleSpec);
-    state->textFont = darkui::CreateFont(state->theme.uiFont);
 }
 
 darkui::Theme MakeTheme() {
@@ -74,16 +56,15 @@ darkui::Theme MakeTheme() {
 }
 
 int GetEditPixelHeight(const DemoState* state) {
-    const int fontHeight = state ? -state->theme.uiFont.height : 20;
+    const int fontHeight = state ? -state->host.theme().uiFont.height : 20;
     return std::max(42, fontHeight + 30);
 }
 
 void UpdateEditFont(DemoState* state, int newHeight) {
     if (!state) return;
-    state->theme.uiFont.height = newHeight;
-    state->themeManager.SetTheme(state->theme);
-    state->themeManager.Apply();
-    RecreateFonts(state);
+    darkui::Theme theme = state->host.theme();
+    theme.uiFont.height = newHeight;
+    state->host.ApplyTheme(theme);
 }
 
 void UpdateDebugInfo(DemoState* state) {
@@ -124,10 +105,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
     switch (message) {
     case WM_CREATE: {
         auto* created = new DemoState();
-        created->theme = MakeTheme();
-        created->brushBackground = CreateSolidBrush(created->theme.background);
-        RecreateFonts(created);
-        if (!created->brushBackground || !created->titleFont || !created->textFont) {
+        darkui::ThemedWindowHost::Options hostOptions;
+        hostOptions.theme = MakeTheme();
+        hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+        if (!created->host.Attach(window, hostOptions)) {
             CleanupState(created);
             return -1;
         }
@@ -150,16 +131,17 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         darkui::Button::Options applyButtonOptions = changeButtonOptions;
         applyButtonOptions.text = L"Apply";
 
-        if (!created->primaryEdit.Create(window, ID_EDIT_PRIMARY, created->theme, primaryEditOptions) ||
-            !created->secondaryEdit.Create(window, ID_EDIT_SECONDARY, created->theme, secondaryEditOptions) ||
-            !created->increaseButton.Create(window, ID_BUTTON_INCREASE, created->theme, increaseButtonOptions) ||
-            !created->decreaseButton.Create(window, ID_BUTTON_DECREASE, created->theme, decreaseButtonOptions) ||
-            !created->applyButton.Create(window, ID_BUTTON_APPLY, created->theme, applyButtonOptions)) {
+        const darkui::Theme& theme = created->host.theme();
+        if (!created->primaryEdit.Create(window, ID_EDIT_PRIMARY, theme, primaryEditOptions) ||
+            !created->secondaryEdit.Create(window, ID_EDIT_SECONDARY, theme, secondaryEditOptions) ||
+            !created->increaseButton.Create(window, ID_BUTTON_INCREASE, theme, increaseButtonOptions) ||
+            !created->decreaseButton.Create(window, ID_BUTTON_DECREASE, theme, decreaseButtonOptions) ||
+            !created->applyButton.Create(window, ID_BUTTON_APPLY, theme, applyButtonOptions)) {
             CleanupState(created);
             return -1;
         }
 
-        created->themeManager.Bind(created->primaryEdit, created->secondaryEdit, created->increaseButton, created->decreaseButton, created->applyButton);
+        created->host.theme_manager().Bind(created->primaryEdit, created->secondaryEdit, created->increaseButton, created->decreaseButton, created->applyButton);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);
@@ -174,7 +156,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
     case WM_COMMAND:
         if (!state) break;
         if (LOWORD(wParam) == ID_BUTTON_INCREASE) {
-            const int nextHeight = std::max(-40, state->theme.uiFont.height - 2);
+            const int nextHeight = std::max(-40, state->host.theme().uiFont.height - 2);
             UpdateEditFont(state, nextHeight);
             state->status = L"Edit font increased to " + std::to_wstring(-nextHeight) + L" px";
             Layout(window, state);
@@ -183,7 +165,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             return 0;
         }
         if (LOWORD(wParam) == ID_BUTTON_DECREASE) {
-            const int nextHeight = std::min(-12, state->theme.uiFont.height + 2);
+            const int nextHeight = std::min(-12, state->host.theme().uiFont.height + 2);
             UpdateEditFont(state, nextHeight);
             state->status = L"Edit font decreased to " + std::to_wstring(-nextHeight) + L" px";
             Layout(window, state);
@@ -208,10 +190,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         }
         break;
     case WM_ERASEBKGND:
-        if (state) {
-            RECT rect{};
-            GetClientRect(window, &rect);
-            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->brushBackground);
+        if (state && state->host.HandleEraseBackground(reinterpret_cast<HDC>(wParam))) {
             return 1;
         }
         break;
@@ -221,7 +200,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             HDC dc = BeginPaint(window, &ps);
             RECT client{};
             GetClientRect(window, &client);
-            FillRect(dc, &client, state->brushBackground);
+            state->host.FillBackground(dc);
 
             RECT titleRect{32, 24, client.right - 32, 58};
             RECT descRect{32, 60, client.right - 32, 90};
@@ -229,14 +208,14 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             RECT statusRect{32, client.bottom - 96, client.right - 32, client.bottom - 68};
             RECT debugRect{32, client.bottom - 64, client.right - 32, client.bottom - 16};
 
-            DrawLine(dc, state->titleFont, state->theme.text, titleRect, L"Dark Edit Demo", DT_LEFT | DT_TOP | DT_SINGLELINE);
-            DrawLine(dc, state->textFont, state->theme.mutedText, descRect, L"Single-line and multiline rounded dark edits with no visible native border line. Placeholder text color is theme-driven and remains available through the custom fallback overlay.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+            DrawLine(dc, state->host.title_font(), state->host.theme().text, titleRect, L"Dark Edit Demo", DT_LEFT | DT_TOP | DT_SINGLELINE);
+            DrawLine(dc, state->host.body_font(), state->host.theme().mutedText, descRect, L"Single-line and multiline rounded dark edits with no visible native border line. Placeholder text color is theme-driven and remains available through the custom fallback overlay.", DT_LEFT | DT_TOP | DT_WORDBREAK);
             DrawTextW(dc,
                       L"Try focus changes, typing, selection, IME input, and multiline scrolling.\nThe lower edit uses ES_MULTILINE + ES_AUTOVSCROLL + WS_VSCROLL while keeping the same dark host surface.",
                       -1,
                       &noteRect,
                       DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
-            DrawLine(dc, state->textFont, state->theme.text, statusRect, state->status.c_str(), DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+            DrawLine(dc, state->host.body_font(), state->host.theme().text, statusRect, state->status.c_str(), DT_LEFT | DT_VCENTER | DT_SINGLELINE);
             DrawTextW(dc,
                       state->debugInfo.c_str(),
                       -1,

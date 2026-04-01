@@ -86,6 +86,9 @@ Theme ResolveTheme(const Theme& theme) {
     Theme resolved = theme;
     resolved.background = theme.primaryBackground;
     resolved.panel = theme.secondaryBackground;
+    resolved.windowCaptionBackground = AdjustColor(theme.primaryBackground, -18);
+    resolved.windowCaptionText = theme.highlightText;
+    resolved.windowCaptionBorder = MixColor(resolved.windowCaptionBackground, theme.highlightText, 0.08);
     resolved.border = MixColor(theme.primaryBackground, theme.highlightText, 0.18);
     resolved.text = theme.primaryText;
     resolved.mutedText = MixColor(theme.primaryText, theme.primaryBackground, 0.38);

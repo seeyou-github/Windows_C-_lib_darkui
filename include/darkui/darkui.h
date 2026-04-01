@@ -14,4 +14,5 @@
 #include "darkui/static.h"
 #include "darkui/tab.h"
 #include "darkui/table.h"
+#include "darkui/themed_window_host.h"
 #include "darkui/toolbar.h"

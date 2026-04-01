@@ -72,6 +72,12 @@ struct Theme {
     COLORREF background = RGB(34, 36, 40);
     // Generic panel surface color.
     COLORREF panel = RGB(44, 47, 52);
+    // Window caption/title-bar background color used by themed top-level hosts.
+    COLORREF windowCaptionBackground = RGB(0, 0, 0);
+    // Window caption/title-bar text color used by themed top-level hosts.
+    COLORREF windowCaptionText = RGB(245, 247, 250);
+    // Window caption/title-bar border color used by themed top-level hosts.
+    COLORREF windowCaptionBorder = RGB(0, 0, 0);
     // Button normal background color.
     COLORREF button = RGB(65, 72, 82);
     // Button hover background color.

@@ -32,22 +32,15 @@ struct CustomDialogSession {
 };
 
 struct DemoState {
-    darkui::Theme theme;
-    darkui::ThemeManager themeManager;
+    darkui::ThemedWindowHost host;
     darkui::Button messageButton;
     darkui::Button formButton;
-    HBRUSH brushBackground = nullptr;
-    HFONT titleFont = nullptr;
-    HFONT textFont = nullptr;
     std::wstring status = L"Ready";
     std::unique_ptr<CustomDialogSession> activeDialog;
 };
 
 void CleanupState(DemoState* state) {
     if (!state) return;
-    if (state->brushBackground) DeleteObject(state->brushBackground);
-    if (state->titleFont) DeleteObject(state->titleFont);
-    if (state->textFont) DeleteObject(state->textFont);
     delete state;
 }
 
@@ -98,7 +91,7 @@ void ShowMessageDialog(HWND window, DemoState* state) {
     options.cancelText = L"Cancel";
     options.width = 460;
     options.height = 230;
-    const darkui::Dialog::Result result = darkui::ShowMessageDialog(window, 4001, state->theme, options);
+    const darkui::Dialog::Result result = darkui::ShowMessageDialog(window, 4001, state->host.theme(), options);
     state->status = (result == darkui::Dialog::Result::Confirm) ? L"Message dialog confirmed" : L"Message dialog cancelled";
     InvalidateRect(window, nullptr, FALSE);
 }
@@ -113,8 +106,8 @@ void ShowFormDialog(HWND window, DemoState* state) {
     dialogOptions.messageVisible = false;
     dialogOptions.confirmText = L"Save";
     dialogOptions.cancelText = L"Cancel";
-    session.themeManager.SetTheme(state->theme);
-    if (!session.dialog.Create(window, 4002, state->theme, dialogOptions)) {
+    session.themeManager.SetTheme(state->host.theme());
+    if (!session.dialog.Create(window, 4002, state->host.theme(), dialogOptions)) {
         state->status = L"Form dialog creation failed";
         state->activeDialog.reset();
         InvalidateRect(window, nullptr, FALSE);
@@ -139,11 +132,11 @@ void ShowFormDialog(HWND window, DemoState* state) {
     notesEditOptions.cornerRadius = 12;
     notesEditOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL;
 
-    if (!session.titleLabel.Create(session.dialog.content_hwnd(), ID_DIALOG_LABEL_TITLE, state->theme, titleLabelOptions) ||
-        !session.notesLabel.Create(session.dialog.content_hwnd(), ID_DIALOG_LABEL_NOTES, state->theme, notesLabelOptions) ||
-        !session.titleEdit.Create(session.dialog.content_hwnd(), ID_DIALOG_TITLE, state->theme, titleEditOptions) ||
-        !session.fillButton.Create(session.dialog.content_hwnd(), ID_DIALOG_FILL, state->theme, fillButtonOptions) ||
-        !session.notesEdit.Create(session.dialog.content_hwnd(), ID_DIALOG_NOTES, state->theme, notesEditOptions)) {
+    if (!session.titleLabel.Create(session.dialog.content_hwnd(), ID_DIALOG_LABEL_TITLE, state->host.theme(), titleLabelOptions) ||
+        !session.notesLabel.Create(session.dialog.content_hwnd(), ID_DIALOG_LABEL_NOTES, state->host.theme(), notesLabelOptions) ||
+        !session.titleEdit.Create(session.dialog.content_hwnd(), ID_DIALOG_TITLE, state->host.theme(), titleEditOptions) ||
+        !session.fillButton.Create(session.dialog.content_hwnd(), ID_DIALOG_FILL, state->host.theme(), fillButtonOptions) ||
+        !session.notesEdit.Create(session.dialog.content_hwnd(), ID_DIALOG_NOTES, state->host.theme(), notesEditOptions)) {
         state->status = L"Form controls creation failed";
         state->activeDialog.reset();
         InvalidateRect(window, nullptr, FALSE);
@@ -173,15 +166,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
     switch (message) {
     case WM_CREATE: {
         auto* created = new DemoState();
-        created->theme = MakeTheme();
-        created->brushBackground = CreateSolidBrush(created->theme.background);
-
-        darkui::FontSpec titleSpec = created->theme.uiFont;
-        titleSpec.height = -30;
-        titleSpec.weight = FW_SEMIBOLD;
-        created->titleFont = darkui::CreateFont(titleSpec);
-        created->textFont = darkui::CreateFont(created->theme.uiFont);
-        if (!created->brushBackground || !created->titleFont || !created->textFont) {
+        darkui::ThemedWindowHost::Options hostOptions;
+        hostOptions.theme = MakeTheme();
+        hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+        if (!created->host.Attach(window, hostOptions)) {
             CleanupState(created);
             return -1;
         }
@@ -192,13 +180,13 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         messageButtonOptions.surfaceRole = darkui::SurfaceRole::Background;
         darkui::Button::Options formButtonOptions = messageButtonOptions;
         formButtonOptions.text = L"Open Form Dialog";
-        if (!created->messageButton.Create(window, ID_OPEN_MESSAGE, created->theme, messageButtonOptions) ||
-            !created->formButton.Create(window, ID_OPEN_FORM, created->theme, formButtonOptions)) {
+        const darkui::Theme& theme = created->host.theme();
+        if (!created->messageButton.Create(window, ID_OPEN_MESSAGE, theme, messageButtonOptions) ||
+            !created->formButton.Create(window, ID_OPEN_FORM, theme, formButtonOptions)) {
             CleanupState(created);
             return -1;
         }
-        created->themeManager.SetTheme(created->theme);
-        created->themeManager.Bind(created->messageButton, created->formButton);
+        created->host.theme_manager().Bind(created->messageButton, created->formButton);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);
@@ -226,10 +214,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         }
         break;
     case WM_ERASEBKGND:
-        if (state) {
-            RECT rect{};
-            GetClientRect(window, &rect);
-            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->brushBackground);
+        if (state && state->host.HandleEraseBackground(reinterpret_cast<HDC>(wParam))) {
             return 1;
         }
         break;
@@ -239,21 +224,21 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             HDC dc = BeginPaint(window, &ps);
             RECT client{};
             GetClientRect(window, &client);
-            FillRect(dc, &client, state->brushBackground);
+            state->host.FillBackground(dc);
 
             RECT titleRect{32, 24, client.right - 32, 58};
             RECT descRect{32, 60, client.right - 32, 96};
             RECT noteRect{32, 184, client.right - 32, 274};
             RECT statusRect{32, client.bottom - 56, client.right - 32, client.bottom - 24};
 
-            DrawLine(dc, state->titleFont, state->theme.text, titleRect, L"Dark Dialog Demo", DT_LEFT | DT_TOP | DT_SINGLELINE);
-            DrawLine(dc, state->textFont, state->theme.mutedText, descRect, L"One button opens a simple confirmation popup. The other opens a custom dialog body containing Static, Edit, Button, and multiline Edit controls.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+            DrawLine(dc, state->host.title_font(), state->host.theme().text, titleRect, L"Dark Dialog Demo", DT_LEFT | DT_TOP | DT_SINGLELINE);
+            DrawLine(dc, state->host.body_font(), state->host.theme().mutedText, descRect, L"One button opens a simple confirmation popup. The other opens a custom dialog body containing Static, Edit, Button, and multiline Edit controls.", DT_LEFT | DT_TOP | DT_WORDBREAK);
             DrawTextW(dc,
                       L"`darkui::Dialog` provides a dark modal shell with a black title bar, bottom confirm/cancel buttons, and a content host for custom child controls.",
                       -1,
                       &noteRect,
                       DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
-            DrawLine(dc, state->textFont, state->theme.text, statusRect, state->status.c_str(), DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+            DrawLine(dc, state->host.body_font(), state->host.theme().text, statusRect, state->status.c_str(), DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
             EndPaint(window, &ps);
             return 0;
