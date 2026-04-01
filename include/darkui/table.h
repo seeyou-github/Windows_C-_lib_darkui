@@ -27,6 +27,7 @@ using TableRow = std::vector<std::wstring>;
 // Usage:
 // - Fill Table::Options and call Create(parent, id, theme, options).
 // - Position it with MoveWindow().
+// - When the table sits on a dashboard-style card, prefer parenting it to darkui::Panel.
 // - Bind it through ThemedWindowHost::theme_manager() when the page supports runtime theme changes.
 // - Define columns with SetColumns().
 // - Fill rows with SetRows() or AddRow().

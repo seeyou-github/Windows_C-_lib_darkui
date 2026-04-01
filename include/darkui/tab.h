@@ -19,6 +19,7 @@ struct TabItem {
 // - Fill Tab::Options and call Create(parent, id, theme, options).
 // - Fill the tab list with SetItems() or AddItem().
 // - Optionally attach child page HWNDs with AttachPage().
+// - When the tab area sits on a shared card surface, prefer parenting it to darkui::Panel.
 // - Bind it into ThemeManager when the page supports theme switching, usually through ThemedWindowHost::theme_manager().
 // - Handle TCN_SELCHANGE in the parent window if you need notification.
 class Tab {

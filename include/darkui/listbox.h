@@ -22,6 +22,7 @@ struct ListBoxItem {
 // - Fill ListBox::Options and call Create(parent, id, theme, options).
 // - Fill it with SetItems() or AddItem().
 // - Position the host window with MoveWindow().
+// - When the list box sits on a grouped card surface, prefer parenting it to darkui::Panel.
 // - Bind it through ThemedWindowHost::theme_manager() when the page supports runtime theme changes.
 // - Listen for LBN_SELCHANGE in the parent window.
 // Notes:

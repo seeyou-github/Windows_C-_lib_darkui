@@ -11,6 +11,7 @@ namespace darkui {
 // Usage:
 // - Fill Edit::Options and call Create(parent, id, theme, options).
 // - Position the host window with MoveWindow().
+// - When several inputs share one card surface, prefer parenting them to darkui::Panel.
 // - Bind it through ThemedWindowHost::theme_manager() when the page supports runtime theme changes.
 // - Handle WM_COMMAND notifications such as EN_CHANGE in the parent window.
 // Notes:

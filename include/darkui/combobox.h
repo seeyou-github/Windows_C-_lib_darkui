@@ -338,6 +338,7 @@ inline COLORREF ResolveInheritedSurfaceColor(const Theme& theme, HWND parent, Su
 // - Fill ComboBox::Options and call Create(parent, id, theme, options).
 // - Fill items with SetItems/AddItem().
 // - Move the main button with MoveWindow().
+// - When the combo box sits inside a card section, prefer parenting it to darkui::Panel.
 // - Listen for CBN_SELCHANGE in the parent window.
 class ComboBox {
 public:
