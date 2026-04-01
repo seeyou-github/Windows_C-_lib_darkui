@@ -311,7 +311,7 @@ Slider::~Slider() {
     Destroy();
 }
 
-bool Slider::Create(HWND parent, int controlId, const Theme& theme, DWORD style, DWORD exStyle) {
+bool Slider::Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
@@ -322,10 +322,10 @@ bool Slider::Create(HWND parent, int controlId, const Theme& theme, DWORD style,
     }
 
     EnsureSliderClassRegistered(impl_->instance);
-    sliderHwnd_ = CreateWindowExW(exStyle,
+    sliderHwnd_ = CreateWindowExW(options.exStyle,
                                   kSliderClassName,
                                   L"",
-                                  style | WS_CLIPSIBLINGS,
+                                  options.style | WS_CLIPSIBLINGS,
                                   0,
                                   0,
                                   0,
@@ -340,6 +340,10 @@ bool Slider::Create(HWND parent, int controlId, const Theme& theme, DWORD style,
     }
 
     impl_->UpdateThemeResources();
+    SetRange(options.minimum, options.maximum);
+    SetValue(options.value);
+    SetShowTicks(options.showTicks);
+    SetTickCount(options.tickCount);
     return true;
 }
 

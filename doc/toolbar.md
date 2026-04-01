@@ -44,7 +44,7 @@ struct ToolbarItem {
 };
 ```
 
-## Basic Usage
+## Recommended Usage
 
 ```cpp
 #include "darkui/toolbar.h"
@@ -62,15 +62,22 @@ theme.uiFont.height = -19;
 theme.textPadding = 12;
 
 darkui::Toolbar toolbar;
-toolbar.Create(hwnd, 8001, theme);
-toolbar.SetItems({
+darkui::Toolbar::Options options;
+options.items = {
     {L"New", 8101, iconNew},
     {L"Open", 8102, iconOpen},
     {L"", 0, nullptr, nullptr, 0, true},
     {L"", 8104, iconSearch, nullptr, 0, false, false, false, false, true},
     {L"Share", 8103, iconShare, nullptr, 0, false, false, false, true},
     {L"Layout", 8105, iconLayout, layoutMenu, 0, false, false, false, true, false, true},
-});
+};
+
+toolbar.Create(hwnd, 8001, theme, options);
+
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(toolbar);
+themeManager.Apply();
+
 MoveWindow(toolbar.hwnd(), 0, 0, 900, theme.toolbarHeight + 12, TRUE);
 ```
 
@@ -172,10 +179,12 @@ toolbar.SetChecked(0, true);
 toolbar.SetDisabled(3, true);
 ```
 
-### `SetTheme`
+### `ThemeManager`
 
 ```cpp
-toolbar.SetTheme(theme);
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(toolbar);
+themeManager.Apply();
 ```
 
 ### `GetCount` / `GetItem`

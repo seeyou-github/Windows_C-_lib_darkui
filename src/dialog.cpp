@@ -350,13 +350,13 @@ Dialog::~Dialog() {
     Destroy();
 }
 
-bool Dialog::Create(HWND owner, int controlId, const std::wstring& title, const Theme& theme, int width, int height) {
+bool Dialog::Create(HWND owner, int controlId, const Theme& theme, const Options& options) {
     Destroy();
     ownerHwnd_ = owner;
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
-    width_ = std::max(320, width);
-    height_ = std::max(180, height);
+    width_ = std::max(320, options.width);
+    height_ = std::max(180, options.height);
     impl_->instance = owner ? reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(owner, GWLP_HINSTANCE)) : GetModuleHandleW(nullptr);
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
@@ -373,7 +373,7 @@ bool Dialog::Create(HWND owner, int controlId, const std::wstring& title, const 
 
     dialogHwnd_ = CreateWindowExW(WS_EX_CONTROLPARENT,
                                   kDialogClassName,
-                                  title.c_str(),
+                                  options.title.c_str(),
                                   WS_POPUP | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
                                   CW_USEDEFAULT,
                                   CW_USEDEFAULT,
@@ -406,24 +406,38 @@ bool Dialog::Create(HWND owner, int controlId, const std::wstring& title, const 
     }
     SetPropW(contentHwnd_, L"DarkUiDialogContentBrush", impl_->brushContent);
 
-    if (!titleLabel_.Create(dialogHwnd_, kDialogTitleId, title, theme_, WS_CHILD | WS_VISIBLE | SS_LEFT) ||
-        !messageLabel_.Create(contentHwnd_, kDialogMessageId, L"", theme_, WS_CHILD | WS_VISIBLE | SS_CENTER) ||
-        !confirmButton_.Create(dialogHwnd_, kDialogConfirmId, L"Confirm", theme_) ||
-        !cancelButton_.Create(dialogHwnd_, kDialogCancelId, L"Cancel", theme_)) {
+    Static::Options titleOptions;
+    titleOptions.text = options.title;
+    titleOptions.style = WS_CHILD | WS_VISIBLE | SS_LEFT;
+    titleOptions.backgroundColor = theme_.panel;
+    titleOptions.textFormat = DT_LEFT | DT_VCENTER | DT_SINGLELINE;
+    Button::Options confirmOptions;
+    confirmOptions.text = options.confirmText;
+    confirmOptions.cornerRadius = 12;
+    confirmOptions.surfaceColor = theme_.panel;
+    Button::Options cancelOptions = confirmOptions;
+    cancelOptions.text = options.cancelText;
+    Static::Options messageOptions;
+    messageOptions.text = options.message;
+    messageOptions.style = WS_CHILD | WS_VISIBLE | SS_CENTER;
+    messageOptions.backgroundColor = theme_.panel;
+    messageOptions.textFormat = DT_CENTER | DT_VCENTER | DT_WORDBREAK;
+    messageOptions.ellipsis = false;
+    if (!titleLabel_.Create(dialogHwnd_, kDialogTitleId, theme_, titleOptions) ||
+        !messageLabel_.Create(contentHwnd_, kDialogMessageId, theme_, messageOptions) ||
+        !confirmButton_.Create(dialogHwnd_, kDialogConfirmId, theme_, confirmOptions) ||
+        !cancelButton_.Create(dialogHwnd_, kDialogCancelId, theme_, cancelOptions)) {
         Destroy();
         return false;
     }
 
-    titleLabel_.SetBackgroundColor(theme_.panel);
-    titleLabel_.SetTextFormat(DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     titleLabel_.SetEllipsis(true);
-    titleLabel_.SetText(title);
-    messageLabel_.SetBackgroundColor(theme_.panel);
-    messageLabel_.SetTextFormat(DT_CENTER | DT_VCENTER | DT_WORDBREAK);
-    confirmButton_.SetCornerRadius(12);
-    cancelButton_.SetCornerRadius(12);
-    confirmButton_.SetSurfaceColor(theme_.panel);
-    cancelButton_.SetSurfaceColor(theme_.panel);
+    SetTitle(options.title);
+    SetMessage(options.message);
+    SetConfirmText(options.confirmText);
+    SetCancelText(options.cancelText);
+    SetMessageVisible(options.messageVisible);
+    SetCancelVisible(options.cancelVisible);
 
     impl_->CenterToOwner();
     impl_->LayoutChildren();

@@ -9,8 +9,9 @@ namespace darkui {
 
 // Owner-drawn dark checkbox that preserves Win32 BN_CLICKED behavior.
 // Usage:
-// - Create the checkbox with Create().
+// - Fill CheckBox::Options and call Create(parent, id, theme, options).
 // - Position it with MoveWindow().
+// - Bind it into ThemeManager when the page supports theme switching.
 // - Handle state changes through WM_COMMAND / BN_CLICKED in the parent window.
 class CheckBox {
 public:
@@ -29,26 +30,8 @@ public:
     CheckBox(const CheckBox&) = delete;
     CheckBox& operator=(const CheckBox&) = delete;
 
-    // Creates the checkbox as a child window.
-    // Parameters:
-    // - parent: Parent window that receives BN_CLICKED notifications.
-    // - controlId: Child control ID used in WM_COMMAND.
-    // - text: Visible label text.
-    // - theme: Visual theme used for drawing.
-    // - style: Standard child-button style flags. BS_OWNERDRAW and BS_AUTOCHECKBOX are added internally.
-    // - exStyle: Optional extended window style.
-    bool Create(HWND parent, int controlId, const std::wstring& text, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP, DWORD exStyle = 0);
     // Creates the checkbox from an options structure.
-    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
-        if (!Create(parent, controlId, options.text, theme, options.style, options.exStyle)) {
-            return false;
-        }
-        SetSurfaceColor(options.surfaceColor != CLR_INVALID ? options.surfaceColor : ResolveSurfaceColor(theme, options.surfaceRole));
-        if (options.checked) {
-            SetChecked(true);
-        }
-        return true;
-    }
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options);
     // Destroys the underlying checkbox window.
     void Destroy();
 
@@ -58,6 +41,7 @@ public:
     const Theme& theme() const { return theme_; }
     COLORREF surface_color() const { return surfaceColor_; }
 
+    // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
     void SetText(const std::wstring& text);
     std::wstring GetText() const;

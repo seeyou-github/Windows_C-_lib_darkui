@@ -22,7 +22,7 @@
 - Configurable corner radius
 - Host surface color support to avoid visible seams around rounded corners
 
-## Basic Usage
+## Recommended Usage
 
 ```cpp
 #include "darkui/button.h"
@@ -37,9 +37,17 @@ theme.border = RGB(84, 96, 112);
 theme.text = RGB(232, 236, 241);
 
 darkui::Button button;
-button.Create(hwnd, 3001, L"Run", theme);
-button.SetCornerRadius(14);
-button.SetSurfaceColor(theme.panel);
+darkui::Button::Options options;
+options.text = L"Run";
+options.cornerRadius = 14;
+options.surfaceRole = darkui::SurfaceRole::Panel;
+
+button.Create(hwnd, 3001, theme, options);
+
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(button);
+themeManager.Apply();
+
 MoveWindow(button.hwnd(), 20, 20, 140, 40, TRUE);
 ```
 
@@ -59,13 +67,16 @@ case WM_COMMAND:
 ### `Create`
 
 ```cpp
-bool Create(HWND parent, int controlId, const std::wstring& text, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, DWORD exStyle = 0);
+bool Create(HWND parent, int controlId, const Theme& theme, const Button::Options& options);
 ```
 
-### `SetTheme`
+### `Options`
 
 ```cpp
-button.SetTheme(theme);
+darkui::Button::Options options;
+options.text = L"Run";
+options.cornerRadius = 18;
+options.surfaceRole = darkui::SurfaceRole::Panel;
 ```
 
 ### `SetText` / `GetText`
@@ -81,10 +92,12 @@ std::wstring text = button.GetText();
 button.SetCornerRadius(18);
 ```
 
-### `SetSurfaceColor`
+### `ThemeManager`
 
 ```cpp
-button.SetSurfaceColor(theme.panel);
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(button);
+themeManager.Apply();
 ```
 
 Purpose:
@@ -108,7 +121,8 @@ Purpose:
 ## Usage Notes
 
 - For plain window backgrounds, the default surface fallback is usually enough
-- For cards and panels, call `SetSurfaceColor(cardColor)`
+- For cards and panels, prefer `options.surfaceRole = darkui::SurfaceRole::Panel`
+- Use `ThemeManager` when the same page will switch themes repeatedly
 - To disable the control, use `EnableWindow(button.hwnd(), FALSE)`
 
 ## Demo Reference

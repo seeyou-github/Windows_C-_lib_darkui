@@ -8,7 +8,7 @@ namespace darkui {
 
 // Custom dark progress bar for Win32.
 // Usage:
-// - Create the control with Create().
+// - Fill ProgressBar::Options and call Create(parent, id, theme, options).
 // - Position it with MoveWindow().
 // - Update its state with SetRange() and SetValue().
 class ProgressBar {
@@ -33,30 +33,8 @@ public:
     ProgressBar(const ProgressBar&) = delete;
     ProgressBar& operator=(const ProgressBar&) = delete;
 
-    // Creates the progress bar as a child window.
-    // Parameters:
-    // - parent: Parent window that owns the control.
-    // - controlId: Child control ID used for identification.
-    // - theme: Visual theme used for drawing.
-    // - style: Standard child-window style flags.
-    // - exStyle: Optional extended window style.
-    // Returns:
-    // - true on success.
-    // - false if the window or drawing resources could not be created.
-    // Notes:
-    // - Position and size are controlled by your layout code.
-    bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE, DWORD exStyle = 0);
     // Creates the progress bar from an options structure.
-    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
-        if (!Create(parent, controlId, theme, options.style, options.exStyle)) {
-            return false;
-        }
-        SetRange(options.minimum, options.maximum);
-        SetValue(options.value);
-        SetShowPercentage(options.showPercentage);
-        SetSurfaceColor(options.surfaceColor != CLR_INVALID ? options.surfaceColor : ResolveSurfaceColor(theme, options.surfaceRole));
-        return true;
-    }
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options);
     // Destroys the progress-bar window and resets wrapper state.
     void Destroy();
 
@@ -71,9 +49,7 @@ public:
     // Returns the host surface color used outside the inner progress track.
     COLORREF surface_color() const { return surfaceColor_; }
 
-    // Replaces the current theme and repaints the control.
-    // Parameter:
-    // - theme: New theme data to apply.
+    // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
     // Sets the logical progress range.
     // Parameters:

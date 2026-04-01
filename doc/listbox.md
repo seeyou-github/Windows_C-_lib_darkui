@@ -22,7 +22,7 @@
 - Owner-drawn dark item rendering
 - Supports both single-selection and multi-selection styles
 
-## Basic Usage
+## Recommended Usage
 
 ```cpp
 #include "darkui/listbox.h"
@@ -34,24 +34,30 @@ theme.listBoxText = RGB(232, 236, 241);
 theme.listBoxItemSelected = RGB(78, 120, 184);
 
 darkui::ListBox listBox;
-listBox.Create(hwnd, 2201, theme);
-listBox.SetCornerRadius(12);
-listBox.SetItems({
+darkui::ListBox::Options options;
+options.cornerRadius = 12;
+options.items = {
     {L"All projects", 1},
     {L"Queued exports", 2},
     {L"Archived snapshots", 3}
-});
-listBox.SetSelection(0);
+};
+options.selection = 0;
+
+listBox.Create(hwnd, 2201, theme, options);
+
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(listBox);
+themeManager.Apply();
+
 MoveWindow(listBox.hwnd(), 20, 20, 280, 180, TRUE);
 ```
 
 ## Multi-Selection Example
 
 ```cpp
-listBox.Create(hwnd,
-               2202,
-               theme,
-               WS_CHILD | WS_VISIBLE | WS_TABSTOP | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | LBS_EXTENDEDSEL);
+darkui::ListBox::Options multiOptions;
+multiOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | LBS_EXTENDEDSEL;
+listBox.Create(hwnd, 2202, theme, multiOptions);
 ```
 
 ## Parent Message Handling
@@ -70,7 +76,7 @@ case WM_COMMAND:
 ### `Create`
 
 ```cpp
-bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL, DWORD exStyle = 0);
+bool Create(HWND parent, int controlId, const Theme& theme, const ListBox::Options& options);
 ```
 
 ### `SetItems` / `AddItem` / `ClearItems`

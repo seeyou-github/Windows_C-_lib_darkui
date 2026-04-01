@@ -22,7 +22,7 @@
 - Optional tick marks
 - Mouse drag and keyboard control
 
-## Basic Usage
+## Recommended Usage
 
 ```cpp
 #include "darkui/slider.h"
@@ -38,11 +38,19 @@ theme.sliderTrackHeight = 6;
 theme.sliderThumbRadius = 10;
 
 darkui::Slider slider;
-slider.Create(hwnd, 4001, theme);
-slider.SetRange(0, 100);
-slider.SetValue(38);
-slider.SetShowTicks(true);
-slider.SetTickCount(11);
+darkui::Slider::Options options;
+options.minimum = 0;
+options.maximum = 100;
+options.value = 38;
+options.showTicks = true;
+options.tickCount = 11;
+
+slider.Create(hwnd, 4001, theme, options);
+
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(slider);
+themeManager.Apply();
+
 MoveWindow(slider.hwnd(), 20, 20, 320, 80, TRUE);
 ```
 
@@ -79,10 +87,12 @@ slider.SetShowTicks(true);
 slider.SetTickCount(11);
 ```
 
-### `SetTheme`
+### `ThemeManager`
 
 ```cpp
-slider.SetTheme(theme);
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(slider);
+themeManager.Apply();
 ```
 
 ## Reading State

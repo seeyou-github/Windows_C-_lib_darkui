@@ -178,12 +178,12 @@ ProgressBar::~ProgressBar() {
     Destroy();
 }
 
-bool ProgressBar::Create(HWND parent, int controlId, const Theme& theme, DWORD style, DWORD exStyle) {
+bool ProgressBar::Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
-    surfaceColor_ = theme.background;
+    surfaceColor_ = options.surfaceColor != CLR_INVALID ? options.surfaceColor : ResolveSurfaceColor(theme_, options.surfaceRole);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
@@ -193,10 +193,10 @@ bool ProgressBar::Create(HWND parent, int controlId, const Theme& theme, DWORD s
         Destroy();
         return false;
     }
-    progressHwnd_ = CreateWindowExW(exStyle,
+    progressHwnd_ = CreateWindowExW(options.exStyle,
                                     kProgressClassName,
                                     L"",
-                                    style | WS_CLIPSIBLINGS,
+                                    options.style | WS_CLIPSIBLINGS,
                                     0,
                                     0,
                                     0,
@@ -215,6 +215,9 @@ bool ProgressBar::Create(HWND parent, int controlId, const Theme& theme, DWORD s
         Destroy();
         return false;
     }
+    SetRange(options.minimum, options.maximum);
+    SetValue(options.value);
+    SetShowPercentage(options.showPercentage);
     return true;
 }
 

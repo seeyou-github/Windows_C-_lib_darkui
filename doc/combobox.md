@@ -33,7 +33,7 @@ struct ComboItem {
 };
 ```
 
-## Basic Usage
+## Recommended Usage
 
 ```cpp
 #include "darkui/combobox.h"
@@ -51,13 +51,20 @@ theme.popupAccentItem = RGB(28, 54, 95);
 theme.popupAccentItemHot = RGB(42, 75, 126);
 
 darkui::ComboBox combo;
-combo.Create(hwnd, 1001, theme);
-combo.SetItems({
+darkui::ComboBox::Options options;
+options.items = {
     {L"default", 0, false},
     {L"mp4", 1, true},
     {L"mp3", 2, false},
-});
-combo.SetSelection(0);
+};
+options.selection = 0;
+
+combo.Create(hwnd, 1001, theme, options);
+
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(combo);
+themeManager.Apply();
+
 MoveWindow(combo.hwnd(), 20, 20, 280, 38, TRUE);
 ```
 
@@ -78,7 +85,7 @@ case WM_COMMAND:
 ### `Create`
 
 ```cpp
-bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, DWORD exStyle = 0);
+bool Create(HWND parent, int controlId, const Theme& theme, const ComboBox::Options& options);
 ```
 
 ### `SetItems`
@@ -117,10 +124,12 @@ std::wstring text = combo.GetText();
 std::size_t count = combo.GetCount();
 ```
 
-### `SetTheme`
+### `Options`
 
 ```cpp
-combo.SetTheme(theme);
+darkui::ComboBox::Options options;
+options.items = {{L"A", 1, false}, {L"B", 2, true}};
+options.selection = 0;
 ```
 
 ## Theme Fields Used

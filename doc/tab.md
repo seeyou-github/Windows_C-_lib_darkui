@@ -31,7 +31,7 @@ struct TabItem {
 };
 ```
 
-## Basic Usage
+## Recommended Usage
 
 ```cpp
 #include "darkui/tab.h"
@@ -45,12 +45,20 @@ theme.tabTextActive = RGB(245, 247, 250);
 theme.tabHeight = 38;
 
 darkui::Tab tab;
-tab.Create(hwnd, 7001, theme);
-tab.SetItems({
+darkui::Tab::Options options;
+options.items = {
     {L"Overview", 1},
     {L"Metrics", 2},
     {L"Notes", 3},
-});
+};
+options.selection = 0;
+
+tab.Create(hwnd, 7001, theme, options);
+
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(tab);
+themeManager.Apply();
+
 MoveWindow(tab.hwnd(), 20, 20, 640, 420, TRUE);
 ```
 
@@ -115,10 +123,12 @@ int index = tab.GetSelection();
 RECT contentRect = tab.GetContentRect();
 ```
 
-### `SetTheme`
+### `ThemeManager`
 
 ```cpp
-tab.SetTheme(theme);
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(tab);
+themeManager.Apply();
 ```
 
 ## Theme Fields Used

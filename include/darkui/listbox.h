@@ -19,7 +19,7 @@ struct ListBoxItem {
 
 // Dark list box built from a rounded host window plus an inner native LISTBOX.
 // Usage:
-// - Create the control with Create().
+// - Fill ListBox::Options and call Create(parent, id, theme, options).
 // - Fill it with SetItems() or AddItem().
 // - Position the host window with MoveWindow().
 // - Listen for LBN_SELCHANGE in the parent window.
@@ -44,33 +44,8 @@ public:
     ListBox(const ListBox&) = delete;
     ListBox& operator=(const ListBox&) = delete;
 
-    // Creates the dark list box as a child window.
-    // Parameters:
-    // - parent: Parent window that receives forwarded LBN_* notifications.
-    // - controlId: Child control ID used in WM_COMMAND.
-    // - theme: Visual theme used for border, background, and text.
-    // - style: Standard LISTBOX style flags. Border styles are stripped internally.
-    // - exStyle: Optional extended style for the host window.
-    // Returns:
-    // - true on success.
-    // - false on failure.
-    bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL, DWORD exStyle = 0);
     // Creates the list box from an options structure.
-    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
-        if (!Create(parent, controlId, theme, options.style, options.exStyle)) {
-            return false;
-        }
-        if (options.cornerRadius >= 0) {
-            SetCornerRadius(options.cornerRadius);
-        }
-        if (!options.items.empty()) {
-            SetItems(options.items);
-        }
-        if (options.selection >= 0) {
-            SetSelection(options.selection);
-        }
-        return true;
-    }
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options);
     // Destroys the host and inner list-box windows.
     void Destroy();
 
@@ -87,7 +62,7 @@ public:
     // Returns the current corner radius in pixels.
     int corner_radius() const { return cornerRadius_; }
 
-    // Replaces the current theme and repaints the control.
+    // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
     // Replaces all items at once.
     void SetItems(const std::vector<ListBoxItem>& items);

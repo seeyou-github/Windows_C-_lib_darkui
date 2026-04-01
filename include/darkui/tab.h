@@ -16,9 +16,10 @@ struct TabItem {
 
 // Custom dark tab control for Win32.
 // Usage:
-// - Create the control with Create().
+// - Fill Tab::Options and call Create(parent, id, theme, options).
 // - Fill the tab list with SetItems() or AddItem().
 // - Optionally attach child page HWNDs with AttachPage().
+// - Bind it into ThemeManager when the page supports theme switching.
 // - Handle TCN_SELCHANGE in the parent window if you need notification.
 class Tab {
 public:
@@ -39,31 +40,8 @@ public:
     Tab(const Tab&) = delete;
     Tab& operator=(const Tab&) = delete;
 
-    // Creates the tab control as a child window.
-    // Parameters:
-    // - parent: Parent window that receives WM_NOTIFY / TCN_SELCHANGE notifications.
-    // - controlId: Child control ID used in NMHDR.idFrom.
-    // - theme: Visual theme used for drawing.
-    // - style: Standard child-window style flags.
-    // - exStyle: Optional extended window style.
-    // Returns:
-    // - true on success.
-    // - false if the window or resources could not be created.
-    bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP, DWORD exStyle = 0);
     // Creates the tab control from an options structure.
-    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
-        if (!Create(parent, controlId, theme, options.style, options.exStyle)) {
-            return false;
-        }
-        SetVertical(options.vertical);
-        if (!options.items.empty()) {
-            SetItems(options.items);
-        }
-        if (options.selection >= 0) {
-            SetSelection(options.selection);
-        }
-        return true;
-    }
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options);
     // Destroys the tab window and resets wrapper state.
     void Destroy();
 
@@ -78,7 +56,7 @@ public:
     // Returns whether the tab strip is currently vertical.
     bool vertical() const { return vertical_ ; }
 
-    // Replaces the current theme and repaints the control.
+    // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
     // Switches between horizontal and vertical tab-strip layout.
     // Parameter:

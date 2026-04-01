@@ -308,7 +308,7 @@ Table::~Table() {
     Destroy();
 }
 
-bool Table::Create(HWND parent, int controlId, const Theme& theme, DWORD style, DWORD exStyle) {
+bool Table::Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
@@ -319,10 +319,10 @@ bool Table::Create(HWND parent, int controlId, const Theme& theme, DWORD style, 
     }
 
     EnsureTableClassRegistered(impl_->instance);
-    tableHwnd_ = CreateWindowExW(exStyle,
+    tableHwnd_ = CreateWindowExW(options.exStyle,
                                  kTableClassName,
                                  L"",
-                                 style | WS_CLIPSIBLINGS,
+                                 options.style | WS_CLIPSIBLINGS,
                                  0,
                                  0,
                                  0,
@@ -337,6 +337,13 @@ bool Table::Create(HWND parent, int controlId, const Theme& theme, DWORD style, 
     }
 
     impl_->UpdateThemeResources();
+    SetDrawEmptyGrid(options.drawEmptyGrid);
+    if (!options.columns.empty()) {
+        SetColumns(options.columns);
+    }
+    if (!options.rows.empty()) {
+        SetRows(options.rows);
+    }
     return true;
 }
 

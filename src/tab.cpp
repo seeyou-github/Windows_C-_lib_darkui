@@ -335,7 +335,7 @@ Tab::~Tab() {
     Destroy();
 }
 
-bool Tab::Create(HWND parent, int controlId, const Theme& theme, DWORD style, DWORD exStyle) {
+bool Tab::Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
@@ -350,10 +350,10 @@ bool Tab::Create(HWND parent, int controlId, const Theme& theme, DWORD style, DW
         return false;
     }
 
-    tabHwnd_ = CreateWindowExW(exStyle,
+    tabHwnd_ = CreateWindowExW(options.exStyle,
                                kTabClassName,
                                L"",
-                               style | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
+                               options.style | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
                                0,
                                0,
                                0,
@@ -371,6 +371,13 @@ bool Tab::Create(HWND parent, int controlId, const Theme& theme, DWORD style, DW
     if (!impl_->brushBackground || !impl_->brushContentBackground || !impl_->brushItem || !impl_->brushItemActive || !impl_->font) {
         Destroy();
         return false;
+    }
+    SetVertical(options.vertical);
+    if (!options.items.empty()) {
+        SetItems(options.items);
+    }
+    if (options.selection >= 0) {
+        SetSelection(options.selection);
     }
     return true;
 }

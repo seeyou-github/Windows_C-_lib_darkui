@@ -334,11 +334,11 @@ ScrollBar::~ScrollBar() {
     Destroy();
 }
 
-bool ScrollBar::Create(HWND parent, int controlId, bool vertical, const Theme& theme, DWORD style, DWORD exStyle) {
+bool ScrollBar::Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
-    vertical_ = vertical;
+    vertical_ = options.vertical;
     theme_ = ResolveTheme(theme);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
@@ -350,10 +350,10 @@ bool ScrollBar::Create(HWND parent, int controlId, bool vertical, const Theme& t
         return false;
     }
 
-    scrollBarHwnd_ = CreateWindowExW(exStyle,
+    scrollBarHwnd_ = CreateWindowExW(options.exStyle,
                                      kScrollBarClassName,
                                      L"",
-                                     style | WS_CLIPSIBLINGS,
+                                     options.style | WS_CLIPSIBLINGS,
                                      0,
                                      0,
                                      0,
@@ -372,6 +372,9 @@ bool ScrollBar::Create(HWND parent, int controlId, bool vertical, const Theme& t
         Destroy();
         return false;
     }
+    SetRange(options.minimum, options.maximum);
+    SetPageSize(options.pageSize);
+    SetValue(options.value);
     return true;
 }
 

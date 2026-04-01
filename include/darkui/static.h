@@ -9,7 +9,7 @@ namespace darkui {
 
 // Dark static control that can render text, an icon, or a bitmap.
 // Usage:
-// - Create the control with Create().
+// - Fill Static::Options and call Create(parent, id, theme, options).
 // - Position it with MoveWindow().
 // - Use SetText(), SetIcon(), or SetBitmap() to switch presentation mode.
 // Notes:
@@ -40,33 +40,8 @@ public:
     Static(const Static&) = delete;
     Static& operator=(const Static&) = delete;
 
-    // Creates the static control as a child window.
-    // Parameters:
-    // - parent: Parent window that owns the control.
-    // - controlId: Child control ID used by Win32 notifications when enabled.
-    // - text: Initial text shown when the content mode is Text.
-    // - theme: Visual theme used for background and text.
-    // - style: Standard STATIC style flags.
-    // - exStyle: Optional extended style.
-    // Returns:
-    // - true on success.
-    // - false on failure.
-    bool Create(HWND parent, int controlId, const std::wstring& text = L"", const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | SS_LEFT, DWORD exStyle = 0);
     // Creates the static control from an options structure.
-    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
-        if (!Create(parent, controlId, options.text, theme, options.style, options.exStyle)) {
-            return false;
-        }
-        SetTextFormat(options.textFormat);
-        SetEllipsis(options.ellipsis);
-        SetBackgroundColor(options.backgroundColor != CLR_INVALID ? options.backgroundColor : ResolveSurfaceColor(theme, options.surfaceRole));
-        if (options.bitmap) {
-            SetBitmap(options.bitmap);
-        } else if (options.icon) {
-            SetIcon(options.icon);
-        }
-        return true;
-    }
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options);
     // Destroys the underlying window and resets wrapper state.
     void Destroy();
 
@@ -83,7 +58,7 @@ public:
     // Returns the background color currently used by the control.
     COLORREF background_color() const { return backgroundColor_; }
 
-    // Replaces the current theme and repaints the control.
+    // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
     // Updates the visible text and switches the mode to Text.
     void SetText(const std::wstring& text);

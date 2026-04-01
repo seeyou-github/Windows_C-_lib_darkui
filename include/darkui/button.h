@@ -9,8 +9,9 @@ namespace darkui {
 
 // Owner-drawn dark button with standard Win32 BN_CLICKED behavior.
 // Usage:
-// - Create the button with Create().
+// - Fill Button::Options and call Create(parent, id, theme, options).
 // - Position it with MoveWindow().
+// - Bind it into ThemeManager when the page supports theme switching.
 // - Handle clicks through WM_COMMAND / BN_CLICKED in the parent window.
 class Button {
 public:
@@ -31,31 +32,8 @@ public:
     Button(const Button&) = delete;
     Button& operator=(const Button&) = delete;
 
-    // Creates the button as a child window.
-    // Parameters:
-    // - parent: Parent window that will receive BN_CLICKED notifications.
-    // - controlId: Child control ID used in WM_COMMAND.
-    // - text: Initial button caption.
-    // - theme: Visual theme used for drawing.
-    // - style: Standard child-button style flags. BS_OWNERDRAW is added internally.
-    // - exStyle: Optional extended window style.
-    // Returns:
-    // - true if the window and theme resources were created successfully.
-    // - false on failure.
-    // Notes:
-    // - After creation you still need to set size and position with MoveWindow.
-    bool Create(HWND parent, int controlId, const std::wstring& text, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, DWORD exStyle = 0);
     // Creates the button from an options structure.
-    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
-        if (!Create(parent, controlId, options.text, theme, options.style, options.exStyle)) {
-            return false;
-        }
-        if (options.cornerRadius >= 0) {
-            SetCornerRadius(options.cornerRadius);
-        }
-        SetSurfaceColor(options.surfaceColor != CLR_INVALID ? options.surfaceColor : ResolveSurfaceColor(theme, options.surfaceRole));
-        return true;
-    }
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options);
     // Destroys the underlying button window and resets the wrapper state.
     void Destroy();
 
@@ -72,9 +50,7 @@ public:
     // Returns the background color used to fill the area outside the rounded button body.
     COLORREF surface_color() const { return surfaceColor_; }
 
-    // Replaces the current theme and repaints the control.
-    // Parameter:
-    // - theme: New theme data to apply immediately.
+    // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
     // Updates the visible button caption.
     // Parameter:

@@ -517,7 +517,7 @@ Edit::~Edit() {
     Destroy();
 }
 
-bool Edit::Create(HWND parent, int controlId, const std::wstring& text, const Theme& theme, DWORD style, DWORD exStyle) {
+bool Edit::Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
@@ -533,11 +533,11 @@ bool Edit::Create(HWND parent, int controlId, const std::wstring& text, const Th
     }
 
     DWORD hostStyle = WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN;
-    if ((style & WS_TABSTOP) != 0) {
+    if ((options.style & WS_TABSTOP) != 0) {
         hostStyle |= WS_TABSTOP;
     }
 
-    hostHwnd_ = CreateWindowExW(exStyle & ~WS_EX_CLIENTEDGE,
+    hostHwnd_ = CreateWindowExW(options.exStyle & ~WS_EX_CLIENTEDGE,
                                 kEditHostClassName,
                                 L"",
                                 hostStyle,
@@ -554,7 +554,7 @@ bool Edit::Create(HWND parent, int controlId, const std::wstring& text, const Th
         return false;
     }
 
-    DWORD editStyle = style | WS_CHILD | WS_VISIBLE;
+    DWORD editStyle = options.style | WS_CHILD | WS_VISIBLE;
     editStyle &= ~WS_BORDER;
     editStyle &= ~WS_TABSTOP;
     impl_->useCustomVScroll = (editStyle & ES_MULTILINE) != 0 && (editStyle & WS_VSCROLL) != 0;
@@ -567,7 +567,7 @@ bool Edit::Create(HWND parent, int controlId, const std::wstring& text, const Th
 
     editHwnd_ = CreateWindowExW(0,
                                 L"EDIT",
-                                text.c_str(),
+                                options.text.c_str(),
                                 editStyle,
                                 0,
                                 0,
@@ -608,7 +608,9 @@ bool Edit::Create(HWND parent, int controlId, const std::wstring& text, const Th
                       reinterpret_cast<DWORD_PTR>(impl_.get()));
 
     if (impl_->useCustomVScroll) {
-        if (!impl_->verticalScrollBar.Create(hostHwnd_, kEditScrollBarId, true, theme_)) {
+        ScrollBar::Options scrollOptions;
+        scrollOptions.vertical = true;
+        if (!impl_->verticalScrollBar.Create(hostHwnd_, kEditScrollBarId, theme_, scrollOptions)) {
             Destroy();
             return false;
         }
@@ -619,6 +621,15 @@ bool Edit::Create(HWND parent, int controlId, const std::wstring& text, const Th
         return false;
     }
 
+    if (!options.cueBanner.empty()) {
+        SetCueBanner(options.cueBanner);
+    }
+    if (options.cornerRadius >= 0) {
+        SetCornerRadius(options.cornerRadius);
+    }
+    if (options.readOnly) {
+        SetReadOnly(true);
+    }
     impl_->UpdateWindowRegion();
     impl_->LayoutChildren();
     impl_->UpdatePlaceholderVisibility();

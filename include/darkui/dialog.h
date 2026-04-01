@@ -10,7 +10,7 @@ namespace darkui {
 
 // Modal dark dialog with a custom title bar, body area, and confirm/cancel buttons.
 // Usage:
-// - Create the dialog with Create().
+// - Fill Dialog::Options and call Create(owner, id, theme, options).
 // - Use SetMessage() for a simple centered message body, or create your own child
 //   controls inside content_hwnd() for custom layouts.
 // - Call ShowModal() to display the popup and run a local modal message loop.
@@ -45,30 +45,7 @@ public:
     Dialog& operator=(const Dialog&) = delete;
 
     // Creates the dialog window and its built-in controls.
-    // Parameters:
-    // - owner: Owner window disabled during modal display.
-    // - controlId: Logical identifier stored by the wrapper.
-    // - title: Initial title shown in the custom title bar.
-    // - theme: Visual theme used for the dialog surface and buttons.
-    // - width: Initial dialog width in pixels.
-    // - height: Initial dialog height in pixels.
-    // Returns:
-    // - true on success.
-    // - false on failure.
-    bool Create(HWND owner, int controlId, const std::wstring& title, const Theme& theme = Theme{}, int width = 480, int height = 280);
-    // Creates the dialog from an options structure.
-    bool Create(HWND owner, int controlId, const Theme& theme, const Options& options) {
-        if (!Create(owner, controlId, options.title, theme, options.width, options.height)) {
-            return false;
-        }
-        SetTitle(options.title);
-        SetMessage(options.message);
-        SetConfirmText(options.confirmText);
-        SetCancelText(options.cancelText);
-        SetMessageVisible(options.messageVisible);
-        SetCancelVisible(options.cancelVisible);
-        return true;
-    }
+    bool Create(HWND owner, int controlId, const Theme& theme, const Options& options);
     // Destroys the popup window and all built-in child controls.
     void Destroy();
 
@@ -91,7 +68,7 @@ public:
     // Returns the active theme.
     const Theme& theme() const { return theme_; }
 
-    // Replaces the current theme and repaints the dialog.
+    // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
     // Updates the title-bar text.
     void SetTitle(const std::wstring& title);

@@ -24,7 +24,7 @@
 - Track click paging
 - Keyboard arrows, `Home`, and `End`
 
-## Basic Usage
+## Recommended Usage
 
 ```cpp
 #include "darkui/scrollbar.h"
@@ -38,10 +38,19 @@ theme.scrollBarThickness = 14;
 theme.scrollBarMinThumbSize = 28;
 
 darkui::ScrollBar verticalBar;
-verticalBar.Create(hwnd, 6001, true, theme);
-verticalBar.SetRange(0, 100);
-verticalBar.SetPageSize(24);
-verticalBar.SetValue(56);
+darkui::ScrollBar::Options options;
+options.vertical = true;
+options.minimum = 0;
+options.maximum = 100;
+options.pageSize = 24;
+options.value = 56;
+
+verticalBar.Create(hwnd, 6001, theme, options);
+
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(verticalBar);
+themeManager.Apply();
+
 MoveWindow(verticalBar.hwnd(), 20, 20, 16, 220, TRUE);
 ```
 
@@ -90,10 +99,12 @@ scrollBar.SetValue(40);
 scrollBar.SetValue(48, true);
 ```
 
-### `SetTheme`
+### `ThemeManager`
 
 ```cpp
-scrollBar.SetTheme(theme);
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(scrollBar);
+themeManager.Apply();
 ```
 
 ## Reading State

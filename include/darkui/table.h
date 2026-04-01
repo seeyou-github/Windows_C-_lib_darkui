@@ -25,7 +25,7 @@ using TableRow = std::vector<std::wstring>;
 
 // Custom dark table control for Win32.
 // Usage:
-// - Create the control with Create().
+// - Fill Table::Options and call Create(parent, id, theme, options).
 // - Position it with MoveWindow().
 // - Define columns with SetColumns().
 // - Fill rows with SetRows() or AddRow().
@@ -48,33 +48,8 @@ public:
     Table(const Table&) = delete;
     Table& operator=(const Table&) = delete;
 
-    // Creates the table as a child window.
-    // Parameters:
-    // - parent: Parent window that owns the control.
-    // - controlId: Child control ID used for identification.
-    // - theme: Visual theme used for drawing.
-    // - style: Standard child-window style flags. Report-style defaults are provided.
-    // - exStyle: Optional extended window style.
-    // Returns:
-    // - true on success.
-    // - false if the window or drawing resources could not be created.
-    // Notes:
-    // - Position and size are controlled by your layout code.
-    bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | LVS_REPORT | LVS_SINGLESEL, DWORD exStyle = 0);
     // Creates the table from an options structure.
-    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
-        if (!Create(parent, controlId, theme, options.style, options.exStyle)) {
-            return false;
-        }
-        SetDrawEmptyGrid(options.drawEmptyGrid);
-        if (!options.columns.empty()) {
-            SetColumns(options.columns);
-        }
-        if (!options.rows.empty()) {
-            SetRows(options.rows);
-        }
-        return true;
-    }
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options);
     // Destroys the table window and resets wrapper state.
     void Destroy();
 
@@ -89,9 +64,7 @@ public:
     // Returns whether grid lines are drawn in the empty expanded area below the last row.
     bool draw_empty_grid() const { return drawEmptyGrid_; }
 
-    // Replaces the current theme and repaints the table.
-    // Parameter:
-    // - theme: New theme data to apply.
+    // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
     // Replaces the entire column definition list.
     // Parameter:

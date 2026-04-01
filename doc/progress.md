@@ -22,7 +22,7 @@
 - Optional percentage text
 - Host surface color support
 
-## Basic Usage
+## Recommended Usage
 
 ```cpp
 #include "darkui/progress.h"
@@ -35,10 +35,18 @@ theme.progressText = RGB(240, 244, 248);
 theme.progressHeight = 18;
 
 darkui::ProgressBar progress;
-progress.Create(hwnd, 5001, theme);
-progress.SetSurfaceColor(theme.panel);
-progress.SetRange(0, 100);
-progress.SetValue(64);
+darkui::ProgressBar::Options options;
+options.minimum = 0;
+options.maximum = 100;
+options.value = 64;
+options.surfaceRole = darkui::SurfaceRole::Panel;
+
+progress.Create(hwnd, 5001, theme, options);
+
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(progress);
+themeManager.Apply();
+
 MoveWindow(progress.hwnd(), 20, 20, 300, 40, TRUE);
 ```
 
@@ -62,16 +70,21 @@ progress.SetValue(72);
 progress.SetShowPercentage(true);
 ```
 
-### `SetSurfaceColor`
+### `Options`
 
 ```cpp
-progress.SetSurfaceColor(theme.panel);
+darkui::ProgressBar::Options options;
+options.minimum = 0;
+options.maximum = 100;
+options.surfaceRole = darkui::SurfaceRole::Panel;
 ```
 
-### `SetTheme`
+### `ThemeManager`
 
 ```cpp
-progress.SetTheme(theme);
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(progress);
+themeManager.Apply();
 ```
 
 ## Reading State
@@ -95,7 +108,7 @@ bool showText = progress.show_percentage();
 
 ## Usage Notes
 
-- When the control sits on a custom card, call `SetSurfaceColor(cardColor)`
+- When the control sits on a custom card, prefer `options.surfaceRole = darkui::SurfaceRole::Panel`
 - Changing the logical range automatically clamps the current value
 
 ## Demo Reference

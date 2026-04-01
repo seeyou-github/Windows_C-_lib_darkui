@@ -575,7 +575,7 @@ ComboBox::~ComboBox() {
     Destroy();
 }
 
-bool ComboBox::Create(HWND parent, int controlId, const Theme& theme, DWORD style, DWORD exStyle) {
+bool ComboBox::Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
@@ -586,8 +586,8 @@ bool ComboBox::Create(HWND parent, int controlId, const Theme& theme, DWORD styl
     }
     impl_->UpdateThemeResources();
 
-    style |= BS_OWNERDRAW;
-    comboHwnd_ = CreateWindowExW(exStyle,
+    DWORD style = options.style | BS_OWNERDRAW;
+    comboHwnd_ = CreateWindowExW(options.exStyle,
                                  L"BUTTON",
                                  L"",
                                  style,
@@ -652,6 +652,12 @@ bool ComboBox::Create(HWND parent, int controlId, const Theme& theme, DWORD styl
                       Impl::ParentSubclassProc,
                       reinterpret_cast<UINT_PTR>(this),
                       reinterpret_cast<DWORD_PTR>(impl_.get()));
+    if (!options.items.empty()) {
+        SetItems(options.items);
+    }
+    if (options.selection >= 0) {
+        SetSelection(options.selection);
+    }
     return true;
 }
 

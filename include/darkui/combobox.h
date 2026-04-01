@@ -282,7 +282,7 @@ inline COLORREF ResolveSurfaceColor(const Theme& theme, SurfaceRole role) {
 
 // Custom dark combo box built from a button plus popup list.
 // Usage:
-// - Create the control with Create().
+// - Fill ComboBox::Options and call Create(parent, id, theme, options).
 // - Fill items with SetItems/AddItem().
 // - Move the main button with MoveWindow().
 // - Listen for CBN_SELCHANGE in the parent window.
@@ -303,32 +303,8 @@ public:
     ComboBox(const ComboBox&) = delete;
     ComboBox& operator=(const ComboBox&) = delete;
 
-    // Creates the combo-box button and its popup infrastructure.
-    // Parameters:
-    // - parent: Parent window that receives CBN_SELCHANGE notifications.
-    // - controlId: Child control ID used in WM_COMMAND.
-    // - theme: Visual theme used for drawing.
-    // - style: Standard child style flags. Owner-draw behavior is handled internally.
-    // - exStyle: Optional extended window style for the main button.
-    // Returns:
-    // - true if all windows and theme resources were created successfully.
-    // - false on failure.
-    // Notes:
-    // - Position and size are still controlled by your layout code.
-    bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, DWORD exStyle = 0);
-    // Creates the combo box from an options structure.
-    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
-        if (!Create(parent, controlId, theme, options.style, options.exStyle)) {
-            return false;
-        }
-        if (!options.items.empty()) {
-            SetItems(options.items);
-        }
-        if (options.selection >= 0) {
-            SetSelection(options.selection);
-        }
-        return true;
-    }
+    // Creates the combo-box button and popup infrastructure from an options structure.
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options);
     // Destroys the button, popup host, and popup list windows.
     void Destroy();
 
@@ -346,6 +322,7 @@ public:
     // Replaces the current theme and repaints the combo box and popup.
     // Parameter:
     // - theme: New theme data to apply.
+    // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
     // Replaces all combo-box items at once.
     // Parameter:

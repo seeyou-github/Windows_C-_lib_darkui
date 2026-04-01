@@ -136,21 +136,21 @@ Static::~Static() {
     Destroy();
 }
 
-bool Static::Create(HWND parent, int controlId, const std::wstring& text, const Theme& theme, DWORD style, DWORD exStyle) {
+bool Static::Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
-    backgroundColor_ = theme.staticBackground;
+    backgroundColor_ = options.backgroundColor != CLR_INVALID ? options.backgroundColor : ResolveSurfaceColor(theme_, options.surfaceRole);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
     }
 
-    staticHwnd_ = CreateWindowExW(exStyle,
+    staticHwnd_ = CreateWindowExW(options.exStyle,
                                   L"STATIC",
-                                  text.c_str(),
-                                  style | WS_CHILD | WS_VISIBLE,
+                                  options.text.c_str(),
+                                  options.style | WS_CHILD | WS_VISIBLE,
                                   0,
                                   0,
                                   0,
@@ -169,6 +169,13 @@ bool Static::Create(HWND parent, int controlId, const std::wstring& text, const 
                       Impl::StaticSubclassProc,
                       reinterpret_cast<UINT_PTR>(this),
                       reinterpret_cast<DWORD_PTR>(impl_.get()));
+    SetTextFormat(options.textFormat);
+    SetEllipsis(options.ellipsis);
+    if (options.bitmap) {
+        SetBitmap(options.bitmap);
+    } else if (options.icon) {
+        SetIcon(options.icon);
+    }
     return true;
 }
 

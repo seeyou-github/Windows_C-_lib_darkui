@@ -56,9 +56,10 @@ struct ToolbarItem {
 
 // Custom dark toolbar for Win32.
 // Usage:
-// - Create the toolbar with Create().
+// - Fill Toolbar::Options and call Create(parent, id, theme, options).
 // - Fill the item list with SetItems() or AddItem().
 // - Position it with MoveWindow().
+// - Bind it into ThemeManager when the page supports theme switching.
 // - Handle WM_COMMAND in the parent window for item clicks.
 class Toolbar {
 public:
@@ -77,27 +78,8 @@ public:
     Toolbar(const Toolbar&) = delete;
     Toolbar& operator=(const Toolbar&) = delete;
 
-    // Creates the toolbar as a child window.
-    // Parameters:
-    // - parent: Parent window that receives WM_COMMAND notifications.
-    // - controlId: Child control ID used for identification.
-    // - theme: Visual theme used for drawing.
-    // - style: Standard child-window style flags.
-    // - exStyle: Optional extended window style.
-    // Returns:
-    // - true on success.
-    // - false if the window or drawing resources could not be created.
-    bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP, DWORD exStyle = 0);
     // Creates the toolbar from an options structure.
-    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
-        if (!Create(parent, controlId, theme, options.style, options.exStyle)) {
-            return false;
-        }
-        if (!options.items.empty()) {
-            SetItems(options.items);
-        }
-        return true;
-    }
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options);
     // Destroys the toolbar window and resets wrapper state.
     void Destroy();
 
@@ -110,10 +92,7 @@ public:
     // Returns the theme currently stored by the control.
     const Theme& theme() const { return theme_; }
 
-    // Replaces the current theme and repaints the toolbar.
-    // Notes:
-    // - Theme resources are rebuilt internally.
-    // - If resource creation fails, the previous theme remains active.
+    // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
     // Replaces all toolbar items at once.
     // Notes:

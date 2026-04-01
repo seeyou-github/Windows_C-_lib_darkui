@@ -22,7 +22,7 @@
 - Keeps normal `WM_COMMAND + BN_CLICKED`
 - Uses native auto-radio grouping semantics
 
-## Basic Usage
+## Recommended Usage
 
 ```cpp
 #include "darkui/radiobutton.h"
@@ -35,10 +35,22 @@ theme.radioText = RGB(236, 239, 244);
 
 darkui::RadioButton compact;
 darkui::RadioButton detailed;
+darkui::RadioButton::Options compactOptions;
+compactOptions.text = L"Compact view";
+compactOptions.checked = true;
+compactOptions.surfaceRole = darkui::SurfaceRole::Panel;
+compactOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_GROUP;
+darkui::RadioButton::Options detailedOptions;
+detailedOptions.text = L"Detailed view";
+detailedOptions.surfaceRole = darkui::SurfaceRole::Panel;
 
-compact.Create(hwnd, 4401, L"Compact view", theme, WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_GROUP);
-detailed.Create(hwnd, 4402, L"Detailed view", theme);
-compact.SetChecked(true);
+compact.Create(hwnd, 4401, theme, compactOptions);
+detailed.Create(hwnd, 4402, theme, detailedOptions);
+
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(compact, detailed);
+themeManager.Apply();
+
 MoveWindow(compact.hwnd(), 20, 20, 260, 28, TRUE);
 MoveWindow(detailed.hwnd(), 20, 56, 260, 28, TRUE);
 ```
@@ -60,7 +72,7 @@ case WM_COMMAND:
 ### `Create`
 
 ```cpp
-bool Create(HWND parent, int controlId, const std::wstring& text, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP, DWORD exStyle = 0);
+bool Create(HWND parent, int controlId, const Theme& theme, const RadioButton::Options& options);
 ```
 
 ### `SetChecked` / `GetChecked`
@@ -70,10 +82,12 @@ compact.SetChecked(true);
 bool selected = compact.GetChecked();
 ```
 
-### `SetSurfaceColor`
+### `Options`
 
 ```cpp
-compact.SetSurfaceColor(theme.panel);
+darkui::RadioButton::Options options;
+options.surfaceRole = darkui::SurfaceRole::Panel;
+options.checked = true;
 ```
 
 ## Theme Fields Used
@@ -91,7 +105,7 @@ compact.SetSurfaceColor(theme.panel);
 
 - Use `WS_GROUP` on the first radio button in a group
 - Native auto-radio behavior clears the previously selected sibling
-- Set the surface color when the control sits on a card or panel
+- Prefer `options.surfaceRole` when the control sits on a card or panel
 
 ## Demo Reference
 

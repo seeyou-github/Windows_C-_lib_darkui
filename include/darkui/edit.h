@@ -9,7 +9,7 @@ namespace darkui {
 
 // Custom dark edit control built from a lightweight host window plus an inner borderless EDIT.
 // Usage:
-// - Create the control with Create().
+// - Fill Edit::Options and call Create(parent, id, theme, options).
 // - Position the host window with MoveWindow().
 // - Handle WM_COMMAND notifications such as EN_CHANGE in the parent window.
 // Notes:
@@ -37,34 +37,8 @@ public:
     Edit(const Edit&) = delete;
     Edit& operator=(const Edit&) = delete;
 
-    // Creates the dark edit control as a child window.
-    // Parameters:
-    // - parent: Parent window that receives forwarded EN_* notifications through WM_COMMAND.
-    // - controlId: Child control ID used in WM_COMMAND.
-    // - text: Initial edit text.
-    // - theme: Visual theme used for background, text, and font.
-    // - style: Standard EDIT style flags. Border styles are stripped internally.
-    // - exStyle: Optional extended style for the host window. Native client-edge styles are stripped.
-    // Returns:
-    // - true on success.
-    // - false if the host/edit window or theme resources could not be created.
-    bool Create(HWND parent, int controlId, const std::wstring& text = L"", const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, DWORD exStyle = 0);
-    // Creates the edit control from an options structure.
-    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
-        if (!Create(parent, controlId, options.text, theme, options.style, options.exStyle)) {
-            return false;
-        }
-        if (!options.cueBanner.empty()) {
-            SetCueBanner(options.cueBanner);
-        }
-        if (options.cornerRadius >= 0) {
-            SetCornerRadius(options.cornerRadius);
-        }
-        if (options.readOnly) {
-            SetReadOnly(true);
-        }
-        return true;
-    }
+    // Creates the dark edit control from an options structure.
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options);
     // Destroys the control window hierarchy and resets wrapper state.
     void Destroy();
 
@@ -81,11 +55,7 @@ public:
     // Returns the current corner radius in pixels.
     int corner_radius() const { return cornerRadius_; }
 
-    // Replaces the current theme and repaints the host/edit pair.
-    // Parameters:
-    // - theme: New colors and font used by the host surface, inner edit, and placeholder text.
-    // Notes:
-    // - If theme resource creation fails, the previous theme remains active.
+    // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
     // Updates the visible text.
     void SetText(const std::wstring& text);

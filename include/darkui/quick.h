@@ -58,12 +58,6 @@ inline Theme MakePresetTheme(ThemePreset preset = ThemePreset::Graphite) {
     }
 }
 
-// Applies the same theme to any number of darkui controls that expose SetTheme().
-template <typename... Controls>
-void ApplyTheme(const Theme& theme, Controls&... controls) {
-    (controls.SetTheme(theme), ...);
-}
-
 // Lightweight binder that remembers controls and reapplies one theme to all of them.
 class ThemeBinder {
 public:
@@ -119,11 +113,6 @@ public:
 
     void Apply() const {
         binder_.Apply(theme_);
-    }
-
-    template <typename... Controls>
-    void ApplyTo(Controls&... controls) const {
-        ApplyTheme(theme_, controls...);
     }
 
 private:

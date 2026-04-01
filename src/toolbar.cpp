@@ -1459,7 +1459,7 @@ Toolbar::~Toolbar() {
     Destroy();
 }
 
-bool Toolbar::Create(HWND parent, int controlId, const Theme& theme, DWORD style, DWORD exStyle) {
+bool Toolbar::Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
@@ -1474,10 +1474,10 @@ bool Toolbar::Create(HWND parent, int controlId, const Theme& theme, DWORD style
         return false;
     }
 
-    toolbarHwnd_ = CreateWindowExW(exStyle,
+    toolbarHwnd_ = CreateWindowExW(options.exStyle,
                                    kToolbarClassName,
                                    L"",
-                                   style | WS_CLIPSIBLINGS,
+                                   options.style | WS_CLIPSIBLINGS,
                                    0,
                                    0,
                                    0,
@@ -1535,6 +1535,9 @@ bool Toolbar::Create(HWND parent, int controlId, const Theme& theme, DWORD style
     }
     SendMessageW(popupList_, WM_SETFONT, reinterpret_cast<WPARAM>(impl_->font), TRUE);
     SetWindowSubclass(parentHwnd_, Impl::ParentSubclassProc, reinterpret_cast<UINT_PTR>(this), reinterpret_cast<DWORD_PTR>(impl_.get()));
+    if (!options.items.empty()) {
+        SetItems(options.items);
+    }
     return true;
 }
 

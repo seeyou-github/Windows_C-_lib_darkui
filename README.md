@@ -136,7 +136,7 @@ See: [doc/toolbar.md](doc/toolbar.md)
 ## Main Characteristics
 
 - Built around a shared `darkui::Theme` structure
-- Most controls support runtime theme switching through `SetTheme()`
+- Runtime theme switching is standardized around `ThemeManager`
 - Supports a unified semantic theme entry through `Theme::useSemanticPalette`
 - Keeps native Win32 usage patterns where practical
 - Control layout remains the responsibility of the host window
@@ -162,9 +162,8 @@ theme.secondaryFontSize = 18;
 
 Notes:
 
-- All controls still use the same `Create(..., theme)` and `SetTheme(theme)` entry points
 - In semantic mode, darkui expands those values into the detailed per-control colors internally
-- Existing per-control theme fields remain available for compatibility when `useSemanticPalette` is left `false`
+- Existing per-control theme fields remain available when `useSemanticPalette` is left `false`
 
 ## Quick Helpers
 
@@ -195,7 +194,7 @@ This is available for:
 - `Table::Options`
 - `Toolbar::Options`
 
-Example:
+Recommended example:
 
 ```cpp
 darkui::Button button;
@@ -205,9 +204,11 @@ options.cornerRadius = 14;
 options.surfaceRole = darkui::SurfaceRole::Panel;
 
 button.Create(hwnd, 1001, theme, options);
-```
 
-Old `Create(...)` overloads remain valid for compatibility.
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(button);
+themeManager.Apply();
+```
 
 Ready-made preset theme:
 
@@ -227,13 +228,7 @@ darkui::Theme theme = darkui::MakeSemanticTheme(
     RGB(48, 86, 148));
 ```
 
-Batch theme update:
-
-```cpp
-darkui::ApplyTheme(theme, buttonA, buttonB, editA, listBoxA);
-```
-
-Remembered theme binding:
+Recommended repeated theme update:
 
 ```cpp
 darkui::ThemeManager themeManager(theme);

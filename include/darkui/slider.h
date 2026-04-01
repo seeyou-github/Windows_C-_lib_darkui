@@ -8,8 +8,9 @@ namespace darkui {
 
 // Custom horizontal slider control for dark Win32 UIs.
 // Usage:
-// - Create the control with Create().
+// - Fill Slider::Options and call Create(parent, id, theme, options).
 // - Position it with MoveWindow().
+// - Bind it into ThemeManager when the page supports theme switching.
 // - Handle value changes through WM_HSCROLL in the parent window.
 class Slider {
 public:
@@ -32,30 +33,8 @@ public:
     Slider(const Slider&) = delete;
     Slider& operator=(const Slider&) = delete;
 
-    // Creates the slider as a child window.
-    // Parameters:
-    // - parent: Parent window that receives WM_HSCROLL notifications.
-    // - controlId: Child control ID used by the parent for identification.
-    // - theme: Visual theme used for drawing.
-    // - style: Standard child-window style flags.
-    // - exStyle: Optional extended window style.
-    // Returns:
-    // - true on success.
-    // - false if the window or drawing resources could not be created.
-    // Notes:
-    // - Position and size are controlled by your own layout code.
-    bool Create(HWND parent, int controlId, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP, DWORD exStyle = 0);
     // Creates the slider from an options structure.
-    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
-        if (!Create(parent, controlId, theme, options.style, options.exStyle)) {
-            return false;
-        }
-        SetRange(options.minimum, options.maximum);
-        SetValue(options.value);
-        SetShowTicks(options.showTicks);
-        SetTickCount(options.tickCount);
-        return true;
-    }
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options);
     // Destroys the slider window and resets wrapper state.
     void Destroy();
 
@@ -68,9 +47,7 @@ public:
     // Returns the theme currently stored by the control.
     const Theme& theme() const { return theme_; }
 
-    // Replaces the current theme and repaints the slider.
-    // Parameter:
-    // - theme: New theme data to apply.
+    // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
     // Sets the logical slider range.
     // Parameters:

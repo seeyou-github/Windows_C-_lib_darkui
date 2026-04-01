@@ -313,7 +313,7 @@ ListBox::~ListBox() {
     Destroy();
 }
 
-bool ListBox::Create(HWND parent, int controlId, const Theme& theme, DWORD style, DWORD exStyle) {
+bool ListBox::Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
@@ -328,10 +328,10 @@ bool ListBox::Create(HWND parent, int controlId, const Theme& theme, DWORD style
         return false;
     }
 
-    hostHwnd_ = CreateWindowExW(exStyle & ~WS_EX_CLIENTEDGE,
+    hostHwnd_ = CreateWindowExW(options.exStyle & ~WS_EX_CLIENTEDGE,
                                 kListBoxHostClassName,
                                 L"",
-                                WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | ((style & WS_TABSTOP) != 0 ? WS_TABSTOP : 0),
+                                WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | ((options.style & WS_TABSTOP) != 0 ? WS_TABSTOP : 0),
                                 0,
                                 0,
                                 0,
@@ -345,7 +345,7 @@ bool ListBox::Create(HWND parent, int controlId, const Theme& theme, DWORD style
         return false;
     }
 
-    DWORD listStyle = style | WS_CHILD | WS_VISIBLE | LBS_OWNERDRAWFIXED | LBS_HASSTRINGS;
+    DWORD listStyle = options.style | WS_CHILD | WS_VISIBLE | LBS_OWNERDRAWFIXED | LBS_HASSTRINGS;
     listStyle &= ~WS_BORDER;
     listStyle &= ~WS_TABSTOP;
 
@@ -374,6 +374,15 @@ bool ListBox::Create(HWND parent, int controlId, const Theme& theme, DWORD style
         return false;
     }
 
+    if (options.cornerRadius >= 0) {
+        SetCornerRadius(options.cornerRadius);
+    }
+    if (!options.items.empty()) {
+        SetItems(options.items);
+    }
+    if (options.selection >= 0) {
+        SetSelection(options.selection);
+    }
     impl_->UpdateWindowRegion();
     impl_->LayoutChildren();
     return true;

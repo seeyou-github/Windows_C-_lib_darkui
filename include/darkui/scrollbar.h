@@ -8,8 +8,9 @@ namespace darkui {
 
 // Custom dark scrollbar for Win32.
 // Usage:
-// - Create either a vertical or horizontal scrollbar with Create().
+// - Fill ScrollBar::Options and call Create(parent, id, theme, options).
 // - Position it with MoveWindow().
+// - Bind it into ThemeManager when the page supports theme switching.
 // - Handle WM_VSCROLL or WM_HSCROLL notifications in the parent window.
 class ScrollBar {
 public:
@@ -32,30 +33,8 @@ public:
     ScrollBar(const ScrollBar&) = delete;
     ScrollBar& operator=(const ScrollBar&) = delete;
 
-    // Creates the scrollbar as a child window.
-    // Parameters:
-    // - parent: Parent window that receives scroll notifications.
-    // - controlId: Child control ID used by the parent for identification.
-    // - vertical: true for a vertical scrollbar, false for a horizontal scrollbar.
-    // - theme: Visual theme used for drawing.
-    // - style: Standard child-window style flags.
-    // - exStyle: Optional extended window style.
-    // Returns:
-    // - true on success.
-    // - false if the window or drawing resources could not be created.
-    // Notes:
-    // - Position and size are controlled by your layout code.
-    bool Create(HWND parent, int controlId, bool vertical, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP, DWORD exStyle = 0);
     // Creates the scrollbar from an options structure.
-    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
-        if (!Create(parent, controlId, options.vertical, theme, options.style, options.exStyle)) {
-            return false;
-        }
-        SetRange(options.minimum, options.maximum);
-        SetPageSize(options.pageSize);
-        SetValue(options.value);
-        return true;
-    }
+    bool Create(HWND parent, int controlId, const Theme& theme, const Options& options);
     // Destroys the scrollbar window and resets wrapper state.
     void Destroy();
 
@@ -70,9 +49,7 @@ public:
     // Returns true for a vertical scrollbar, false for a horizontal scrollbar.
     bool vertical() const { return vertical_; }
 
-    // Replaces the current theme and repaints the control.
-    // Parameter:
-    // - theme: New theme data to apply.
+    // Low-level theme hook used by ThemeManager.
     void SetTheme(const Theme& theme);
     // Sets the logical scroll range.
     // Parameters:

@@ -252,12 +252,12 @@ RadioButton::~RadioButton() {
     Destroy();
 }
 
-bool RadioButton::Create(HWND parent, int controlId, const std::wstring& text, const Theme& theme, DWORD style, DWORD exStyle) {
+bool RadioButton::Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
-    surfaceColor_ = theme.background;
+    surfaceColor_ = options.surfaceColor != CLR_INVALID ? options.surfaceColor : ResolveSurfaceColor(theme_, options.surfaceRole);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
@@ -265,11 +265,12 @@ bool RadioButton::Create(HWND parent, int controlId, const std::wstring& text, c
 
     impl_->UpdateThemeResources();
 
+    DWORD style = options.style;
     style &= ~BS_TYPEMASK;
     style |= BS_OWNERDRAW;
-    radioHwnd_ = CreateWindowExW(exStyle,
+    radioHwnd_ = CreateWindowExW(options.exStyle,
                                  L"BUTTON",
-                                 text.c_str(),
+                                 options.text.c_str(),
                                  style,
                                  0,
                                  0,
@@ -295,6 +296,9 @@ bool RadioButton::Create(HWND parent, int controlId, const std::wstring& text, c
                       Impl::ParentSubclassProc,
                       reinterpret_cast<UINT_PTR>(this),
                       reinterpret_cast<DWORD_PTR>(impl_.get()));
+    if (options.checked) {
+        SetChecked(true);
+    }
     return true;
 }
 

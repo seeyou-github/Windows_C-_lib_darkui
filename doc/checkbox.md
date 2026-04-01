@@ -22,7 +22,7 @@
 - Keeps normal `WM_COMMAND + BN_CLICKED`
 - Supports host surface color blending
 
-## Basic Usage
+## Recommended Usage
 
 ```cpp
 #include "darkui/checkbox.h"
@@ -34,9 +34,17 @@ theme.checkAccent = RGB(82, 132, 204);
 theme.checkText = RGB(236, 239, 244);
 
 darkui::CheckBox remember;
-remember.Create(hwnd, 3301, L"Remember last workspace", theme);
-remember.SetSurfaceColor(theme.panel);
-remember.SetChecked(true);
+darkui::CheckBox::Options options;
+options.text = L"Remember last workspace";
+options.checked = true;
+options.surfaceRole = darkui::SurfaceRole::Panel;
+
+remember.Create(hwnd, 3301, theme, options);
+
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(remember);
+themeManager.Apply();
+
 MoveWindow(remember.hwnd(), 20, 20, 280, 28, TRUE);
 ```
 
@@ -56,7 +64,7 @@ case WM_COMMAND:
 ### `Create`
 
 ```cpp
-bool Create(HWND parent, int controlId, const std::wstring& text, const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP, DWORD exStyle = 0);
+bool Create(HWND parent, int controlId, const Theme& theme, const CheckBox::Options& options);
 ```
 
 ### `SetChecked` / `GetChecked`
@@ -66,10 +74,12 @@ remember.SetChecked(true);
 bool checked = remember.GetChecked();
 ```
 
-### `SetSurfaceColor`
+### `Options`
 
 ```cpp
-remember.SetSurfaceColor(theme.panel);
+darkui::CheckBox::Options options;
+options.surfaceRole = darkui::SurfaceRole::Panel;
+options.checked = true;
 ```
 
 ## Theme Fields Used
@@ -87,7 +97,7 @@ remember.SetSurfaceColor(theme.panel);
 
 - Use `SetChecked()` for initial state setup
 - Disable the control through `EnableWindow(checkbox.hwnd(), FALSE)`
-- Set the surface color when the control sits on a card or panel
+- Prefer `options.surfaceRole` over manually calling `SetSurfaceColor(...)`
 
 ## Demo Reference
 

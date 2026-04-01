@@ -24,16 +24,21 @@
 - Exposes `content_hwnd()` for custom child controls
 - Modal message loop with owner-window disabling
 
-## Basic Usage
+## Recommended Usage
 
 ```cpp
 #include "darkui/dialog.h"
 
 darkui::Dialog dialog;
-dialog.Create(hwnd, 5001, L"Delete File", theme, 460, 240);
-dialog.SetMessage(L"Delete the selected item permanently?");
-dialog.SetConfirmText(L"Delete");
-dialog.SetCancelText(L"Cancel");
+darkui::Dialog::Options options;
+options.title = L"Delete File";
+options.message = L"Delete the selected item permanently?";
+options.confirmText = L"Delete";
+options.cancelText = L"Cancel";
+options.width = 460;
+options.height = 240;
+
+dialog.Create(hwnd, 5001, theme, options);
 
 darkui::Dialog::Result result = dialog.ShowModal();
 if (result == darkui::Dialog::Result::Confirm) {
@@ -45,22 +50,36 @@ if (result == darkui::Dialog::Result::Confirm) {
 
 ```cpp
 darkui::Dialog dialog;
-dialog.Create(hwnd, 5002, L"Create Note", theme, 560, 360);
-dialog.SetMessageVisible(false);
+darkui::Dialog::Options dialogOptions;
+dialogOptions.title = L"Create Note";
+dialogOptions.width = 560;
+dialogOptions.height = 360;
+dialogOptions.messageVisible = false;
+dialog.Create(hwnd, 5002, theme, dialogOptions);
 
 darkui::Static label;
 darkui::Edit titleEdit;
 darkui::Button fillButton;
 darkui::Edit notesEdit;
 
-label.Create(dialog.content_hwnd(), 5101, L"Title", theme);
-titleEdit.Create(dialog.content_hwnd(), 5102, L"", theme);
-fillButton.Create(dialog.content_hwnd(), 5103, L"Fill Sample", theme);
-notesEdit.Create(dialog.content_hwnd(),
-                 5104,
-                 L"",
-                 theme,
-                 WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL);
+darkui::Static::Options labelOptions;
+labelOptions.text = L"Title";
+labelOptions.surfaceRole = darkui::SurfaceRole::Panel;
+darkui::Edit::Options titleOptions;
+titleOptions.cueBanner = L"Enter a title";
+darkui::Button::Options fillOptions;
+fillOptions.text = L"Fill Sample";
+fillOptions.cornerRadius = 12;
+fillOptions.surfaceRole = darkui::SurfaceRole::Panel;
+darkui::Edit::Options notesOptions;
+notesOptions.cueBanner = L"Write notes here";
+notesOptions.cornerRadius = 12;
+notesOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL;
+
+label.Create(dialog.content_hwnd(), 5101, theme, labelOptions);
+titleEdit.Create(dialog.content_hwnd(), 5102, theme, titleOptions);
+fillButton.Create(dialog.content_hwnd(), 5103, theme, fillOptions);
+notesEdit.Create(dialog.content_hwnd(), 5104, theme, notesOptions);
 
 MoveWindow(label.hwnd(), 16, 16, 120, 24, TRUE);
 MoveWindow(titleEdit.hwnd(), 16, 44, 360, 38, TRUE);
@@ -75,7 +94,7 @@ dialog.ShowModal();
 ### `Create`
 
 ```cpp
-bool Create(HWND owner, int controlId, const std::wstring& title, const Theme& theme = Theme{}, int width = 480, int height = 280);
+bool Create(HWND owner, int controlId, const Theme& theme, const Dialog::Options& options);
 ```
 
 ### `SetMessage`

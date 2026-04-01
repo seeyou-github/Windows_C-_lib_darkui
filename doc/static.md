@@ -22,7 +22,7 @@
 - Configurable text alignment and ellipsis behavior
 - Keeps normal `STATIC` window usage and optional `SS_NOTIFY`
 
-## Basic Usage
+## Recommended Usage
 
 ```cpp
 #include "darkui/static.h"
@@ -32,8 +32,17 @@ theme.staticBackground = RGB(24, 27, 31);
 theme.staticText = RGB(236, 239, 244);
 
 darkui::Static title;
-title.Create(hwnd, 1201, L"Repository Overview", theme, WS_CHILD | WS_VISIBLE | SS_LEFT);
-title.SetTextFormat(DT_LEFT | DT_SINGLELINE);
+darkui::Static::Options options;
+options.text = L"Repository Overview";
+options.surfaceRole = darkui::SurfaceRole::Panel;
+options.textFormat = DT_LEFT | DT_SINGLELINE;
+
+title.Create(hwnd, 1201, theme, options);
+
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(title);
+themeManager.Apply();
+
 MoveWindow(title.hwnd(), 20, 20, 260, 36, TRUE);
 ```
 
@@ -54,7 +63,7 @@ Notes:
 ### `Create`
 
 ```cpp
-bool Create(HWND parent, int controlId, const std::wstring& text = L"", const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | SS_LEFT, DWORD exStyle = 0);
+bool Create(HWND parent, int controlId, const Theme& theme, const Static::Options& options);
 ```
 
 ### `SetText` / `GetText`
@@ -76,10 +85,12 @@ title.SetIcon(LoadIconW(nullptr, IDI_INFORMATION));
 title.SetBitmap(bitmapHandle);
 ```
 
-### `SetBackgroundColor`
+### `Options`
 
 ```cpp
-title.SetBackgroundColor(theme.panel);
+darkui::Static::Options options;
+options.surfaceRole = darkui::SurfaceRole::Panel;
+options.textFormat = DT_CENTER | DT_SINGLELINE;
 ```
 
 ### `SetTextFormat`

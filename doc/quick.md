@@ -6,10 +6,10 @@
 
 - creating a ready-made semantic theme
 - picking a built-in dark theme preset
-- applying one theme to multiple controls
+- binding one theme to multiple controls
 - opening a dark message dialog with one function call
 
-This helper layer works well together with the new per-control `Options` structs:
+This helper layer is the recommended companion for the new per-control `Options` structs:
 
 - `Button::Options`
 - `CheckBox::Options`
@@ -76,19 +76,9 @@ darkui::Theme theme = darkui::MakeSemanticTheme(
     RGB(48, 86, 148));
 ```
 
-## Batch Theme Apply
-
-Use `ApplyTheme(...)` when multiple controls need the same runtime theme update:
-
-```cpp
-darkui::ApplyTheme(theme, buttonA, buttonB, editA, listBoxA, radioA);
-```
-
-This helper calls `SetTheme(theme)` on each control in the parameter list.
-
 ## ThemeManager
 
-Use `ThemeManager` when the same control set needs repeated theme switching:
+Use `ThemeManager` as the preferred repeated theme-switch entry:
 
 ```cpp
 darkui::ThemeManager themeManager(darkui::MakePresetTheme());
@@ -139,6 +129,6 @@ darkui::ShowInfoDialog(hwnd, 5003, theme, L"Completed", L"Export finished.");
 
 ## Notes
 
-- These helpers are additive. The original `Create(...)`, `SetTheme(...)`, and `Dialog` APIs continue to work unchanged.
-- `ApplyTheme(...)` only handles theme distribution. Layout and `MoveWindow(...)` remain the caller's responsibility.
+- These helpers are additive. `Options + ThemeManager` is the intended caller-facing path.
+- Theme distribution and layout are still separate responsibilities. `ThemeManager` only updates bound controls.
 - `ShowMessageDialog(...)` is intended for simple text dialogs. For custom forms, continue using `darkui::Dialog` directly.

@@ -269,22 +269,22 @@ Button::~Button() {
     Destroy();
 }
 
-bool Button::Create(HWND parent, int controlId, const std::wstring& text, const Theme& theme, DWORD style, DWORD exStyle) {
+bool Button::Create(HWND parent, int controlId, const Theme& theme, const Options& options) {
     Destroy();
     parentHwnd_ = parent;
     controlId_ = controlId;
     theme_ = ResolveTheme(theme);
-    surfaceColor_ = theme.background;
+    surfaceColor_ = options.surfaceColor != CLR_INVALID ? options.surfaceColor : ResolveSurfaceColor(theme_, options.surfaceRole);
     impl_->instance = reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(parent, GWLP_HINSTANCE));
     if (!impl_->instance) {
         impl_->instance = GetModuleHandleW(nullptr);
     }
     impl_->UpdateThemeResources();
 
-    style |= BS_OWNERDRAW;
-    buttonHwnd_ = CreateWindowExW(exStyle,
+    DWORD style = options.style | BS_OWNERDRAW;
+    buttonHwnd_ = CreateWindowExW(options.exStyle,
                                   L"BUTTON",
-                                  text.c_str(),
+                                  options.text.c_str(),
                                   style,
                                   0,
                                   0,
@@ -301,6 +301,9 @@ bool Button::Create(HWND parent, int controlId, const std::wstring& text, const 
 
     SendMessageW(buttonHwnd_, WM_SETFONT, reinterpret_cast<WPARAM>(impl_->font), TRUE);
     impl_->UpdateWindowRegion();
+    if (options.cornerRadius >= 0) {
+        SetCornerRadius(options.cornerRadius);
+    }
     SetWindowSubclass(buttonHwnd_,
                       Impl::ButtonSubclassProc,
                       reinterpret_cast<UINT_PTR>(this),

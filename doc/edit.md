@@ -24,7 +24,7 @@
 - Supports multiline input with `ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL`
 - Standard forwarded `EN_*` notifications
 
-## Basic Usage
+## Recommended Usage
 
 ```cpp
 #include "darkui/edit.h"
@@ -35,9 +35,16 @@ theme.editText = RGB(236, 239, 244);
 theme.editPlaceholder = RGB(128, 137, 150);
 
 darkui::Edit edit;
-edit.Create(hwnd, 9001, L"", theme);
-edit.SetCueBanner(L"Search or enter text");
-edit.SetCornerRadius(16);
+darkui::Edit::Options options;
+options.cueBanner = L"Search or enter text";
+options.cornerRadius = 16;
+
+edit.Create(hwnd, 9001, theme, options);
+
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(edit);
+themeManager.Apply();
+
 MoveWindow(edit.hwnd(), 20, 20, 260, 42, TRUE);
 ```
 
@@ -57,13 +64,15 @@ case WM_COMMAND:
 ### `Create`
 
 ```cpp
-bool Create(HWND parent, int controlId, const std::wstring& text = L"", const Theme& theme = Theme{}, DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, DWORD exStyle = 0);
+bool Create(HWND parent, int controlId, const Theme& theme, const Edit::Options& options);
 ```
 
-### `SetTheme`
+### `Options`
 
 ```cpp
-edit.SetTheme(theme);
+darkui::Edit::Options options;
+options.cueBanner = L"Placeholder";
+options.cornerRadius = 16;
 ```
 
 ### `SetText` / `GetText`
@@ -95,13 +104,12 @@ edit.SetReadOnly(true);
 
 ```cpp
 darkui::Edit notes;
-notes.Create(hwnd,
-             9002,
-             L"Line 1\r\nLine 2\r\nLine 3",
-             theme,
-             WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL);
-notes.SetCueBanner(L"Write notes here");
-notes.SetCornerRadius(16);
+darkui::Edit::Options notesOptions;
+notesOptions.text = L"Line 1\r\nLine 2\r\nLine 3";
+notesOptions.cueBanner = L"Write notes here";
+notesOptions.cornerRadius = 16;
+notesOptions.style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL;
+notes.Create(hwnd, 9002, theme, notesOptions);
 MoveWindow(notes.hwnd(), 20, 72, 320, 140, TRUE);
 ```
 
@@ -124,7 +132,7 @@ HWND nativeEdit = edit.edit_hwnd();
 - Move and size the host returned by `edit.hwnd()`
 - Use `edit.edit_hwnd()` when you need direct access to the inner native `EDIT`
 - Read-only mode keeps the same dark appearance
-- Multiline mode is enabled by passing the normal Win32 edit styles to `Create()`
+- Multiline mode is enabled by filling `Edit::Options::style` with normal Win32 edit flags
 
 ## Demo Reference
 

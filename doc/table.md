@@ -35,7 +35,7 @@ struct TableColumn {
 using TableRow = std::vector<std::wstring>;
 ```
 
-## Basic Usage
+## Recommended Usage
 
 ```cpp
 #include "darkui/table.h"
@@ -50,17 +50,24 @@ theme.tableRowHeight = 30;
 theme.tableHeaderHeight = 34;
 
 darkui::Table table;
-table.Create(hwnd, 2001, theme);
-table.SetColumns({
+darkui::Table::Options options;
+options.columns = {
     {L"Name", 180, LVCFMT_LEFT},
     {L"Type", 120, LVCFMT_LEFT},
     {L"State", 100, LVCFMT_CENTER},
     {L"Notes", 260, LVCFMT_LEFT},
-});
-table.SetRows({
+};
+options.rows = {
     {L"ComboBox", L"Control", L"Ready", L"Dark popup and button"},
     {L"Table", L"Control", L"Ready", L"Dark header, body and grid"},
-});
+};
+
+table.Create(hwnd, 2001, theme, options);
+
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(table);
+themeManager.Apply();
+
 MoveWindow(table.hwnd(), 20, 20, 640, 360, TRUE);
 ```
 
@@ -91,10 +98,12 @@ table.ClearRows();
 table.SetDrawEmptyGrid(false);
 ```
 
-### `SetTheme`
+### `ThemeManager`
 
 ```cpp
-table.SetTheme(theme);
+darkui::ThemeManager themeManager(theme);
+themeManager.Bind(table);
+themeManager.Apply();
 ```
 
 ## Reading State
