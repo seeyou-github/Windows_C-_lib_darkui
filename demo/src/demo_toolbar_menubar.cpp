@@ -22,13 +22,10 @@ enum ControlId {
 };
 
 struct DemoState {
+    darkui::ThemedWindowHost host;
     darkui::Theme theme;
     darkui::ThemeManager themeManager;
     darkui::Toolbar toolbar;
-    HBRUSH brushBackground = nullptr;
-    HBRUSH brushPanel = nullptr;
-    HFONT titleFont = nullptr;
-    HFONT textFont = nullptr;
     std::wstring status = L"Ready";
     HMENU fileMenu = nullptr;
     HMENU editMenu = nullptr;
@@ -39,10 +36,6 @@ struct DemoState {
 
 void CleanupState(DemoState* state) {
     if (!state) return;
-    if (state->brushBackground) DeleteObject(state->brushBackground);
-    if (state->brushPanel) DeleteObject(state->brushPanel);
-    if (state->titleFont) DeleteObject(state->titleFont);
-    if (state->textFont) DeleteObject(state->textFont);
     if (state->fileMenu) DestroyMenu(state->fileMenu);
     if (state->editMenu) DestroyMenu(state->editMenu);
     if (state->viewMenu) DestroyMenu(state->viewMenu);
@@ -106,6 +99,18 @@ void DrawLine(HDC dc, HFONT font, COLORREF color, RECT rect, const wchar_t* text
     }
 }
 
+void FillRoundedRect(HDC dc, const RECT& rect, int radius, COLORREF fill, COLORREF border) {
+    HBRUSH brush = CreateSolidBrush(fill);
+    HPEN pen = CreatePen(PS_SOLID, 1, border);
+    HGDIOBJ oldBrush = SelectObject(dc, brush);
+    HGDIOBJ oldPen = SelectObject(dc, pen);
+    RoundRect(dc, rect.left, rect.top, rect.right, rect.bottom, radius, radius);
+    SelectObject(dc, oldPen);
+    SelectObject(dc, oldBrush);
+    DeleteObject(brush);
+    DeleteObject(pen);
+}
+
 LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
     auto* state = reinterpret_cast<DemoState*>(GetWindowLongPtrW(window, GWLP_USERDATA));
 
@@ -113,15 +118,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
     case WM_CREATE: {
         auto* created = new DemoState();
         created->theme = MakeTheme();
-        created->brushBackground = CreateSolidBrush(created->theme.background);
-        created->brushPanel = CreateSolidBrush(created->theme.panel);
-
-        darkui::FontSpec titleSpec = created->theme.uiFont;
-        titleSpec.height = -30;
-        titleSpec.weight = FW_SEMIBOLD;
-        created->titleFont = darkui::CreateFont(titleSpec);
-        created->textFont = darkui::CreateFont(created->theme.uiFont);
-        if (!created->brushBackground || !created->brushPanel || !created->titleFont || !created->textFont) {
+        darkui::ThemedWindowHost::Options hostOptions;
+        hostOptions.theme = created->theme;
+        hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+        if (!created->host.Attach(window, hostOptions)) {
             CleanupState(created);
             return -1;
         }
@@ -216,10 +216,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         }
         break;
     case WM_ERASEBKGND:
-        if (state) {
-            RECT rect{};
-            GetClientRect(window, &rect);
-            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->brushBackground);
+        if (state && state->host.HandleEraseBackground(reinterpret_cast<HDC>(wParam))) {
             return 1;
         }
         break;
@@ -229,24 +226,24 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             HDC dc = BeginPaint(window, &ps);
             RECT client{};
             GetClientRect(window, &client);
-            FillRect(dc, &client, state->brushBackground);
+            state->host.FillBackground(dc);
 
             RECT heroRect{34, 74, client.right - 34, 254};
-            FillRect(dc, &heroRect, state->brushPanel);
+            FillRoundedRect(dc, heroRect, 24, state->theme.panel, state->theme.border);
 
             RECT titleRect{34, 96, client.right - 34, 132};
             RECT descRect{34, 138, client.right - 34, 186};
             RECT noteRect{34, 196, client.right - 34, 244};
             RECT statusRect{34, client.bottom - 56, client.right - 34, client.bottom - 28};
 
-            DrawLine(dc, state->titleFont, state->theme.text, titleRect, L"Toolbar As Menu Bar", DT_LEFT | DT_TOP | DT_SINGLELINE);
-            DrawLine(dc, state->textFont, state->theme.mutedText, descRect, L"This demo uses the existing darkui::Toolbar as a menu-bar style control. Each top-level item is a drop-down toolbar button backed by a dark custom popup.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+            DrawLine(dc, state->host.title_font(), state->theme.text, titleRect, L"Toolbar As Menu Bar", DT_LEFT | DT_TOP | DT_SINGLELINE);
+            DrawLine(dc, state->host.body_font(), state->theme.mutedText, descRect, L"This demo uses the existing darkui::Toolbar as a menu-bar style control. Each top-level item is a drop-down toolbar button backed by a dark custom popup.", DT_LEFT | DT_TOP | DT_WORDBREAK);
             DrawTextW(dc,
                       L"Try File / Edit / View / Window / Help at the top. The right-aligned Theme and Share actions stay pinned to the edge like application chrome actions. This is the main path I would recommend instead of fighting the native light Win32 menu bar.",
                       -1,
                       &noteRect,
                       DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
-            DrawLine(dc, state->textFont, state->theme.text, statusRect, state->status.c_str(), DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+            DrawLine(dc, state->host.body_font(), state->theme.text, statusRect, state->status.c_str(), DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
             EndPaint(window, &ps);
             return 0;

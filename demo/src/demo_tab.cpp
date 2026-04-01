@@ -18,15 +18,11 @@ enum ControlId {
 };
 
 struct DemoState {
-    darkui::Theme theme;
-    darkui::ThemeManager themeManager;
+    darkui::ThemedWindowHost host;
     darkui::Tab tab;
     HWND pageOne = nullptr;
     HWND pageTwo = nullptr;
     HWND pageThree = nullptr;
-    HBRUSH brushBackground = nullptr;
-    HFONT titleFont = nullptr;
-    HFONT textFont = nullptr;
 };
 
 darkui::Theme MakeTheme() {
@@ -49,17 +45,7 @@ void CleanupState(DemoState* state) {
     if (!state) {
         return;
     }
-    if (state->brushBackground) DeleteObject(state->brushBackground);
-    if (state->titleFont) DeleteObject(state->titleFont);
-    if (state->textFont) DeleteObject(state->textFont);
     delete state;
-}
-
-void RecreateBackgroundBrush(DemoState* state) {
-    if (state->brushBackground) {
-        DeleteObject(state->brushBackground);
-    }
-    state->brushBackground = CreateSolidBrush(state->theme.background);
 }
 
 HWND CreatePage(HWND parent, int controlId, const wchar_t* text, HFONT font) {
@@ -92,15 +78,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
     switch (message) {
     case WM_CREATE: {
         auto* created = new DemoState();
-        created->theme = MakeTheme();
-        RecreateBackgroundBrush(created);
-
-        darkui::FontSpec titleSpec = created->theme.uiFont;
-        titleSpec.height = -30;
-        titleSpec.weight = FW_SEMIBOLD;
-        created->titleFont = darkui::CreateFont(titleSpec);
-        created->textFont = darkui::CreateFont(created->theme.uiFont);
-        if (!created->brushBackground || !created->titleFont || !created->textFont) {
+        darkui::ThemedWindowHost::Options hostOptions;
+        hostOptions.theme = MakeTheme();
+        hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+        if (!created->host.Attach(window, hostOptions)) {
             CleanupState(created);
             return -1;
         }
@@ -112,16 +93,15 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             {L"Notes", 3},
         };
         tabOptions.selection = 0;
-        if (!created->tab.Create(window, ID_TAB, created->theme, tabOptions)) {
+        if (!created->tab.Create(window, ID_TAB, created->host.theme(), tabOptions)) {
             CleanupState(created);
             return -1;
         }
-        created->themeManager.SetTheme(created->theme);
-        created->themeManager.Bind(created->tab);
+        created->host.theme_manager().Bind(created->tab);
 
-        created->pageOne = CreatePage(created->tab.hwnd(), ID_PAGE_ONE, L"Overview page content", created->textFont);
-        created->pageTwo = CreatePage(created->tab.hwnd(), ID_PAGE_TWO, L"Metrics page content", created->textFont);
-        created->pageThree = CreatePage(created->tab.hwnd(), ID_PAGE_THREE, L"Notes page content", created->textFont);
+        created->pageOne = CreatePage(created->tab.hwnd(), ID_PAGE_ONE, L"Overview page content", created->host.body_font());
+        created->pageTwo = CreatePage(created->tab.hwnd(), ID_PAGE_TWO, L"Metrics page content", created->host.body_font());
+        created->pageThree = CreatePage(created->tab.hwnd(), ID_PAGE_THREE, L"Notes page content", created->host.body_font());
         if (!created->pageOne || !created->pageTwo || !created->pageThree) {
             CleanupState(created);
             return -1;
@@ -153,16 +133,13 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         if (state) {
             HDC dc = reinterpret_cast<HDC>(wParam);
             SetBkMode(dc, TRANSPARENT);
-            SetTextColor(dc, state->theme.text);
-            SetBkColor(dc, state->theme.background);
-            return reinterpret_cast<LRESULT>(state->brushBackground);
+            SetTextColor(dc, state->host.theme().text);
+            SetBkColor(dc, state->host.theme().background);
+            return reinterpret_cast<LRESULT>(state->host.background_brush());
         }
         break;
     case WM_ERASEBKGND:
-        if (state) {
-            RECT rect{};
-            GetClientRect(window, &rect);
-            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->brushBackground);
+        if (state && state->host.HandleEraseBackground(reinterpret_cast<HDC>(wParam))) {
             return 1;
         }
         break;
@@ -172,19 +149,19 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             HDC dc = BeginPaint(window, &ps);
             RECT client{};
             GetClientRect(window, &client);
-            FillRect(dc, &client, state->brushBackground);
+            state->host.FillBackground(dc);
 
             RECT titleRect{32, 24, client.right - 32, 56};
             RECT descRect = GetDescriptionRect(window);
 
-            HFONT oldTitle = reinterpret_cast<HFONT>(SelectObject(dc, state->titleFont));
+            HFONT oldTitle = reinterpret_cast<HFONT>(SelectObject(dc, state->host.title_font()));
             SetBkMode(dc, TRANSPARENT);
-            SetTextColor(dc, state->theme.text);
+            SetTextColor(dc, state->host.theme().text);
             DrawTextW(dc, L"Dark Tab Demo", -1, &titleRect, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
             SelectObject(dc, oldTitle);
 
-            HFONT oldText = reinterpret_cast<HFONT>(SelectObject(dc, state->textFont));
-            SetTextColor(dc, state->theme.mutedText);
+            HFONT oldText = reinterpret_cast<HFONT>(SelectObject(dc, state->host.body_font()));
+            SetTextColor(dc, state->host.theme().mutedText);
             DrawTextW(dc, L"Custom tab strip with external page windows and standard TCN_SELCHANGE notification.", -1, &descRect, DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
             SelectObject(dc, oldText);
 

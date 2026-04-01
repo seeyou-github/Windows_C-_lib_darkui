@@ -15,9 +15,11 @@ enum class TitleBarStyle {
 // Lightweight host that owns page-level theme resources for a top-level window.
 // Usage:
 // - Fill ThemedWindowHost::Options and call Attach(hwnd, options) in WM_CREATE.
+// - Fill per-control Options and call Create(parent, id, theme(), options).
 // - Bind page controls through theme_manager().
+// - Call ApplyTheme(newTheme) when the whole window should switch theme.
 // - Forward WM_ERASEBKGND to HandleEraseBackground() when you want uniform fill.
-// - Read title/body fonts from the host during WM_PAINT.
+// - Read title/subtitle/section/body fonts from the host during WM_PAINT.
 class ThemedWindowHost {
 public:
     struct Options {
@@ -25,6 +27,8 @@ public:
         TitleBarStyle titleBarStyle = TitleBarStyle::Theme;
         bool eraseBackground = true;
         int titleFontOffset = -10;
+        int subtitleFontOffset = 2;
+        int sectionFontOffset = -2;
         int bodyFontOffset = 0;
     };
 
@@ -48,6 +52,8 @@ public:
 
     HBRUSH background_brush() const { return backgroundBrush_; }
     HFONT title_font() const { return titleFont_; }
+    HFONT subtitle_font() const { return subtitleFont_; }
+    HFONT section_font() const { return sectionFont_; }
     HFONT body_font() const { return bodyFont_; }
 
     void SetTitleBarStyle(TitleBarStyle style);
@@ -65,9 +71,13 @@ private:
     TitleBarStyle titleBarStyle_ = TitleBarStyle::Theme;
     bool eraseBackground_ = true;
     int titleFontOffset_ = -10;
+    int subtitleFontOffset_ = 2;
+    int sectionFontOffset_ = -2;
     int bodyFontOffset_ = 0;
     HBRUSH backgroundBrush_ = nullptr;
     HFONT titleFont_ = nullptr;
+    HFONT subtitleFont_ = nullptr;
+    HFONT sectionFont_ = nullptr;
     HFONT bodyFont_ = nullptr;
 };
 

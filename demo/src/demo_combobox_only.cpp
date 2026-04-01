@@ -18,6 +18,7 @@ struct DemoCombo {
 };
 
 struct DemoState {
+    darkui::ThemedWindowHost host;
     HBRUSH brushBackground = nullptr;
     DemoCombo combos[kComboCount];
 };
@@ -117,6 +118,13 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
     switch (message) {
     case WM_CREATE: {
         auto* created = new DemoState();
+        darkui::ThemedWindowHost::Options hostOptions;
+        hostOptions.theme = MakeSlateTheme();
+        hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+        if (!created->host.Attach(window, hostOptions)) {
+            delete created;
+            return -1;
+        }
         created->brushBackground = CreateSolidBrush(RGB(20, 23, 28));
         created->combos[0].label = L"Slate";
         created->combos[0].theme = MakeSlateTheme();

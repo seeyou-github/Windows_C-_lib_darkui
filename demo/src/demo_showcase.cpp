@@ -1,7 +1,5 @@
 #include <windows.h>
 #include <commctrl.h>
-#include <dwmapi.h>
-
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -13,16 +11,6 @@ namespace {
 constexpr wchar_t kDemoClassName[] = L"DarkUiShowcaseWindow";
 constexpr wchar_t kPageClassName[] = L"DarkUiShowcasePage";
 constexpr wchar_t kDemoTitle[] = L"lib_darkui showcase";
-
-#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
-#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
-#endif
-#ifndef DWMWA_CAPTION_COLOR
-#define DWMWA_CAPTION_COLOR 35
-#endif
-#ifndef DWMWA_TEXT_COLOR
-#define DWMWA_TEXT_COLOR 36
-#endif
 
 enum ControlId {
     ID_THEME_GRAPHITE = 9001,
@@ -107,6 +95,7 @@ struct ExpandedPanel {
 };
 
 struct AppState {
+    darkui::ThemedWindowHost host;
     darkui::Theme theme;
     int themeIndex = 0;
     darkui::ThemeManager themeManager;
@@ -127,12 +116,6 @@ struct AppState {
     ControlsPanel controls;
     DataPanel data;
     ExpandedPanel expanded;
-
-    HBRUSH windowBrush = nullptr;
-    HFONT titleFont = nullptr;
-    HFONT subtitleFont = nullptr;
-    HFONT sectionFont = nullptr;
-    HFONT bodyFont = nullptr;
 };
 
 struct PageState {
@@ -200,56 +183,6 @@ const wchar_t* ThemeName(int index) {
     }
 }
 
-void ApplyWindowCaptionTheme(HWND window) {
-    const BOOL immersive = TRUE;
-    const COLORREF black = RGB(0, 0, 0);
-    const COLORREF white = RGB(255, 255, 255);
-    DwmSetWindowAttribute(window, DWMWA_USE_IMMERSIVE_DARK_MODE, &immersive, sizeof(immersive));
-    DwmSetWindowAttribute(window, DWMWA_CAPTION_COLOR, &black, sizeof(black));
-    DwmSetWindowAttribute(window, DWMWA_TEXT_COLOR, &white, sizeof(white));
-}
-
-void RecreateWindowBrush(AppState* state) {
-    if (state->windowBrush) DeleteObject(state->windowBrush);
-    state->windowBrush = CreateSolidBrush(state->theme.background);
-}
-
-bool RecreateFonts(AppState* state) {
-    darkui::FontSpec titleSpec = state->theme.uiFont;
-    titleSpec.height -= 12;
-    titleSpec.weight = FW_SEMIBOLD;
-
-    darkui::FontSpec subtitleSpec = state->theme.uiFont;
-    subtitleSpec.height += 2;
-
-    darkui::FontSpec sectionSpec = state->theme.uiFont;
-    sectionSpec.height -= 2;
-    sectionSpec.weight = FW_SEMIBOLD;
-
-    HFONT newTitleFont = darkui::CreateFont(titleSpec);
-    HFONT newSubtitleFont = darkui::CreateFont(subtitleSpec);
-    HFONT newSectionFont = darkui::CreateFont(sectionSpec);
-    HFONT newBodyFont = darkui::CreateFont(state->theme.uiFont);
-    if (!newTitleFont || !newSubtitleFont || !newSectionFont || !newBodyFont) {
-        if (newTitleFont) DeleteObject(newTitleFont);
-        if (newSubtitleFont) DeleteObject(newSubtitleFont);
-        if (newSectionFont) DeleteObject(newSectionFont);
-        if (newBodyFont) DeleteObject(newBodyFont);
-        return false;
-    }
-
-    if (state->titleFont) DeleteObject(state->titleFont);
-    if (state->subtitleFont) DeleteObject(state->subtitleFont);
-    if (state->sectionFont) DeleteObject(state->sectionFont);
-    if (state->bodyFont) DeleteObject(state->bodyFont);
-
-    state->titleFont = newTitleFont;
-    state->subtitleFont = newSubtitleFont;
-    state->sectionFont = newSectionFont;
-    state->bodyFont = newBodyFont;
-    return true;
-}
-
 void UpdateExpandedSummary(AppState* state) {
     std::wstring text = L"Theme: ";
     text += ThemeName(state->themeIndex);
@@ -292,20 +225,13 @@ void ShowExpandedDialog(HWND ownerWindow, AppState* state) {
 
 void CleanupAppState(AppState* state) {
     if (!state) return;
-    if (state->windowBrush) DeleteObject(state->windowBrush);
-    if (state->titleFont) DeleteObject(state->titleFont);
-    if (state->subtitleFont) DeleteObject(state->subtitleFont);
-    if (state->sectionFont) DeleteObject(state->sectionFont);
-    if (state->bodyFont) DeleteObject(state->bodyFont);
     delete state;
 }
 
 void ApplyTheme(AppState* state, HWND window, int themeIndex) {
     state->themeIndex = themeIndex;
     state->theme = MakeThemeByIndex(themeIndex);
-    RecreateWindowBrush(state);
-    if (!RecreateFonts(state)) return;
-    ApplyWindowCaptionTheme(window);
+    state->host.ApplyTheme(state->theme);
     ApplyThemeToControls(state);
     InvalidateRect(window, nullptr, TRUE);
     if (state->overviewPage) InvalidateRect(state->overviewPage, nullptr, TRUE);
@@ -447,10 +373,10 @@ void LayoutPage(HWND page, AppState* state, PageKind kind) {
 
 void PaintMainWindow(HWND window, HDC dc, AppState* state) {
     RECT client{}; GetClientRect(window, &client);
-    FillRect(dc, &client, state->windowBrush);
-    DrawLabel(dc, state->titleFont, state->theme.text, RECT{28, 24, client.right - 28, 58}, L"DarkUI Semantic Showcase", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    state->host.FillBackground(dc);
+    DrawLabel(dc, state->host.title_font(), state->theme.text, RECT{28, 24, client.right - 28, 58}, L"DarkUI Semantic Showcase", DT_LEFT | DT_TOP | DT_SINGLELINE);
     DrawLabel(dc,
-              state->subtitleFont,
+              state->host.subtitle_font(),
               state->theme.mutedText,
               RECT{28, 62, client.right - 560, 92},
               L"Five semantic palettes drive every control from one theme entry. The new controls live in the Expanded page, and the window title bar stays black.",
@@ -458,7 +384,7 @@ void PaintMainWindow(HWND window, HDC dc, AppState* state) {
 }
 
 void PaintOverviewPage(HWND page, HDC dc, PageState* state) {
-    RECT client{}; GetClientRect(page, &client); FillRect(dc, &client, state->app->windowBrush);
+    RECT client{}; GetClientRect(page, &client); FillRect(dc, &client, state->app->host.background_brush());
     RECT content = InsetRectCopy(client, 28, 28);
     RECT top = SliceTop(content, 258);
     RECT bottom{content.left, top.bottom + 20, content.right, content.bottom};
@@ -470,17 +396,17 @@ void PaintOverviewPage(HWND page, HDC dc, PageState* state) {
     RECT li = InsetRectCopy(left, 24, 24);
     RECT ri = InsetRectCopy(right, 24, 24);
     RECT bi = InsetRectCopy(bottom, 24, 24);
-    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(li, 26), L"Theme Inputs", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{li.left, li.top + 30, li.right, li.top + 52}, L"Latest semantic theme entry through one shared Theme object.", DT_LEFT | DT_TOP | DT_WORDBREAK);
-    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(ri, 26), L"Actions And Status", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{ri.left, ri.top + 30, ri.right, ri.top + 52}, L"Buttons, static text, and progress cards all follow the same palette.", DT_LEFT | DT_TOP | DT_WORDBREAK);
-    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(bi, 26), L"Live Progress", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{bi.left, bi.top + 32, bi.right, bi.top + 50}, L"Background sync", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{bi.left, bi.top + 104, bi.right, bi.top + 122}, L"Render capacity", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->host.section_font(), state->app->theme.text, SliceTop(li, 26), L"Theme Inputs", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->host.body_font(), state->app->theme.mutedText, RECT{li.left, li.top + 30, li.right, li.top + 52}, L"Latest semantic theme entry through one shared Theme object.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+    DrawLabel(dc, state->app->host.section_font(), state->app->theme.text, SliceTop(ri, 26), L"Actions And Status", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->host.body_font(), state->app->theme.mutedText, RECT{ri.left, ri.top + 30, ri.right, ri.top + 52}, L"Buttons, static text, and progress cards all follow the same palette.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+    DrawLabel(dc, state->app->host.section_font(), state->app->theme.text, SliceTop(bi, 26), L"Live Progress", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->host.body_font(), state->app->theme.mutedText, RECT{bi.left, bi.top + 32, bi.right, bi.top + 50}, L"Background sync", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->host.body_font(), state->app->theme.mutedText, RECT{bi.left, bi.top + 104, bi.right, bi.top + 122}, L"Render capacity", DT_LEFT | DT_TOP | DT_SINGLELINE);
 }
 
 void PaintControlsPage(HWND page, HDC dc, PageState* state) {
-    RECT client{}; GetClientRect(page, &client); FillRect(dc, &client, state->app->windowBrush);
+    RECT client{}; GetClientRect(page, &client); FillRect(dc, &client, state->app->host.background_brush());
     RECT content = InsetRectCopy(client, 28, 28);
     RECT top = SliceTop(content, 260);
     RECT bottom{content.left, top.bottom + 20, content.right, content.bottom};
@@ -492,30 +418,30 @@ void PaintControlsPage(HWND page, HDC dc, PageState* state) {
     RECT ti = InsetRectCopy(top, 24, 24);
     RECT li = InsetRectCopy(left, 24, 24);
     RECT ri = InsetRectCopy(right, 24, 24);
-    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(ti, 26), L"Sliders And Motion", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{ti.left, ti.top + 34, ti.right, ti.top + 52}, L"Exposure", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{ti.left, ti.top + 128, ti.right, ti.top + 146}, L"Balance", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(li, 26), L"Custom Scrollbars", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{li.left, li.top + 34, li.right, li.top + 56}, L"Horizontal timeline and vertical navigation rail.", DT_LEFT | DT_TOP | DT_WORDBREAK);
-    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(ri, 26), L"Dark Edit Surfaces", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{ri.left, ri.top + 34, ri.right, ri.top + 56}, L"Single-line search plus multiline notes.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+    DrawLabel(dc, state->app->host.section_font(), state->app->theme.text, SliceTop(ti, 26), L"Sliders And Motion", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->host.body_font(), state->app->theme.mutedText, RECT{ti.left, ti.top + 34, ti.right, ti.top + 52}, L"Exposure", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->host.body_font(), state->app->theme.mutedText, RECT{ti.left, ti.top + 128, ti.right, ti.top + 146}, L"Balance", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->host.section_font(), state->app->theme.text, SliceTop(li, 26), L"Custom Scrollbars", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->host.body_font(), state->app->theme.mutedText, RECT{li.left, li.top + 34, li.right, li.top + 56}, L"Horizontal timeline and vertical navigation rail.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+    DrawLabel(dc, state->app->host.section_font(), state->app->theme.text, SliceTop(ri, 26), L"Dark Edit Surfaces", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->host.body_font(), state->app->theme.mutedText, RECT{ri.left, ri.top + 34, ri.right, ri.top + 56}, L"Single-line search plus multiline notes.", DT_LEFT | DT_TOP | DT_WORDBREAK);
 }
 
 void PaintDataPage(HWND page, HDC dc, PageState* state) {
-    RECT client{}; GetClientRect(page, &client); FillRect(dc, &client, state->app->windowBrush);
+    RECT client{}; GetClientRect(page, &client); FillRect(dc, &client, state->app->host.background_brush());
     RECT content = InsetRectCopy(client, 28, 28);
     RECT bar = SliceTop(content, 42);
     RECT bottom{content.left, bar.bottom + 20, content.right, content.bottom};
     RECT left = SliceLeft(bottom, ((bottom.right - bottom.left) - 20) / 2);
     RECT right{left.right + 20, bottom.top, bottom.right, bottom.bottom};
-    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, RECT{content.left, content.top - 4, content.right, content.top + 22}, L"Data Density", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{content.left, content.top + 24, content.right, content.top + 46}, L"Custom table and list box using the same semantic palette and font system.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+    DrawLabel(dc, state->app->host.section_font(), state->app->theme.text, RECT{content.left, content.top - 4, content.right, content.top + 22}, L"Data Density", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->host.body_font(), state->app->theme.mutedText, RECT{content.left, content.top + 24, content.right, content.top + 46}, L"Custom table and list box using the same semantic palette and font system.", DT_LEFT | DT_TOP | DT_WORDBREAK);
     FillRoundedRect(dc, left, 24, state->app->theme.panel, state->app->theme.border);
     FillRoundedRect(dc, right, 24, state->app->theme.panel, state->app->theme.border);
 }
 
 void PaintExpandedPage(HWND page, HDC dc, PageState* state) {
-    RECT client{}; GetClientRect(page, &client); FillRect(dc, &client, state->app->windowBrush);
+    RECT client{}; GetClientRect(page, &client); FillRect(dc, &client, state->app->host.background_brush());
     RECT content = InsetRectCopy(client, 28, 28);
     RECT left = SliceLeft(content, ((content.right - content.left) - 20) / 2);
     RECT right{left.right + 20, content.top, content.right, content.bottom};
@@ -523,10 +449,10 @@ void PaintExpandedPage(HWND page, HDC dc, PageState* state) {
     FillRoundedRect(dc, right, 24, state->app->theme.panel, state->app->theme.border);
     RECT li = InsetRectCopy(left, 24, 24);
     RECT ri = InsetRectCopy(right, 24, 24);
-    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(li, 26), L"New Controls", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{li.left, li.top + 34, li.right, li.top + 56}, L"Static, CheckBox, RadioButton, and a semantic-state summary.", DT_LEFT | DT_TOP | DT_WORDBREAK);
-    DrawLabel(dc, state->app->sectionFont, state->app->theme.text, SliceTop(ri, 26), L"Dialog Trigger", DT_LEFT | DT_TOP | DT_SINGLELINE);
-    DrawLabel(dc, state->app->bodyFont, state->app->theme.mutedText, RECT{ri.left, ri.top + 34, ri.right, ri.top + 56}, L"Open the custom dark dialog without leaving the showcase.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+    DrawLabel(dc, state->app->host.section_font(), state->app->theme.text, SliceTop(li, 26), L"New Controls", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->host.body_font(), state->app->theme.mutedText, RECT{li.left, li.top + 34, li.right, li.top + 56}, L"Static, CheckBox, RadioButton, and a semantic-state summary.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+    DrawLabel(dc, state->app->host.section_font(), state->app->theme.text, SliceTop(ri, 26), L"Dialog Trigger", DT_LEFT | DT_TOP | DT_SINGLELINE);
+    DrawLabel(dc, state->app->host.body_font(), state->app->theme.mutedText, RECT{ri.left, ri.top + 34, ri.right, ri.top + 56}, L"Open the custom dark dialog without leaving the showcase.", DT_LEFT | DT_TOP | DT_WORDBREAK);
 }
 
 void PaintPage(HWND page, HDC dc, PageState* state) {
@@ -803,13 +729,14 @@ LRESULT CALLBACK ShowcaseWindowProc(HWND window, UINT message, WPARAM wParam, LP
         auto* created = new AppState();
         created->theme = MakeThemeByIndex(0);
         created->themeIndex = 0;
-        RecreateWindowBrush(created);
-        if (!created->windowBrush || !RecreateFonts(created)) {
+        darkui::ThemedWindowHost::Options hostOptions;
+        hostOptions.theme = created->theme;
+        hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+        if (!created->host.Attach(window, hostOptions)) {
             CleanupAppState(created);
             return -1;
         }
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
-        ApplyWindowCaptionTheme(window);
         if (!CreateShowcase(created, window)) {
             CleanupAppState(created);
             SetWindowLongPtrW(window, GWLP_USERDATA, 0);
@@ -868,12 +795,7 @@ LRESULT CALLBACK ShowcaseWindowProc(HWND window, UINT message, WPARAM wParam, LP
         }
         break;
     case WM_ERASEBKGND:
-        if (state) {
-            RECT rect{};
-            GetClientRect(window, &rect);
-            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->windowBrush);
-            return 1;
-        }
+        if (state && state->host.HandleEraseBackground(reinterpret_cast<HDC>(wParam))) return 1;
         break;
     case WM_PAINT:
         if (state) {

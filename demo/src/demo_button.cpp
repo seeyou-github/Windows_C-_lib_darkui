@@ -17,14 +17,10 @@ enum ControlId {
 };
 
 struct DemoState {
-    darkui::Theme theme;
-    darkui::ThemeManager themeManager;
+    darkui::ThemedWindowHost host;
     darkui::ThemeManager altThemeManager;
     darkui::Button primary;
     darkui::Button secondary;
-    HBRUSH brushBackground = nullptr;
-    HFONT titleFont = nullptr;
-    HFONT textFont = nullptr;
     int clickCount = 0;
 };
 
@@ -32,9 +28,6 @@ void CleanupState(DemoState* state) {
     if (!state) {
         return;
     }
-    if (state->brushBackground) DeleteObject(state->brushBackground);
-    if (state->titleFont) DeleteObject(state->titleFont);
-    if (state->textFont) DeleteObject(state->textFont);
     delete state;
 }
 
@@ -73,7 +66,7 @@ void ApplyThemes(DemoState* state) {
     if (!state) {
         return;
     }
-    state->themeManager.Apply();
+    state->host.theme_manager().Apply();
     state->altThemeManager.Apply();
 }
 
@@ -83,15 +76,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
     switch (message) {
     case WM_CREATE: {
         auto* created = new DemoState();
-        created->theme = MakeTheme();
-        created->brushBackground = CreateSolidBrush(created->theme.background);
-
-        darkui::FontSpec titleSpec = created->theme.uiFont;
-        titleSpec.height = -30;
-        titleSpec.weight = FW_SEMIBOLD;
-        created->titleFont = darkui::CreateFont(titleSpec);
-        created->textFont = darkui::CreateFont(created->theme.uiFont);
-        if (!created->brushBackground || !created->titleFont || !created->textFont) {
+        darkui::ThemedWindowHost::Options hostOptions;
+        hostOptions.theme = MakeTheme();
+        hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+        if (!created->host.Attach(window, hostOptions)) {
             CleanupState(created);
             return -1;
         }
@@ -99,7 +87,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         darkui::Button::Options primaryOptions;
         primaryOptions.text = L"Primary Action";
         primaryOptions.cornerRadius = 14;
-        darkui::Theme altTheme = created->theme;
+        darkui::Theme altTheme = created->host.theme();
         altTheme.button = RGB(70, 44, 58);
         altTheme.buttonHover = RGB(88, 54, 72);
         altTheme.buttonHot = RGB(102, 59, 79);
@@ -109,13 +97,12 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         darkui::Button::Options secondaryOptions;
         secondaryOptions.text = L"Secondary Action";
         secondaryOptions.cornerRadius = 22;
-        if (!created->primary.Create(window, ID_BUTTON_PRIMARY, created->theme, primaryOptions) ||
+        if (!created->primary.Create(window, ID_BUTTON_PRIMARY, created->host.theme(), primaryOptions) ||
             !created->secondary.Create(window, ID_BUTTON_ALT, altTheme, secondaryOptions)) {
             CleanupState(created);
             return -1;
         }
-        created->themeManager.SetTheme(created->theme);
-        created->themeManager.Bind(created->primary);
+        created->host.theme_manager().Bind(created->primary);
         created->altThemeManager.SetTheme(altTheme);
         created->altThemeManager.Bind(created->secondary);
         ApplyThemes(created);
@@ -146,10 +133,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         }
         break;
     case WM_ERASEBKGND:
-        if (state) {
-            RECT rect{};
-            GetClientRect(window, &rect);
-            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->brushBackground);
+        if (state && state->host.HandleEraseBackground(reinterpret_cast<HDC>(wParam))) {
             return 1;
         }
         break;
@@ -160,14 +144,14 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
 
             RECT client{};
             GetClientRect(window, &client);
-            FillRect(dc, &client, state->brushBackground);
+            state->host.FillBackground(dc);
 
             RECT titleRect{32, 24, client.right - 32, 56};
             RECT descRect{32, 64, client.right - 32, 92};
             RECT noteRect{32, 248, client.right - 32, 320};
 
-            DrawTextLine(dc, state->titleFont, state->theme.text, titleRect, L"Dark Button Demo");
-            DrawTextLine(dc, state->textFont, state->theme.mutedText, descRect, L"Owner-draw dark buttons with hover, press animation, corner radius, and disabled state.");
+            DrawTextLine(dc, state->host.title_font(), state->host.theme().text, titleRect, L"Dark Button Demo");
+            DrawTextLine(dc, state->host.body_font(), state->host.theme().mutedText, descRect, L"Owner-draw dark buttons with hover, press animation, corner radius, and disabled state.");
             DrawTextW(dc,
                       L"Primary Action: hover + press animation + 14px radius.\nSecondary Action: 22px radius and disabled-state colors.\nMove the mouse over the primary button to see hover and click motion.",
                       -1,

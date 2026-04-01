@@ -61,7 +61,11 @@ options.selection = 0;
 
 combo.Create(hwnd, 1001, theme, options);
 
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(combo);
 themeManager.Apply();
 

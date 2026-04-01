@@ -17,21 +17,14 @@ enum ControlId {
 };
 
 struct DemoState {
-    darkui::Theme theme;
-    darkui::ThemeManager themeManager;
+    darkui::ThemedWindowHost host;
     darkui::ListBox singleList;
     darkui::ListBox multiList;
-    HBRUSH brushBackground = nullptr;
-    HFONT titleFont = nullptr;
-    HFONT textFont = nullptr;
     std::wstring status = L"Ready";
 };
 
 void CleanupState(DemoState* state) {
     if (!state) return;
-    if (state->brushBackground) DeleteObject(state->brushBackground);
-    if (state->titleFont) DeleteObject(state->titleFont);
-    if (state->textFont) DeleteObject(state->textFont);
     delete state;
 }
 
@@ -86,15 +79,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
     switch (message) {
     case WM_CREATE: {
         auto* created = new DemoState();
-        created->theme = MakeTheme();
-        created->brushBackground = CreateSolidBrush(created->theme.background);
-
-        darkui::FontSpec titleSpec = created->theme.uiFont;
-        titleSpec.height = -30;
-        titleSpec.weight = FW_SEMIBOLD;
-        created->titleFont = darkui::CreateFont(titleSpec);
-        created->textFont = darkui::CreateFont(created->theme.uiFont);
-        if (!created->brushBackground || !created->titleFont || !created->textFont) {
+        darkui::ThemedWindowHost::Options hostOptions;
+        hostOptions.theme = MakeTheme();
+        hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+        if (!created->host.Attach(window, hostOptions)) {
             CleanupState(created);
             return -1;
         }
@@ -121,13 +109,12 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             {L"Proxy build", 15}
         };
 
-        if (!created->singleList.Create(window, ID_LIST_SINGLE, created->theme, singleOptions) ||
-            !created->multiList.Create(window, ID_LIST_MULTI, created->theme, multiOptions)) {
+        if (!created->singleList.Create(window, ID_LIST_SINGLE, created->host.theme(), singleOptions) ||
+            !created->multiList.Create(window, ID_LIST_MULTI, created->host.theme(), multiOptions)) {
             CleanupState(created);
             return -1;
         }
-        created->themeManager.SetTheme(created->theme);
-        created->themeManager.Bind(created->singleList, created->multiList);
+        created->host.theme_manager().Bind(created->singleList, created->multiList);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);
@@ -155,10 +142,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         }
         break;
     case WM_ERASEBKGND:
-        if (state) {
-            RECT rect{};
-            GetClientRect(window, &rect);
-            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->brushBackground);
+        if (state && state->host.HandleEraseBackground(reinterpret_cast<HDC>(wParam))) {
             return 1;
         }
         break;
@@ -168,7 +152,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             HDC dc = BeginPaint(window, &ps);
             RECT client{};
             GetClientRect(window, &client);
-            FillRect(dc, &client, state->brushBackground);
+            state->host.FillBackground(dc);
 
             RECT titleRect{32, 24, client.right - 32, 58};
             RECT descRect{32, 60, client.right - 32, 90};
@@ -176,11 +160,11 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             RECT rightRect{client.right / 2 + 16, 92, client.right - 32, 112};
             RECT statusRect{32, client.bottom - 54, client.right - 32, client.bottom - 22};
 
-            DrawLine(dc, state->titleFont, state->theme.text, titleRect, L"Dark ListBox Demo", DT_LEFT | DT_TOP | DT_SINGLELINE);
-            DrawLine(dc, state->textFont, state->theme.mutedText, descRect, L"Left: single-select list. Right: extended multi-select list. Both use a dark rounded host and native keyboard navigation.", DT_LEFT | DT_TOP | DT_WORDBREAK);
-            DrawLine(dc, state->textFont, state->theme.text, leftRect, L"Single Select", DT_LEFT | DT_TOP | DT_SINGLELINE);
-            DrawLine(dc, state->textFont, state->theme.text, rightRect, L"Extended Multi Select", DT_LEFT | DT_TOP | DT_SINGLELINE);
-            DrawLine(dc, state->textFont, state->theme.text, statusRect, state->status.c_str(), DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+            DrawLine(dc, state->host.title_font(), state->host.theme().text, titleRect, L"Dark ListBox Demo", DT_LEFT | DT_TOP | DT_SINGLELINE);
+            DrawLine(dc, state->host.body_font(), state->host.theme().mutedText, descRect, L"Left: single-select list. Right: extended multi-select list. Both use a dark rounded host and native keyboard navigation.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+            DrawLine(dc, state->host.body_font(), state->host.theme().text, leftRect, L"Single Select", DT_LEFT | DT_TOP | DT_SINGLELINE);
+            DrawLine(dc, state->host.body_font(), state->host.theme().text, rightRect, L"Extended Multi Select", DT_LEFT | DT_TOP | DT_SINGLELINE);
+            DrawLine(dc, state->host.body_font(), state->host.theme().text, statusRect, state->status.c_str(), DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
             EndPaint(window, &ps);
             return 0;

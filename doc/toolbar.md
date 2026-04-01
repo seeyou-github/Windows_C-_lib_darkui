@@ -1,4 +1,4 @@
-﻿# Toolbar
+# Toolbar
 
 ## Overview
 
@@ -74,7 +74,11 @@ options.items = {
 
 toolbar.Create(hwnd, 8001, theme, options);
 
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(toolbar);
 themeManager.Apply();
 
@@ -179,10 +183,14 @@ toolbar.SetChecked(0, true);
 toolbar.SetDisabled(3, true);
 ```
 
-### `ThemeManager`
+### `ThemedWindowHost \+ ThemeManager`
 
 ```cpp
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(toolbar);
 themeManager.Apply();
 ```
@@ -247,3 +255,4 @@ For complete examples, see:
 - No full keyboard navigation model yet
 - No drag-based toolbar customization
 - No built-in icon resource management
+

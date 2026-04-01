@@ -1,4 +1,4 @@
-﻿# Windows_C++_lib_darkui
+# Windows_C++_lib_darkui
 
 `Windows_C++_lib_darkui` is a lightweight custom dark-control library for native Win32 applications. It does not try to replace a full GUI framework. Instead, it provides a focused set of dark-themed controls that can be embedded into existing Win32 projects while keeping the standard Win32 message model.
 
@@ -136,7 +136,7 @@ See: [doc/toolbar.md](doc/toolbar.md)
 ## Main Characteristics
 
 - Built around a shared `darkui::Theme` structure
-- Runtime theme switching is standardized around `ThemeManager`
+- Runtime theme switching is standardized around `ThemedWindowHost + ThemeManager`
 - Supports a unified semantic theme entry through `Theme::useSemanticPalette`
 - Keeps native Win32 usage patterns where practical
 - Control layout remains the responsibility of the host window
@@ -197,17 +197,22 @@ This is available for:
 Recommended example:
 
 ```cpp
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = darkui::MakePresetTheme(darkui::ThemePreset::Graphite);
+hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+
+host.Attach(hwnd, hostOptions);
+
 darkui::Button button;
 darkui::Button::Options options;
 options.text = L"Refresh";
 options.cornerRadius = 14;
 options.surfaceRole = darkui::SurfaceRole::Panel;
 
-button.Create(hwnd, 1001, theme, options);
-
-darkui::ThemeManager themeManager(theme);
-themeManager.Bind(button);
-themeManager.Apply();
+button.Create(hwnd, 1001, host.theme(), options);
+host.theme_manager().Bind(button);
+host.theme_manager().Apply();
 ```
 
 Ready-made preset theme:
@@ -228,15 +233,36 @@ darkui::Theme theme = darkui::MakeSemanticTheme(
     RGB(48, 86, 148));
 ```
 
+## ThemedWindowHost
+
+Use `ThemedWindowHost` as the preferred top-level window shell. Together with `theme_manager()`, it is the unified caller-facing theme entry:
+
+- stores the current resolved theme
+- owns a page-level `ThemeManager`
+- rebuilds the background brush and standard title/body fonts
+- applies dark or theme-based title-bar colors
+- gives the window a consistent background fill path
+
+Basic pattern:
+
+```cpp
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options options;
+options.theme = darkui::MakePresetTheme();
+options.titleBarStyle = darkui::TitleBarStyle::Black;
+
+host.Attach(hwnd, options);
+host.theme_manager().Bind(buttonA, editA, listBoxA);
+host.theme_manager().Apply();
+```
+
 Recommended repeated theme update:
 
 ```cpp
-darkui::ThemeManager themeManager(theme);
-themeManager.Bind(buttonA, buttonB, editA, listBoxA);
-themeManager.Apply();
+host.theme_manager().Bind(buttonA, buttonB, editA, listBoxA);
+host.theme_manager().Apply();
 
-themeManager.SetTheme(darkui::MakePresetTheme(darkui::ThemePreset::Moss));
-themeManager.Apply();
+host.ApplyTheme(darkui::MakePresetTheme(darkui::ThemePreset::Moss));
 ```
 
 One-shot dark dialog:
@@ -340,3 +366,4 @@ If you only need the demo build scripts, the current `demo/build_demo*.bat` file
 - [Tab](doc/tab.md)
 - [Table](doc/table.md)
 - [Toolbar](doc/toolbar.md)
+

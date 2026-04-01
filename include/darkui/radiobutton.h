@@ -11,7 +11,7 @@ namespace darkui {
 // Usage:
 // - Fill RadioButton::Options and call Create(parent, id, theme, options).
 // - Position them with MoveWindow().
-// - Bind them into ThemeManager when the page supports theme switching.
+// - Bind them into ThemeManager when the page supports theme switching, usually through ThemedWindowHost::theme_manager().
 // - Handle selection changes through WM_COMMAND / BN_CLICKED in the parent window.
 // Notes:
 // - Native auto-radio grouping is preserved by using BS_AUTORADIOBUTTON internally.

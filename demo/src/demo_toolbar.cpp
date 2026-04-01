@@ -24,15 +24,13 @@ enum ControlId {
 };
 
 struct DemoState {
+    darkui::ThemedWindowHost host;
     darkui::Theme theme;
     darkui::ThemeManager themeManager;
     darkui::Toolbar toolbar;
     darkui::Toolbar compareToolbar;
     darkui::Slider fontSlider;
     darkui::Slider toolbarHeightSlider;
-    HBRUSH brushBackground = nullptr;
-    HFONT titleFont = nullptr;
-    HFONT textFont = nullptr;
     std::wstring status = L"Ready";
     HICON iconNew = nullptr;
     HICON iconOpen = nullptr;
@@ -50,9 +48,6 @@ void CleanupState(DemoState* state) {
     if (!state) {
         return;
     }
-    if (state->brushBackground) DeleteObject(state->brushBackground);
-    if (state->titleFont) DeleteObject(state->titleFont);
-    if (state->textFont) DeleteObject(state->textFont);
     if (state->layoutMenu) DestroyMenu(state->layoutMenu);
     delete state;
 }
@@ -121,9 +116,9 @@ std::wstring BuildCompareToolbarDebugText(DemoState* state, HDC dc) {
     const int measuredIconExtent = std::max(1, (measureBaseHeight * iconScalePercent + 50) / 100);
     const int drawnIconExtent = std::max(1, (itemHeight * iconScalePercent + 50) / 100);
 
-    const int openTextWidth = MeasureTextWidth(dc, state->textFont, L"Open");
-    const int shareTextWidth = MeasureTextWidth(dc, state->textFont, L"Share");
-    const int layoutTextWidth = MeasureTextWidth(dc, state->textFont, L"Layout");
+    const int openTextWidth = MeasureTextWidth(dc, state->host.body_font(), L"Open");
+    const int shareTextWidth = MeasureTextWidth(dc, state->host.body_font(), L"Share");
+    const int layoutTextWidth = MeasureTextWidth(dc, state->host.body_font(), L"Layout");
     const int sideInset = std::max(state->theme.textPadding, 14);
     const int measuredOpenWidth = std::max(std::max(46, measureBaseHeight), openTextWidth + measuredIconExtent + 8 + sideInset * 2);
     const int measuredShareWidth = std::max(std::max(46, measureBaseHeight), shareTextWidth + measuredIconExtent + 8 + sideInset * 2);
@@ -142,33 +137,13 @@ std::wstring BuildCompareToolbarDebugText(DemoState* state, HDC dc) {
     return text;
 }
 
-void RebuildFonts(DemoState* state) {
-    if (!state) {
-        return;
-    }
-    if (state->titleFont) {
-        DeleteObject(state->titleFont);
-        state->titleFont = nullptr;
-    }
-    if (state->textFont) {
-        DeleteObject(state->textFont);
-        state->textFont = nullptr;
-    }
-
-    darkui::FontSpec titleSpec = state->theme.uiFont;
-    titleSpec.height = -30;
-    titleSpec.weight = FW_SEMIBOLD;
-    state->titleFont = darkui::CreateFont(titleSpec);
-    state->textFont = darkui::CreateFont(state->theme.uiFont);
-}
-
 void ApplyToolbarTheme(HWND window, DemoState* state) {
     if (!state) {
         return;
     }
     state->theme.uiFont.height = -state->fontPixelSize;
     state->theme.toolbarHeight = state->toolbarButtonHeight;
-    RebuildFonts(state);
+    state->host.ApplyTheme(state->theme);
     state->themeManager.SetTheme(state->theme);
     state->themeManager.Apply();
     Layout(window, state);
@@ -182,10 +157,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
     case WM_CREATE: {
         auto* created = new DemoState();
         created->theme = MakeTheme();
-        created->brushBackground = CreateSolidBrush(created->theme.background);
-
-        RebuildFonts(created);
-        if (!created->brushBackground || !created->titleFont || !created->textFont) {
+        darkui::ThemedWindowHost::Options hostOptions;
+        hostOptions.theme = created->theme;
+        hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+        if (!created->host.Attach(window, hostOptions)) {
             CleanupState(created);
             return -1;
         }
@@ -313,10 +288,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         }
         break;
     case WM_ERASEBKGND:
-        if (state) {
-            RECT rect{};
-            GetClientRect(window, &rect);
-            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->brushBackground);
+        if (state && state->host.HandleEraseBackground(reinterpret_cast<HDC>(wParam))) {
             return 1;
         }
         break;
@@ -326,7 +298,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             HDC dc = BeginPaint(window, &ps);
             RECT client{};
             GetClientRect(window, &client);
-            FillRect(dc, &client, state->brushBackground);
+            state->host.FillBackground(dc);
 
             RECT titleRect{28, 24, client.right - 28, 56};
             RECT descRect{28, 58, client.right - 28, 82};
@@ -337,14 +309,14 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             RECT debugRect{28, 456, client.right - 28, client.bottom - 68};
             RECT statusRect{28, client.bottom - 56, client.right - 28, client.bottom - 28};
 
-            DrawLine(dc, state->titleFont, state->theme.text, titleRect, L"Dark Toolbar Demo", DT_LEFT | DT_TOP | DT_SINGLELINE);
-            DrawLine(dc, state->textFont, state->theme.mutedText, descRect, L"Custom dark toolbar with icons, icon-only tools, a drop-down button, a right-aligned tool group, and overflow handling.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+            DrawLine(dc, state->host.title_font(), state->theme.text, titleRect, L"Dark Toolbar Demo", DT_LEFT | DT_TOP | DT_SINGLELINE);
+            DrawLine(dc, state->host.body_font(), state->theme.mutedText, descRect, L"Custom dark toolbar with icons, icon-only tools, a drop-down button, a right-aligned tool group, and overflow handling.", DT_LEFT | DT_TOP | DT_WORDBREAK);
             std::wstring fontLabel = L"Font size slider: " + std::to_wstring(state->fontPixelSize) + L" px";
             std::wstring heightLabel = L"Toolbar height slider: " + std::to_wstring(state->toolbarButtonHeight) + L" px";
-            DrawLine(dc, state->textFont, state->theme.text, fontLabelRect, fontLabel.c_str(), DT_LEFT | DT_TOP | DT_SINGLELINE);
-            DrawLine(dc, state->textFont, state->theme.text, heightLabelRect, heightLabel.c_str(), DT_LEFT | DT_TOP | DT_SINGLELINE);
+            DrawLine(dc, state->host.body_font(), state->theme.text, fontLabelRect, fontLabel.c_str(), DT_LEFT | DT_TOP | DT_SINGLELINE);
+            DrawLine(dc, state->host.body_font(), state->theme.text, heightLabelRect, heightLabel.c_str(), DT_LEFT | DT_TOP | DT_SINGLELINE);
             DrawLine(dc,
-                     state->textFont,
+                     state->host.body_font(),
                      state->theme.mutedText,
                      compareRect,
                      L"Second toolbar below copies the same actions but removes separators and right-aligned items for comparison.",
@@ -360,7 +332,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
                       -1,
                       &debugRect,
                       DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
-            DrawLine(dc, state->textFont, state->theme.text, statusRect, state->status.c_str(), DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+            DrawLine(dc, state->host.body_font(), state->theme.text, statusRect, state->status.c_str(), DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
             EndPaint(window, &ps);
             return 0;

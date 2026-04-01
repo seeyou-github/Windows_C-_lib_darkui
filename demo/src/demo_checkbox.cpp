@@ -15,22 +15,15 @@ enum ControlId {
 };
 
 struct DemoState {
-    darkui::Theme theme;
-    darkui::ThemeManager themeManager;
+    darkui::ThemedWindowHost host;
     darkui::CheckBox checkA;
     darkui::CheckBox checkB;
     darkui::CheckBox checkC;
-    HBRUSH brushBackground = nullptr;
-    HFONT titleFont = nullptr;
-    HFONT textFont = nullptr;
     std::wstring status = L"Ready";
 };
 
 void CleanupState(DemoState* state) {
     if (!state) return;
-    if (state->brushBackground) DeleteObject(state->brushBackground);
-    if (state->titleFont) DeleteObject(state->titleFont);
-    if (state->textFont) DeleteObject(state->textFont);
     delete state;
 }
 
@@ -71,15 +64,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
     switch (message) {
     case WM_CREATE: {
         auto* created = new DemoState();
-        created->theme = MakeTheme();
-        created->brushBackground = CreateSolidBrush(created->theme.background);
-
-        darkui::FontSpec titleSpec = created->theme.uiFont;
-        titleSpec.height = -30;
-        titleSpec.weight = FW_SEMIBOLD;
-        created->titleFont = darkui::CreateFont(titleSpec);
-        created->textFont = darkui::CreateFont(created->theme.uiFont);
-        if (!created->brushBackground || !created->titleFont || !created->textFont) {
+        darkui::ThemedWindowHost::Options hostOptions;
+        hostOptions.theme = MakeTheme();
+        hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+        if (!created->host.Attach(window, hostOptions)) {
             CleanupState(created);
             return -1;
         }
@@ -95,14 +83,13 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         checkCOptions.text = L"Download proxy media in background";
         checkCOptions.surfaceRole = darkui::SurfaceRole::Background;
 
-        if (!created->checkA.Create(window, ID_CHECK_A, created->theme, checkAOptions) ||
-            !created->checkB.Create(window, ID_CHECK_B, created->theme, checkBOptions) ||
-            !created->checkC.Create(window, ID_CHECK_C, created->theme, checkCOptions)) {
+        if (!created->checkA.Create(window, ID_CHECK_A, created->host.theme(), checkAOptions) ||
+            !created->checkB.Create(window, ID_CHECK_B, created->host.theme(), checkBOptions) ||
+            !created->checkC.Create(window, ID_CHECK_C, created->host.theme(), checkCOptions)) {
             CleanupState(created);
             return -1;
         }
-        created->themeManager.SetTheme(created->theme);
-        created->themeManager.Bind(created->checkA, created->checkB, created->checkC);
+        created->host.theme_manager().Bind(created->checkA, created->checkB, created->checkC);
         EnableWindow(created->checkC.hwnd(), FALSE);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
@@ -125,10 +112,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         }
         break;
     case WM_ERASEBKGND:
-        if (state) {
-            RECT rect{};
-            GetClientRect(window, &rect);
-            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->brushBackground);
+        if (state && state->host.HandleEraseBackground(reinterpret_cast<HDC>(wParam))) {
             return 1;
         }
         break;
@@ -138,21 +122,21 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             HDC dc = BeginPaint(window, &ps);
             RECT client{};
             GetClientRect(window, &client);
-            FillRect(dc, &client, state->brushBackground);
+            state->host.FillBackground(dc);
 
             RECT titleRect{32, 24, client.right - 32, 58};
             RECT descRect{32, 60, client.right - 32, 94};
             RECT noteRect{32, 252, client.right - 32, 330};
             RECT statusRect{32, client.bottom - 56, client.right - 32, client.bottom - 24};
 
-            DrawLine(dc, state->titleFont, state->theme.text, titleRect, L"Dark CheckBox Demo", DT_LEFT | DT_TOP | DT_SINGLELINE);
-            DrawLine(dc, state->textFont, state->theme.mutedText, descRect, L"Hover, checked, unchecked, and disabled states use dark owner-drawn rendering while preserving BN_CLICKED notifications.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+            DrawLine(dc, state->host.title_font(), state->host.theme().text, titleRect, L"Dark CheckBox Demo", DT_LEFT | DT_TOP | DT_SINGLELINE);
+            DrawLine(dc, state->host.body_font(), state->host.theme().mutedText, descRect, L"Hover, checked, unchecked, and disabled states use dark owner-drawn rendering while preserving BN_CLICKED notifications.", DT_LEFT | DT_TOP | DT_WORDBREAK);
             DrawTextW(dc,
                       L"The first checkbox starts checked. The third is disabled to show muted text behavior.\nEach click updates the status line below through normal WM_COMMAND handling.",
                       -1,
                       &noteRect,
                       DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
-            DrawLine(dc, state->textFont, state->theme.text, statusRect, state->status.c_str(), DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+            DrawLine(dc, state->host.body_font(), state->host.theme().text, statusRect, state->status.c_str(), DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
             EndPaint(window, &ps);
             return 0;

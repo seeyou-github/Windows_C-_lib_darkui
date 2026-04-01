@@ -1,4 +1,4 @@
-﻿# Table
+# Table
 
 ## Overview
 
@@ -64,7 +64,11 @@ options.rows = {
 
 table.Create(hwnd, 2001, theme, options);
 
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(table);
 themeManager.Apply();
 
@@ -98,10 +102,14 @@ table.ClearRows();
 table.SetDrawEmptyGrid(false);
 ```
 
-### `ThemeManager`
+### `ThemedWindowHost \+ ThemeManager`
 
 ```cpp
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(table);
 themeManager.Apply();
 ```
@@ -144,3 +152,4 @@ For complete examples, see:
 - No column drag or sorting support
 - No in-place cell editing
 - No multi-select support
+

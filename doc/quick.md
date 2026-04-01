@@ -9,7 +9,7 @@
 - binding one theme to multiple controls
 - opening a dark message dialog with one function call
 
-This helper layer is the recommended companion for the new per-control `Options` structs:
+This helper layer is the recommended companion for the new per-control `Options` structs and for `ThemedWindowHost`.
 
 - `Button::Options`
 - `CheckBox::Options`
@@ -76,17 +76,41 @@ darkui::Theme theme = darkui::MakeSemanticTheme(
     RGB(48, 86, 148));
 ```
 
-## ThemeManager
+## ThemedWindowHost
 
-Use `ThemeManager` as the preferred repeated theme-switch entry:
+Use `ThemedWindowHost` as the preferred top-level window theme shell:
 
 ```cpp
-darkui::ThemeManager themeManager(darkui::MakePresetTheme());
-themeManager.Bind(buttonA, buttonB, editA, listBoxA);
-themeManager.Apply();
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options options;
+options.theme = darkui::MakePresetTheme();
+options.titleBarStyle = darkui::TitleBarStyle::Black;
 
-themeManager.SetTheme(darkui::MakePresetTheme(darkui::ThemePreset::Moss));
-themeManager.Apply();
+host.Attach(hwnd, options);
+```
+
+Typical benefits:
+
+- stores the current resolved theme for the page
+- exposes `theme_manager()` for control binding
+- rebuilds standard window title/body fonts
+- owns the background brush for uniform dark fill
+- applies a dark or theme-based title bar
+
+## ThemedWindowHost + ThemeManager
+
+Use `ThemedWindowHost` together with `theme_manager()` as the preferred repeated theme-switch entry:
+
+```cpp
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options options;
+options.theme = darkui::MakePresetTheme();
+host.Attach(hwnd, options);
+
+host.theme_manager().Bind(buttonA, buttonB, editA, listBoxA);
+host.theme_manager().Apply();
+
+host.ApplyTheme(darkui::MakePresetTheme(darkui::ThemePreset::Moss));
 ```
 
 Use `ThemeBinder` when you only want the remembered binding list without storing the current theme separately.
@@ -129,6 +153,7 @@ darkui::ShowInfoDialog(hwnd, 5003, theme, L"Completed", L"Export finished.");
 
 ## Notes
 
-- These helpers are additive. `Options + ThemeManager` is the intended caller-facing path.
-- Theme distribution and layout are still separate responsibilities. `ThemeManager` only updates bound controls.
+- These helpers are additive. `Options + ThemedWindowHost + ThemeManager` is the intended caller-facing path.
+- Theme distribution and layout are still separate responsibilities. `theme_manager()` only updates bound controls, while `ThemedWindowHost` manages top-level window resources.
 - `ShowMessageDialog(...)` is intended for simple text dialogs. For custom forms, continue using `darkui::Dialog` directly.
+

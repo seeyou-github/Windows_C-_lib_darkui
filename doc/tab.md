@@ -1,4 +1,4 @@
-﻿# Tab
+# Tab
 
 ## Overview
 
@@ -55,7 +55,11 @@ options.selection = 0;
 
 tab.Create(hwnd, 7001, theme, options);
 
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(tab);
 themeManager.Apply();
 
@@ -123,10 +127,14 @@ int index = tab.GetSelection();
 RECT contentRect = tab.GetContentRect();
 ```
 
-### `ThemeManager`
+### `ThemedWindowHost \+ ThemeManager`
 
 ```cpp
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(tab);
 themeManager.Apply();
 ```
@@ -165,3 +173,4 @@ For complete examples, see:
 - No drag reordering
 - No icon tabs
 - No disabled tabs
+

@@ -20,24 +20,17 @@ enum ControlId {
 };
 
 struct DemoState {
-    darkui::Theme theme;
-    darkui::ThemeManager themeManager;
+    darkui::ThemedWindowHost host;
     darkui::ProgressBar progress;
     darkui::Button buttonDec;
     darkui::Button buttonInc;
     darkui::Button buttonToggleText;
-    HBRUSH brushBackground = nullptr;
-    HFONT titleFont = nullptr;
-    HFONT textFont = nullptr;
 };
 
 void CleanupState(DemoState* state) {
     if (!state) {
         return;
     }
-    if (state->brushBackground) DeleteObject(state->brushBackground);
-    if (state->titleFont) DeleteObject(state->titleFont);
-    if (state->textFont) DeleteObject(state->textFont);
     delete state;
 }
 
@@ -60,13 +53,6 @@ darkui::Theme MakeTheme() {
     return theme;
 }
 
-void RecreateBackgroundBrush(DemoState* state) {
-    if (state->brushBackground) {
-        DeleteObject(state->brushBackground);
-    }
-    state->brushBackground = CreateSolidBrush(state->theme.background);
-}
-
 void Layout(HWND window, DemoState* state) {
     RECT client{};
     GetClientRect(window, &client);
@@ -83,9 +69,7 @@ RECT GetValueRect(HWND window) {
 }
 
 void ApplyTheme(HWND window, DemoState* state) {
-    RecreateBackgroundBrush(state);
-    state->themeManager.SetTheme(state->theme);
-    state->themeManager.Apply();
+    state->host.ApplyTheme(state->host.theme());
     InvalidateRect(window, nullptr, TRUE);
 }
 
@@ -95,15 +79,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
     switch (message) {
     case WM_CREATE: {
         auto* created = new DemoState();
-        created->theme = MakeTheme();
-        RecreateBackgroundBrush(created);
-
-        darkui::FontSpec titleSpec = created->theme.uiFont;
-        titleSpec.height = -30;
-        titleSpec.weight = FW_SEMIBOLD;
-        created->titleFont = darkui::CreateFont(titleSpec);
-        created->textFont = darkui::CreateFont(created->theme.uiFont);
-        if (!created->brushBackground || !created->titleFont || !created->textFont) {
+        darkui::ThemedWindowHost::Options hostOptions;
+        hostOptions.theme = MakeTheme();
+        hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+        if (!created->host.Attach(window, hostOptions)) {
             CleanupState(created);
             return -1;
         }
@@ -112,7 +91,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         progressOptions.minimum = 0;
         progressOptions.maximum = 100;
         progressOptions.value = 64;
-        if (!created->progress.Create(window, ID_PROGRESS, created->theme, progressOptions)) {
+        if (!created->progress.Create(window, ID_PROGRESS, created->host.theme(), progressOptions)) {
             CleanupState(created);
             return -1;
         }
@@ -124,14 +103,13 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         buttonIncOptions.text = L"+10";
         darkui::Button::Options toggleOptions = buttonOptions;
         toggleOptions.text = L"Toggle Percent";
-        if (!created->buttonDec.Create(window, ID_BUTTON_DEC, created->theme, buttonDecOptions) ||
-            !created->buttonInc.Create(window, ID_BUTTON_INC, created->theme, buttonIncOptions) ||
-            !created->buttonToggleText.Create(window, ID_BUTTON_TOGGLE_TEXT, created->theme, toggleOptions)) {
+        if (!created->buttonDec.Create(window, ID_BUTTON_DEC, created->host.theme(), buttonDecOptions) ||
+            !created->buttonInc.Create(window, ID_BUTTON_INC, created->host.theme(), buttonIncOptions) ||
+            !created->buttonToggleText.Create(window, ID_BUTTON_TOGGLE_TEXT, created->host.theme(), toggleOptions)) {
             CleanupState(created);
             return -1;
         }
-        created->themeManager.SetTheme(created->theme);
-        created->themeManager.Bind(created->progress, created->buttonDec, created->buttonInc, created->buttonToggleText);
+        created->host.theme_manager().Bind(created->progress, created->buttonDec, created->buttonInc, created->buttonToggleText);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);
@@ -169,10 +147,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         }
         break;
     case WM_ERASEBKGND:
-        if (state) {
-            RECT rect{};
-            GetClientRect(window, &rect);
-            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->brushBackground);
+        if (state && state->host.HandleEraseBackground(reinterpret_cast<HDC>(wParam))) {
             return 1;
         }
         break;
@@ -183,24 +158,24 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
 
             RECT client{};
             GetClientRect(window, &client);
-            FillRect(dc, &client, state->brushBackground);
+            state->host.FillBackground(dc);
 
             RECT titleRect{32, 24, client.right - 32, 56};
             RECT descRect{32, 64, client.right - 32, 92};
             RECT noteRect = GetValueRect(window);
 
-            HFONT oldTitle = reinterpret_cast<HFONT>(SelectObject(dc, state->titleFont));
+            HFONT oldTitle = reinterpret_cast<HFONT>(SelectObject(dc, state->host.title_font()));
             SetBkMode(dc, TRANSPARENT);
-            SetTextColor(dc, state->theme.text);
+            SetTextColor(dc, state->host.theme().text);
             DrawTextW(dc, L"Dark ProgressBar Demo", -1, &titleRect, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
             SelectObject(dc, oldTitle);
 
-            HFONT oldText = reinterpret_cast<HFONT>(SelectObject(dc, state->textFont));
-            SetTextColor(dc, state->theme.mutedText);
+            HFONT oldText = reinterpret_cast<HFONT>(SelectObject(dc, state->host.body_font()));
+            SetTextColor(dc, state->host.theme().mutedText);
             DrawTextW(dc, L"Custom progress bar with independent outer background, track, fill, and text colors.", -1, &descRect, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
 
             std::wstring note = L"Current value: " + std::to_wstring(state->progress.GetValue()) + L" / 100";
-            SetTextColor(dc, state->theme.text);
+            SetTextColor(dc, state->host.theme().text);
             DrawTextW(dc, note.c_str(), -1, &noteRect, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
             SelectObject(dc, oldText);
 

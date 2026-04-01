@@ -36,13 +36,11 @@ enum ControlId {
 };
 
 struct DemoState {
+    darkui::ThemedWindowHost host;
     darkui::Theme theme;
     darkui::Theme defaultTheme;
     darkui::ThemeManager themeManager;
     darkui::Slider slider;
-    HBRUSH brushBackground = nullptr;
-    HFONT titleFont = nullptr;
-    HFONT textFont = nullptr;
     std::array<COLORREF, 16> customColors{};
     darkui::Button buttonBackground;
     darkui::Button buttonTrack;
@@ -55,6 +53,8 @@ struct DemoState {
     darkui::Button buttonRadiusPlus;
     darkui::Button buttonReset;
 };
+
+void CleanupState(DemoState* state);
 
 darkui::Theme MakeTheme() {
     darkui::Theme theme;
@@ -76,6 +76,13 @@ darkui::Theme MakeTheme() {
     theme.sliderTrackHeight = 6;
     theme.sliderThumbRadius = 10;
     return theme;
+}
+
+void CleanupState(DemoState* state) {
+    if (!state) {
+        return;
+    }
+    delete state;
 }
 
 void Layout(HWND window, DemoState* state) {
@@ -109,15 +116,8 @@ RECT GetValueRect(HWND window) {
     return RECT{32, 214, client.right - 32, 242};
 }
 
-void RecreateBackgroundBrush(DemoState* state) {
-    if (state->brushBackground) {
-        DeleteObject(state->brushBackground);
-    }
-    state->brushBackground = CreateSolidBrush(state->theme.background);
-}
-
 void ApplySliderTheme(HWND window, DemoState* state, bool repaintAll = true) {
-    RecreateBackgroundBrush(state);
+    state->host.ApplyTheme(state->theme);
     state->themeManager.SetTheme(state->theme);
     state->themeManager.Apply();
     if (repaintAll) {
@@ -167,7 +167,7 @@ void DrawColorSwatch(HDC dc, int x, int y, COLORREF color, COLORREF border) {
 
 void DrawStylePanel(HDC dc, DemoState* state) {
     RECT title{kPanelX, kPanelY, kPanelX + kPanelWidth, kPanelY + 22};
-    DrawTextLine(dc, state->textFont, state->theme.text, title, L"Live Style Controls");
+    DrawTextLine(dc, state->host.body_font(), state->theme.text, title, L"Live Style Controls");
 
     struct ColorRow {
         const wchar_t* label;
@@ -184,23 +184,23 @@ void DrawStylePanel(HDC dc, DemoState* state) {
     int y = kPanelY + 40;
     for (const auto& row : rows) {
         RECT label{kPanelX, y + 6, kPanelX + 96, y + 28};
-        DrawTextLine(dc, state->textFont, state->theme.mutedText, label, row.label);
+        DrawTextLine(dc, state->host.body_font(), state->theme.mutedText, label, row.label);
         DrawColorSwatch(dc, kPanelX + 238, y + 6, row.color, state->theme.border);
         y += kPanelButtonHeight + kPanelGap;
     }
 
     RECT trackLabel{kPanelX, y + 6, kPanelX + 96, y + 28};
-    DrawTextLine(dc, state->textFont, state->theme.mutedText, trackLabel, L"Track H");
+    DrawTextLine(dc, state->host.body_font(), state->theme.mutedText, trackLabel, L"Track H");
     RECT trackValue{kPanelX + 186, y + 6, kPanelX + 234, y + 28};
     std::wstring trackText = std::to_wstring(state->theme.sliderTrackHeight);
-    DrawTextLine(dc, state->textFont, state->theme.text, trackValue, trackText.c_str(), DT_RIGHT);
+    DrawTextLine(dc, state->host.body_font(), state->theme.text, trackValue, trackText.c_str(), DT_RIGHT);
     y += kPanelButtonHeight + kPanelGap;
 
     RECT radiusLabel{kPanelX, y + 6, kPanelX + 96, y + 28};
-    DrawTextLine(dc, state->textFont, state->theme.mutedText, radiusLabel, L"Thumb R");
+    DrawTextLine(dc, state->host.body_font(), state->theme.mutedText, radiusLabel, L"Thumb R");
     RECT radiusValue{kPanelX + 186, y + 6, kPanelX + 234, y + 28};
     std::wstring radiusText = std::to_wstring(state->theme.sliderThumbRadius);
-    DrawTextLine(dc, state->textFont, state->theme.text, radiusValue, radiusText.c_str(), DT_RIGHT);
+    DrawTextLine(dc, state->host.body_font(), state->theme.text, radiusValue, radiusText.c_str(), DT_RIGHT);
 }
 
 LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -211,13 +211,13 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         auto* created = new DemoState();
         created->defaultTheme = MakeTheme();
         created->theme = created->defaultTheme;
-        created->brushBackground = CreateSolidBrush(created->theme.background);
-
-        darkui::FontSpec titleSpec = created->theme.uiFont;
-        titleSpec.height = -30;
-        titleSpec.weight = FW_SEMIBOLD;
-        created->titleFont = darkui::CreateFont(titleSpec);
-        created->textFont = darkui::CreateFont(created->theme.uiFont);
+        darkui::ThemedWindowHost::Options hostOptions;
+        hostOptions.theme = created->theme;
+        hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+        if (!created->host.Attach(window, hostOptions)) {
+            CleanupState(created);
+            return -1;
+        }
 
         darkui::Slider::Options sliderOptions;
         sliderOptions.minimum = 0;
@@ -340,7 +340,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         if (state) {
             RECT rect{};
             GetClientRect(window, &rect);
-            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->brushBackground);
+            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->host.background_brush());
             return 1;
         }
         break;
@@ -351,18 +351,18 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
 
             RECT client{};
             GetClientRect(window, &client);
-            FillRect(dc, &client, state->brushBackground);
+            state->host.FillBackground(dc);
 
             RECT titleRect{32, 24, client.right - 32, 56};
             RECT descRect{32, 64, client.right - 32, 92};
             RECT valueRect{32, 214, client.right - 32, 242};
             RECT noteRect{32, 256, 552, 360};
 
-            DrawTextLine(dc, state->titleFont, state->theme.text, titleRect, L"Dark Slider Demo");
-            DrawTextLine(dc, state->textFont, state->theme.mutedText, descRect, L"Drag the thumb, click the track, or use keyboard arrows after focus.");
+            DrawTextLine(dc, state->host.title_font(), state->theme.text, titleRect, L"Dark Slider Demo");
+            DrawTextLine(dc, state->host.body_font(), state->theme.mutedText, descRect, L"Drag the thumb, click the track, or use keyboard arrows after focus.");
 
             std::wstring valueText = L"Current value: " + std::to_wstring(state->slider.GetValue()) + L" / 100";
-            DrawTextLine(dc, state->textFont, state->theme.text, valueRect, valueText.c_str());
+            DrawTextLine(dc, state->host.body_font(), state->theme.text, valueRect, valueText.c_str());
             DrawTextW(dc,
                       L"Notifications: the slider sends WM_HSCROLL to the parent window.\nThis demo enables tick marks on the custom slider.",
                       -1,
@@ -375,12 +375,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         }
         break;
     case WM_DESTROY:
-        if (state) {
-            if (state->brushBackground) DeleteObject(state->brushBackground);
-            if (state->titleFont) DeleteObject(state->titleFont);
-            if (state->textFont) DeleteObject(state->textFont);
-        }
-        delete state;
+        CleanupState(state);
         SetWindowLongPtrW(window, GWLP_USERDATA, 0);
         PostQuitMessage(0);
         return 0;

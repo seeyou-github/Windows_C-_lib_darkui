@@ -59,7 +59,7 @@ struct ToolbarItem {
 // - Fill Toolbar::Options and call Create(parent, id, theme, options).
 // - Fill the item list with SetItems() or AddItem().
 // - Position it with MoveWindow().
-// - Bind it into ThemeManager when the page supports theme switching.
+// - Bind it into ThemeManager when the page supports theme switching, usually through ThemedWindowHost::theme_manager().
 // - Handle WM_COMMAND in the parent window for item clicks.
 class Toolbar {
 public:

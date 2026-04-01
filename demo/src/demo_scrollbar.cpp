@@ -16,13 +16,9 @@ enum ControlId {
 };
 
 struct DemoState {
-    darkui::Theme theme;
-    darkui::ThemeManager themeManager;
+    darkui::ThemedWindowHost host;
     darkui::ScrollBar horizontal;
     darkui::ScrollBar vertical;
-    HBRUSH brushBackground = nullptr;
-    HFONT titleFont = nullptr;
-    HFONT textFont = nullptr;
     int horizontalValue = 24;
     int verticalValue = 56;
 };
@@ -41,13 +37,6 @@ darkui::Theme MakeTheme() {
     return theme;
 }
 
-void RecreateBackgroundBrush(DemoState* state) {
-    if (state->brushBackground) {
-        DeleteObject(state->brushBackground);
-    }
-    state->brushBackground = CreateSolidBrush(state->theme.background);
-}
-
 RECT GetInfoRect(HWND window) {
     RECT client{};
     GetClientRect(window, &client);
@@ -63,17 +52,14 @@ RECT GetDescriptionRect(HWND window) {
 void Layout(HWND window, DemoState* state) {
     RECT client{};
     GetClientRect(window, &client);
-    MoveWindow(state->horizontal.hwnd(), 32, 118, client.right - 120, state->theme.scrollBarThickness, TRUE);
-    MoveWindow(state->vertical.hwnd(), client.right - 56, 118, state->theme.scrollBarThickness, 160, TRUE);
+    MoveWindow(state->horizontal.hwnd(), 32, 118, client.right - 120, state->host.theme().scrollBarThickness, TRUE);
+    MoveWindow(state->vertical.hwnd(), client.right - 56, 118, state->host.theme().scrollBarThickness, 160, TRUE);
 }
 
 void CleanupState(DemoState* state) {
     if (!state) {
         return;
     }
-    if (state->brushBackground) DeleteObject(state->brushBackground);
-    if (state->titleFont) DeleteObject(state->titleFont);
-    if (state->textFont) DeleteObject(state->textFont);
     delete state;
 }
 
@@ -83,15 +69,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
     switch (message) {
     case WM_CREATE: {
         auto* created = new DemoState();
-        created->theme = MakeTheme();
-        RecreateBackgroundBrush(created);
-
-        darkui::FontSpec titleSpec = created->theme.uiFont;
-        titleSpec.height = -30;
-        titleSpec.weight = FW_SEMIBOLD;
-        created->titleFont = darkui::CreateFont(titleSpec);
-        created->textFont = darkui::CreateFont(created->theme.uiFont);
-        if (!created->brushBackground || !created->titleFont || !created->textFont) {
+        darkui::ThemedWindowHost::Options hostOptions;
+        hostOptions.theme = MakeTheme();
+        hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+        if (!created->host.Attach(window, hostOptions)) {
             CleanupState(created);
             return -1;
         }
@@ -108,13 +89,12 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         verticalOptions.maximum = 100;
         verticalOptions.pageSize = 24;
         verticalOptions.value = created->verticalValue;
-        if (!created->horizontal.Create(window, ID_SCROLL_H, created->theme, horizontalOptions) ||
-            !created->vertical.Create(window, ID_SCROLL_V, created->theme, verticalOptions)) {
+        if (!created->horizontal.Create(window, ID_SCROLL_H, created->host.theme(), horizontalOptions) ||
+            !created->vertical.Create(window, ID_SCROLL_V, created->host.theme(), verticalOptions)) {
             CleanupState(created);
             return -1;
         }
-        created->themeManager.SetTheme(created->theme);
-        created->themeManager.Bind(created->horizontal, created->vertical);
+        created->host.theme_manager().Bind(created->horizontal, created->vertical);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);
@@ -142,10 +122,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         }
         break;
     case WM_ERASEBKGND:
-        if (state) {
-            RECT rect{};
-            GetClientRect(window, &rect);
-            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->brushBackground);
+        if (state && state->host.HandleEraseBackground(reinterpret_cast<HDC>(wParam))) {
             return 1;
         }
         break;
@@ -156,25 +133,25 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
 
             RECT client{};
             GetClientRect(window, &client);
-            FillRect(dc, &client, state->brushBackground);
+            state->host.FillBackground(dc);
 
             RECT titleRect{32, 24, client.right - 32, 56};
             RECT descRect = GetDescriptionRect(window);
             RECT infoRect = GetInfoRect(window);
 
-            HFONT oldTitle = reinterpret_cast<HFONT>(SelectObject(dc, state->titleFont));
+            HFONT oldTitle = reinterpret_cast<HFONT>(SelectObject(dc, state->host.title_font()));
             SetBkMode(dc, TRANSPARENT);
-            SetTextColor(dc, state->theme.text);
+            SetTextColor(dc, state->host.theme().text);
             DrawTextW(dc, L"Dark ScrollBar Demo", -1, &titleRect, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
             SelectObject(dc, oldTitle);
 
-            HFONT oldText = reinterpret_cast<HFONT>(SelectObject(dc, state->textFont));
-            SetTextColor(dc, state->theme.mutedText);
+            HFONT oldText = reinterpret_cast<HFONT>(SelectObject(dc, state->host.body_font()));
+            SetTextColor(dc, state->host.theme().mutedText);
             DrawTextW(dc, L"Custom horizontal and vertical scrollbars with drag, page jump, keyboard, and standard scroll notifications.", -1, &descRect, DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
 
             std::wstring info = L"Horizontal: " + std::to_wstring(state->horizontalValue) +
                                 L"    Vertical: " + std::to_wstring(state->verticalValue);
-            SetTextColor(dc, state->theme.text);
+            SetTextColor(dc, state->host.theme().text);
             DrawTextW(dc, info.c_str(), -1, &infoRect, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
             SelectObject(dc, oldText);
 

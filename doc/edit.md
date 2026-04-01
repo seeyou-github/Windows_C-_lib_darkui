@@ -41,7 +41,11 @@ options.cornerRadius = 16;
 
 edit.Create(hwnd, 9001, theme, options);
 
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(edit);
 themeManager.Apply();
 

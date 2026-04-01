@@ -1,4 +1,4 @@
-﻿# ScrollBar
+# ScrollBar
 
 ## Overview
 
@@ -47,7 +47,11 @@ options.value = 56;
 
 verticalBar.Create(hwnd, 6001, theme, options);
 
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(verticalBar);
 themeManager.Apply();
 
@@ -99,10 +103,14 @@ scrollBar.SetValue(40);
 scrollBar.SetValue(48, true);
 ```
 
-### `ThemeManager`
+### `ThemedWindowHost \+ ThemeManager`
 
 ```cpp
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(scrollBar);
 themeManager.Apply();
 ```
@@ -147,3 +155,4 @@ For complete examples, see:
 - No arrow buttons
 - No auto-repeat on hold
 - No scroll-container helper
+

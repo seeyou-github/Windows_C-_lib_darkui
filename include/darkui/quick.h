@@ -9,6 +9,9 @@
 namespace darkui {
 
 // Semantic theme presets for callers who want a ready-to-use dark palette.
+// Usage:
+// - Pick a preset when the page does not need a fully custom palette.
+// - Pass the returned Theme into ThemedWindowHost::Options::theme or directly into control Create(...).
 enum class ThemePreset {
     Graphite = 0,
     Ember = 1,
@@ -18,6 +21,9 @@ enum class ThemePreset {
 };
 
 // Creates a semantic dark theme from a compact set of palette tokens.
+// Usage:
+// - Prefer this when the caller wants one compact semantic palette entry instead of filling many Theme fields.
+// - Use the returned Theme with ThemedWindowHost for the recommended top-level workflow.
 inline Theme MakeSemanticTheme(COLORREF background,
                                COLORREF panel,
                                COLORREF text,
@@ -42,6 +48,9 @@ inline Theme MakeSemanticTheme(COLORREF background,
 }
 
 // Returns a ready-made semantic preset theme.
+// Usage:
+// - Prefer this when the caller wants a consistent built-in palette with no additional setup.
+// - Use the returned Theme with ThemedWindowHost::Options::theme for the shortest recommended startup path.
 inline Theme MakePresetTheme(ThemePreset preset = ThemePreset::Graphite) {
     switch (preset) {
     case ThemePreset::Ember:
@@ -59,6 +68,10 @@ inline Theme MakePresetTheme(ThemePreset preset = ThemePreset::Graphite) {
 }
 
 // Lightweight binder that remembers controls and reapplies one theme to all of them.
+// Usage:
+// - Use ThemeBinder when the caller only wants a remembered binding list.
+// - Prefer ThemedWindowHost::theme_manager() when the page also needs a stored current theme.
+// - Bind controls once, then call Apply(theme) whenever the page palette changes.
 class ThemeBinder {
 public:
     ThemeBinder() = default;
@@ -88,7 +101,11 @@ private:
     std::vector<std::function<void(const Theme&)>> bindings_;
 };
 
-// Stores the current theme and a binder list so callers can update all registered controls at once.
+// Stores the current theme together with a binding list so callers can update all registered controls at once.
+// Usage:
+// - This is the preferred repeated theme-switch entry for pages that already have a current Theme.
+// - In normal window code, access it through ThemedWindowHost::theme_manager().
+// - Bind controls once, call SetTheme(newTheme), then Apply() to push the updated theme through the page.
 class ThemeManager {
 public:
     ThemeManager() = default;
@@ -120,10 +137,16 @@ private:
     ThemeBinder binder_{};
 };
 
-// Opens a simple dark message dialog with one helper call.
+// Shared alias for dialog quick helpers.
+// Usage:
+// - Fill DialogOptions / QuickDialogOptions, then pass it into ShowMessageDialog(...).
 using DialogOptions = Dialog::Options;
 using QuickDialogOptions = Dialog::Options;
 
+// Opens a simple dark message dialog with one helper call.
+// Usage:
+// - Prefer this when the caller only needs a message-style popup and does not want to hold a Dialog object.
+// - For custom embedded controls, keep using darkui::Dialog directly.
 inline Dialog::Result ShowMessageDialog(HWND owner, int controlId, const Theme& theme, const Dialog::Options& options) {
     Dialog dialog;
     if (!dialog.Create(owner, controlId, theme, options)) {
@@ -133,6 +156,8 @@ inline Dialog::Result ShowMessageDialog(HWND owner, int controlId, const Theme& 
 }
 
 // Opens a confirm/cancel dialog with conventional button labels.
+// Usage:
+// - Prefer this for common confirmation prompts with standard confirm/cancel flow.
 inline Dialog::Result ShowConfirmDialog(HWND owner,
                                         int controlId,
                                         const Theme& theme,
@@ -150,6 +175,8 @@ inline Dialog::Result ShowConfirmDialog(HWND owner,
 }
 
 // Opens an information dialog with a single acknowledge button.
+// Usage:
+// - Prefer this for simple notification-style popups where cancel is not needed.
 inline Dialog::Result ShowInfoDialog(HWND owner,
                                      int controlId,
                                      const Theme& theme,

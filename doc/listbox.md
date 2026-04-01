@@ -45,7 +45,11 @@ options.selection = 0;
 
 listBox.Create(hwnd, 2201, theme, options);
 
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(listBox);
 themeManager.Apply();
 

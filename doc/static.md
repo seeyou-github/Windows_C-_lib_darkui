@@ -39,7 +39,11 @@ options.textFormat = DT_LEFT | DT_SINGLELINE;
 
 title.Create(hwnd, 1201, theme, options);
 
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(title);
 themeManager.Apply();
 

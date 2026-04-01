@@ -9,6 +9,13 @@
 
 namespace darkui {
 
+// Shared theme and semantic palette types used by all darkui controls.
+// Recommended caller path:
+// - Create a top-level ThemedWindowHost in WM_CREATE and attach it to the window.
+// - Fill per-control Options and call Create(parent, id, host.theme(), options).
+// - Bind controls through ThemedWindowHost::theme_manager() when runtime theme switching is needed.
+// - Keep layout and message routing in normal Win32 parent-window code.
+
 // Describes a font used by darkui controls.
 // Notes:
 // - `height` follows normal Win32 LOGFONT semantics. A negative value means

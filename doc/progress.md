@@ -1,4 +1,4 @@
-﻿# ProgressBar
+# ProgressBar
 
 ## Overview
 
@@ -43,7 +43,11 @@ options.surfaceRole = darkui::SurfaceRole::Panel;
 
 progress.Create(hwnd, 5001, theme, options);
 
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(progress);
 themeManager.Apply();
 
@@ -79,10 +83,14 @@ options.maximum = 100;
 options.surfaceRole = darkui::SurfaceRole::Panel;
 ```
 
-### `ThemeManager`
+### `ThemedWindowHost \+ ThemeManager`
 
 ```cpp
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(progress);
 themeManager.Apply();
 ```
@@ -124,3 +132,4 @@ For complete examples, see:
 - No indeterminate animation
 - No gradient fill
 - No parent notification flow
+

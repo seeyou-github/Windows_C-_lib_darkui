@@ -36,6 +36,8 @@ bool ThemedWindowHost::Attach(HWND hwnd, const Options& options) {
     titleBarStyle_ = options.titleBarStyle;
     eraseBackground_ = options.eraseBackground;
     titleFontOffset_ = options.titleFontOffset;
+    subtitleFontOffset_ = options.subtitleFontOffset;
+    sectionFontOffset_ = options.sectionFontOffset;
     bodyFontOffset_ = options.bodyFontOffset;
 
     return RebuildResources(options.theme);
@@ -49,6 +51,14 @@ void ThemedWindowHost::Detach() {
     if (titleFont_) {
         DeleteObject(titleFont_);
         titleFont_ = nullptr;
+    }
+    if (subtitleFont_) {
+        DeleteObject(subtitleFont_);
+        subtitleFont_ = nullptr;
+    }
+    if (sectionFont_) {
+        DeleteObject(sectionFont_);
+        sectionFont_ = nullptr;
     }
     if (bodyFont_) {
         DeleteObject(bodyFont_);
@@ -114,25 +124,41 @@ bool ThemedWindowHost::RebuildResources(const Theme& theme) {
 
     FontSpec titleSpec = resolved.uiFont;
     titleSpec.height += titleFontOffset_;
+    titleSpec.weight = FW_SEMIBOLD;
     HFONT newTitleFont = CreateFont(titleSpec);
+
+    FontSpec subtitleSpec = resolved.uiFont;
+    subtitleSpec.height += subtitleFontOffset_;
+    HFONT newSubtitleFont = CreateFont(subtitleSpec);
+
+    FontSpec sectionSpec = resolved.uiFont;
+    sectionSpec.height += sectionFontOffset_;
+    sectionSpec.weight = FW_SEMIBOLD;
+    HFONT newSectionFont = CreateFont(sectionSpec);
 
     FontSpec bodySpec = resolved.uiFont;
     bodySpec.height += bodyFontOffset_;
     HFONT newBodyFont = CreateFont(bodySpec);
 
-    if (!newBackgroundBrush || !newTitleFont || !newBodyFont) {
+    if (!newBackgroundBrush || !newTitleFont || !newSubtitleFont || !newSectionFont || !newBodyFont) {
         if (newBackgroundBrush) DeleteObject(newBackgroundBrush);
         if (newTitleFont) DeleteObject(newTitleFont);
+        if (newSubtitleFont) DeleteObject(newSubtitleFont);
+        if (newSectionFont) DeleteObject(newSectionFont);
         if (newBodyFont) DeleteObject(newBodyFont);
         return false;
     }
 
     if (backgroundBrush_) DeleteObject(backgroundBrush_);
     if (titleFont_) DeleteObject(titleFont_);
+    if (subtitleFont_) DeleteObject(subtitleFont_);
+    if (sectionFont_) DeleteObject(sectionFont_);
     if (bodyFont_) DeleteObject(bodyFont_);
 
     backgroundBrush_ = newBackgroundBrush;
     titleFont_ = newTitleFont;
+    subtitleFont_ = newSubtitleFont;
+    sectionFont_ = newSectionFont;
     bodyFont_ = newBodyFont;
     theme_ = resolved;
     themeManager_.SetTheme(theme_);

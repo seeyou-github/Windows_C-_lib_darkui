@@ -1,4 +1,4 @@
-﻿# Slider
+# Slider
 
 ## Overview
 
@@ -47,7 +47,11 @@ options.tickCount = 11;
 
 slider.Create(hwnd, 4001, theme, options);
 
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(slider);
 themeManager.Apply();
 
@@ -87,10 +91,14 @@ slider.SetShowTicks(true);
 slider.SetTickCount(11);
 ```
 
-### `ThemeManager`
+### `ThemedWindowHost \+ ThemeManager`
 
 ```cpp
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(slider);
 themeManager.Apply();
 ```
@@ -136,3 +144,4 @@ For complete examples, see:
 - Horizontal mode only
 - No value bubble
 - No dedicated disabled-state visuals
+

@@ -11,6 +11,7 @@ namespace darkui {
 // Modal dark dialog with a custom title bar, body area, and confirm/cancel buttons.
 // Usage:
 // - Fill Dialog::Options and call Create(owner, id, theme, options).
+// - Use ThemedWindowHost for the owner window when you want one shared top-level theme workflow.
 // - Use SetMessage() for a simple centered message body, or create your own child
 //   controls inside content_hwnd() for custom layouts.
 // - Call ShowModal() to display the popup and run a local modal message loop.

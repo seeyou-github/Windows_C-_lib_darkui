@@ -47,7 +47,11 @@ detailedOptions.surfaceRole = darkui::SurfaceRole::Panel;
 compact.Create(hwnd, 4401, theme, compactOptions);
 detailed.Create(hwnd, 4402, theme, detailedOptions);
 
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(compact, detailed);
 themeManager.Apply();
 

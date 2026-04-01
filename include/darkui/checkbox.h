@@ -11,7 +11,7 @@ namespace darkui {
 // Usage:
 // - Fill CheckBox::Options and call Create(parent, id, theme, options).
 // - Position it with MoveWindow().
-// - Bind it into ThemeManager when the page supports theme switching.
+// - Bind it into ThemeManager when the page supports theme switching, usually through ThemedWindowHost::theme_manager().
 // - Handle state changes through WM_COMMAND / BN_CLICKED in the parent window.
 class CheckBox {
 public:

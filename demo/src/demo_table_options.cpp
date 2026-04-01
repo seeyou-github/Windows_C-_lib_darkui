@@ -36,13 +36,11 @@ enum ControlId {
 };
 
 struct DemoState {
+    darkui::ThemedWindowHost host;
     darkui::Theme theme;
     darkui::Theme defaultTheme;
     darkui::ThemeManager themeManager;
     darkui::Table table;
-    HBRUSH brushBackground = nullptr;
-    HFONT titleFont = nullptr;
-    HFONT textFont = nullptr;
     std::array<COLORREF, 16> customColors{};
     HWND buttonTableBg = nullptr;
     HWND buttonTableText = nullptr;
@@ -73,19 +71,11 @@ darkui::Theme MakeTableTheme() {
 
 void CleanupState(DemoState* state) {
     if (!state) return;
-    if (state->brushBackground) DeleteObject(state->brushBackground);
-    if (state->titleFont) DeleteObject(state->titleFont);
-    if (state->textFont) DeleteObject(state->textFont);
     delete state;
 }
 
-void RecreateBackgroundBrush(DemoState* state) {
-    if (state->brushBackground) DeleteObject(state->brushBackground);
-    state->brushBackground = CreateSolidBrush(state->theme.background);
-}
-
 void ApplyTheme(HWND window, DemoState* state) {
-    RecreateBackgroundBrush(state);
+    state->host.ApplyTheme(state->theme);
     state->themeManager.SetTheme(state->theme);
     state->themeManager.Apply();
     InvalidateRect(window, nullptr, TRUE);
@@ -145,7 +135,7 @@ void DrawColorSwatch(HDC dc, int x, int y, COLORREF color, COLORREF border) {
 
 void DrawStylePanel(HDC dc, DemoState* state) {
     RECT panelTitle{kPanelX, kPanelY, kPanelX + kPanelWidth, kPanelY + 24};
-    DrawTextLine(dc, state->textFont, state->theme.text, panelTitle, L"Live Theme Controls");
+    DrawTextLine(dc, state->host.body_font(), state->theme.text, panelTitle, L"Live Theme Controls");
 
     struct RowInfo {
         const wchar_t* label;
@@ -163,7 +153,7 @@ void DrawStylePanel(HDC dc, DemoState* state) {
     int y = kPanelY + 44;
     for (const auto& row : rows) {
         RECT labelRect{kPanelX, y + 6, kPanelX + 70, y + 24};
-        DrawTextLine(dc, state->textFont, state->theme.mutedText, labelRect, row.label);
+        DrawTextLine(dc, state->host.body_font(), state->theme.mutedText, labelRect, row.label);
         DrawColorSwatch(dc, kPanelX + 238, y + 5, row.color, state->theme.tableGrid);
         y += kPanelButtonHeight + kPanelRowGap;
     }
@@ -186,14 +176,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         auto* created = new DemoState();
         created->defaultTheme = MakeTableTheme();
         created->theme = created->defaultTheme;
-        RecreateBackgroundBrush(created);
-
-        darkui::FontSpec titleSpec = created->theme.uiFont;
-        titleSpec.height = -30;
-        titleSpec.weight = FW_SEMIBOLD;
-        created->titleFont = darkui::CreateFont(titleSpec);
-        created->textFont = darkui::CreateFont(created->theme.uiFont);
-        if (!created->brushBackground || !created->titleFont || !created->textFont) {
+        darkui::ThemedWindowHost::Options hostOptions;
+        hostOptions.theme = created->theme;
+        hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+        if (!created->host.Attach(window, hostOptions)) {
             CleanupState(created);
             return -1;
         }
@@ -240,13 +226,13 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         created->buttonReset = CreateWindowExW(0, L"BUTTON", L"Reset Theme", WS_CHILD | WS_VISIBLE | WS_TABSTOP,
                                                0, 0, 0, 0, window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_RESET_THEME)), instance, nullptr);
 
-        SendMessageW(created->buttonTableBg, WM_SETFONT, reinterpret_cast<WPARAM>(created->textFont), TRUE);
-        SendMessageW(created->buttonTableText, WM_SETFONT, reinterpret_cast<WPARAM>(created->textFont), TRUE);
-        SendMessageW(created->buttonHeaderBg, WM_SETFONT, reinterpret_cast<WPARAM>(created->textFont), TRUE);
-        SendMessageW(created->buttonHeaderText, WM_SETFONT, reinterpret_cast<WPARAM>(created->textFont), TRUE);
-        SendMessageW(created->buttonGrid, WM_SETFONT, reinterpret_cast<WPARAM>(created->textFont), TRUE);
-        SendMessageW(created->checkEmptyGrid, WM_SETFONT, reinterpret_cast<WPARAM>(created->textFont), TRUE);
-        SendMessageW(created->buttonReset, WM_SETFONT, reinterpret_cast<WPARAM>(created->textFont), TRUE);
+        SendMessageW(created->buttonTableBg, WM_SETFONT, reinterpret_cast<WPARAM>(created->host.body_font()), TRUE);
+        SendMessageW(created->buttonTableText, WM_SETFONT, reinterpret_cast<WPARAM>(created->host.body_font()), TRUE);
+        SendMessageW(created->buttonHeaderBg, WM_SETFONT, reinterpret_cast<WPARAM>(created->host.body_font()), TRUE);
+        SendMessageW(created->buttonHeaderText, WM_SETFONT, reinterpret_cast<WPARAM>(created->host.body_font()), TRUE);
+        SendMessageW(created->buttonGrid, WM_SETFONT, reinterpret_cast<WPARAM>(created->host.body_font()), TRUE);
+        SendMessageW(created->checkEmptyGrid, WM_SETFONT, reinterpret_cast<WPARAM>(created->host.body_font()), TRUE);
+        SendMessageW(created->buttonReset, WM_SETFONT, reinterpret_cast<WPARAM>(created->host.body_font()), TRUE);
         SendMessageW(created->checkEmptyGrid, BM_SETCHECK, BST_CHECKED, 0);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
@@ -295,14 +281,14 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             SetBkMode(dc, TRANSPARENT);
             SetTextColor(dc, state->theme.text);
             SetBkColor(dc, state->theme.background);
-            return reinterpret_cast<LRESULT>(state->brushBackground);
+            return reinterpret_cast<LRESULT>(state->host.background_brush());
         }
         break;
     case WM_ERASEBKGND:
         if (state) {
             RECT rect{};
             GetClientRect(window, &rect);
-            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->brushBackground);
+            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->host.background_brush());
             return 1;
         }
         break;
@@ -312,13 +298,13 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             HDC dc = BeginPaint(window, &ps);
             RECT client{};
             GetClientRect(window, &client);
-            FillRect(dc, &client, state->brushBackground);
+            state->host.FillBackground(dc);
 
             RECT titleRect{24, 20, client.right - 24, 54};
             RECT descRect{24, 58, client.right - 24, 84};
-            DrawTextLine(dc, state->titleFont, state->theme.text, titleRect, L"Dark Table Style Demo");
+            DrawTextLine(dc, state->host.title_font(), state->theme.text, titleRect, L"Dark Table Style Demo");
             DrawTextLine(dc,
-                         state->textFont,
+                         state->host.body_font(),
                          state->theme.mutedText,
                          descRect,
                          L"The table size is fixed. Use the right panel to modify each customizable table color in real time.");

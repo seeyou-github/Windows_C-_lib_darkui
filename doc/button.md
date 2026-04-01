@@ -1,4 +1,4 @@
-﻿# Button
+# Button
 
 ## Overview
 
@@ -44,7 +44,11 @@ options.surfaceRole = darkui::SurfaceRole::Panel;
 
 button.Create(hwnd, 3001, theme, options);
 
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(button);
 themeManager.Apply();
 
@@ -92,10 +96,14 @@ std::wstring text = button.GetText();
 button.SetCornerRadius(18);
 ```
 
-### `ThemeManager`
+### `ThemedWindowHost \+ ThemeManager`
 
 ```cpp
-darkui::ThemeManager themeManager(theme);
+darkui::ThemedWindowHost host;
+darkui::ThemedWindowHost::Options hostOptions;
+hostOptions.theme = theme;
+host.Attach(hwnd, hostOptions);
+auto& themeManager = host.theme_manager();
 themeManager.Bind(button);
 themeManager.Apply();
 ```
@@ -122,7 +130,7 @@ Purpose:
 
 - For plain window backgrounds, the default surface fallback is usually enough
 - For cards and panels, prefer `options.surfaceRole = darkui::SurfaceRole::Panel`
-- Use `ThemeManager` when the same page will switch themes repeatedly
+- Use `ThemedWindowHost + theme_manager()` when the same page will switch themes repeatedly
 - To disable the control, use `EnableWindow(button.hwnd(), FALSE)`
 
 ## Demo Reference
@@ -141,3 +149,4 @@ For complete examples, see:
 - No drop-down arrow support
 - No default-button glow behavior
 - No button-group management
+

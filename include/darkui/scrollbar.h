@@ -10,7 +10,7 @@ namespace darkui {
 // Usage:
 // - Fill ScrollBar::Options and call Create(parent, id, theme, options).
 // - Position it with MoveWindow().
-// - Bind it into ThemeManager when the page supports theme switching.
+// - Bind it into ThemeManager when the page supports theme switching, usually through ThemedWindowHost::theme_manager().
 // - Handle WM_VSCROLL or WM_HSCROLL notifications in the parent window.
 class ScrollBar {
 public:

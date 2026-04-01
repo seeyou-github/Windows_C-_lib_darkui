@@ -21,6 +21,7 @@ enum ControlId {
 };
 
 struct DemoState {
+    darkui::ThemedWindowHost host;
     darkui::Theme theme;
     darkui::ThemeManager themeManager;
     HWND labelUrl = nullptr;
@@ -29,7 +30,6 @@ struct DemoState {
     HWND buttonTheme = nullptr;
     HWND listLog = nullptr;
     darkui::ComboBox comboFormat;
-    HBRUSH brushBackground = nullptr;
     HBRUSH brushPanel = nullptr;
     bool warmTheme = false;
 };
@@ -79,10 +79,9 @@ void ApplyTheme(DemoState* state) {
         return;
     }
     state->theme = state->warmTheme ? MakeWarmTheme() : MakeCoolTheme();
-    if (state->brushBackground) DeleteObject(state->brushBackground);
     if (state->brushPanel) DeleteObject(state->brushPanel);
-    state->brushBackground = CreateSolidBrush(state->theme.background);
     state->brushPanel = CreateSolidBrush(state->theme.panel);
+    state->host.ApplyTheme(state->theme);
     state->themeManager.SetTheme(state->theme);
     state->themeManager.Apply();
     SetWindowTextW(state->buttonTheme, state->warmTheme ? L"Switch To Cool Theme" : L"Switch To Warm Theme");
@@ -126,10 +125,16 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             instance = GetModuleHandleW(nullptr);
         }
         created->theme = MakeCoolTheme();
-        created->brushBackground = CreateSolidBrush(created->theme.background);
-        created->brushPanel = CreateSolidBrush(created->theme.panel);
-        HFONT font = darkui::CreateFont(created->theme.uiFont);
+        darkui::ThemedWindowHost::Options hostOptions;
+        hostOptions.theme = created->theme;
+        hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+        if (!created->host.Attach(window, hostOptions)) {
+            delete created;
+            return -1;
+        }
+        HFONT font = created->host.body_font();
         SetPropW(window, L"DemoFont", font);
+        created->brushPanel = CreateSolidBrush(created->theme.panel);
         created->labelUrl = CreateWindowExW(0, L"STATIC", L"URL", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_LABEL_URL)), instance, nullptr);
         created->editUrl = CreateWindowExW(0, L"EDIT", L"https://www.youtube.com/watch?v=demo", WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, 0, 0, 0, 0, window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_URL)), instance, nullptr);
         created->labelFormat = CreateWindowExW(0, L"STATIC", L"Format", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_LABEL_FORMAT)), instance, nullptr);
@@ -172,14 +177,14 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
                 return reinterpret_cast<LRESULT>(state->brushPanel);
             }
             SetBkColor(dc, state->theme.background);
-            return reinterpret_cast<LRESULT>(state->brushBackground);
+            return reinterpret_cast<LRESULT>(state->host.background_brush());
         }
         break;
     case WM_ERASEBKGND:
         if (state) {
             RECT rect{};
             GetClientRect(window, &rect);
-            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->brushBackground);
+            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->host.background_brush());
             return 1;
         }
         break;
@@ -203,11 +208,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
     case WM_DESTROY:
         if (state) {
             HFONT font = reinterpret_cast<HFONT>(GetPropW(window, L"DemoFont"));
-            if (font) {
-                DeleteObject(font);
-                RemovePropW(window, L"DemoFont");
-            }
-            if (state->brushBackground) DeleteObject(state->brushBackground);
+            if (font) RemovePropW(window, L"DemoFont");
             if (state->brushPanel) DeleteObject(state->brushPanel);
         }
         delete state;

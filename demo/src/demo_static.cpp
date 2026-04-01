@@ -15,22 +15,15 @@ enum ControlId {
 };
 
 struct DemoState {
-    darkui::Theme theme;
-    darkui::ThemeManager themeManager;
+    darkui::ThemedWindowHost host;
     darkui::Static title;
     darkui::Static iconView;
     darkui::Static bitmapView;
-    HBRUSH brushBackground = nullptr;
-    HFONT titleFont = nullptr;
-    HFONT textFont = nullptr;
     HBITMAP previewBitmap = nullptr;
 };
 
 void CleanupState(DemoState* state) {
     if (!state) return;
-    if (state->brushBackground) DeleteObject(state->brushBackground);
-    if (state->titleFont) DeleteObject(state->titleFont);
-    if (state->textFont) DeleteObject(state->textFont);
     if (state->previewBitmap) DeleteObject(state->previewBitmap);
     delete state;
 }
@@ -96,16 +89,15 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
     switch (message) {
     case WM_CREATE: {
         auto* created = new DemoState();
-        created->theme = MakeTheme();
-        created->brushBackground = CreateSolidBrush(created->theme.background);
-
-        darkui::FontSpec titleSpec = created->theme.uiFont;
-        titleSpec.height = -30;
-        titleSpec.weight = FW_SEMIBOLD;
-        created->titleFont = darkui::CreateFont(titleSpec);
-        created->textFont = darkui::CreateFont(created->theme.uiFont);
+        darkui::ThemedWindowHost::Options hostOptions;
+        hostOptions.theme = MakeTheme();
+        hostOptions.titleBarStyle = darkui::TitleBarStyle::Black;
+        if (!created->host.Attach(window, hostOptions)) {
+            CleanupState(created);
+            return -1;
+        }
         created->previewBitmap = CreatePreviewBitmap(window);
-        if (!created->brushBackground || !created->titleFont || !created->textFont || !created->previewBitmap) {
+        if (!created->previewBitmap) {
             CleanupState(created);
             return -1;
         }
@@ -121,14 +113,13 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         bitmapOptions.surfaceRole = darkui::SurfaceRole::Panel;
         bitmapOptions.bitmap = created->previewBitmap;
 
-        if (!created->title.Create(window, ID_STATIC_TITLE, created->theme, titleOptions) ||
-            !created->iconView.Create(window, ID_STATIC_ICON, created->theme, iconOptions) ||
-            !created->bitmapView.Create(window, ID_STATIC_BITMAP, created->theme, bitmapOptions)) {
+        if (!created->title.Create(window, ID_STATIC_TITLE, created->host.theme(), titleOptions) ||
+            !created->iconView.Create(window, ID_STATIC_ICON, created->host.theme(), iconOptions) ||
+            !created->bitmapView.Create(window, ID_STATIC_BITMAP, created->host.theme(), bitmapOptions)) {
             CleanupState(created);
             return -1;
         }
-        created->themeManager.SetTheme(created->theme);
-        created->themeManager.Bind(created->title, created->iconView, created->bitmapView);
+        created->host.theme_manager().Bind(created->title, created->iconView, created->bitmapView);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);
@@ -138,10 +129,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         if (state) Layout(window, state);
         return 0;
     case WM_ERASEBKGND:
-        if (state) {
-            RECT rect{};
-            GetClientRect(window, &rect);
-            FillRect(reinterpret_cast<HDC>(wParam), &rect, state->brushBackground);
+        if (state && state->host.HandleEraseBackground(reinterpret_cast<HDC>(wParam))) {
             return 1;
         }
         break;
@@ -151,14 +139,14 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             HDC dc = BeginPaint(window, &ps);
             RECT client{};
             GetClientRect(window, &client);
-            FillRect(dc, &client, state->brushBackground);
+            state->host.FillBackground(dc);
 
             RECT titleRect{32, 24, client.right - 32, 58};
             RECT descRect{32, 60, client.right - 32, 92};
             RECT noteRect{32, 290, client.right - 32, 350};
 
-            DrawLine(dc, state->titleFont, state->theme.text, titleRect, L"Dark Static Demo", DT_LEFT | DT_TOP | DT_SINGLELINE);
-            DrawLine(dc, state->textFont, state->theme.mutedText, descRect, L"One text label, one icon surface, and one bitmap surface using the same dark static wrapper.", DT_LEFT | DT_TOP | DT_WORDBREAK);
+            DrawLine(dc, state->host.title_font(), state->host.theme().text, titleRect, L"Dark Static Demo", DT_LEFT | DT_TOP | DT_SINGLELINE);
+            DrawLine(dc, state->host.body_font(), state->host.theme().mutedText, descRect, L"One text label, one icon surface, and one bitmap surface using the same dark static wrapper.", DT_LEFT | DT_TOP | DT_WORDBREAK);
             DrawTextW(dc,
                       L"`darkui::Static` is useful for helper text, status badges, icons, and lightweight preview areas.\nText, icon, and bitmap presentation can be switched at runtime.",
                       -1,
