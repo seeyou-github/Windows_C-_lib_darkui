@@ -28,6 +28,16 @@ struct DemoState {
     int clickCount = 0;
 };
 
+void CleanupState(DemoState* state) {
+    if (!state) {
+        return;
+    }
+    if (state->brushBackground) DeleteObject(state->brushBackground);
+    if (state->titleFont) DeleteObject(state->titleFont);
+    if (state->textFont) DeleteObject(state->textFont);
+    delete state;
+}
+
 darkui::Theme MakeTheme() {
     darkui::Theme theme;
     theme.background = RGB(18, 20, 24);
@@ -59,6 +69,14 @@ void DrawTextLine(HDC dc, HFONT font, COLORREF color, RECT rect, const wchar_t* 
     }
 }
 
+void ApplyThemes(DemoState* state) {
+    if (!state) {
+        return;
+    }
+    state->themeManager.Apply();
+    state->altThemeManager.Apply();
+}
+
 LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
     auto* state = reinterpret_cast<DemoState*>(GetWindowLongPtrW(window, GWLP_USERDATA));
 
@@ -73,11 +91,14 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         titleSpec.weight = FW_SEMIBOLD;
         created->titleFont = darkui::CreateFont(titleSpec);
         created->textFont = darkui::CreateFont(created->theme.uiFont);
+        if (!created->brushBackground || !created->titleFont || !created->textFont) {
+            CleanupState(created);
+            return -1;
+        }
 
         darkui::Button::Options primaryOptions;
         primaryOptions.text = L"Primary Action";
         primaryOptions.cornerRadius = 14;
-        created->primary.Create(window, ID_BUTTON_PRIMARY, created->theme, primaryOptions);
         darkui::Theme altTheme = created->theme;
         altTheme.button = RGB(70, 44, 58);
         altTheme.buttonHover = RGB(88, 54, 72);
@@ -88,12 +109,17 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         darkui::Button::Options secondaryOptions;
         secondaryOptions.text = L"Secondary Action";
         secondaryOptions.cornerRadius = 22;
-        created->secondary.Create(window, ID_BUTTON_ALT, altTheme, secondaryOptions);
-        EnableWindow(created->secondary.hwnd(), FALSE);
+        if (!created->primary.Create(window, ID_BUTTON_PRIMARY, created->theme, primaryOptions) ||
+            !created->secondary.Create(window, ID_BUTTON_ALT, altTheme, secondaryOptions)) {
+            CleanupState(created);
+            return -1;
+        }
         created->themeManager.SetTheme(created->theme);
         created->themeManager.Bind(created->primary);
         created->altThemeManager.SetTheme(altTheme);
         created->altThemeManager.Bind(created->secondary);
+        ApplyThemes(created);
+        EnableWindow(created->secondary.hwnd(), FALSE);
 
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(created));
         Layout(window, created);
@@ -153,12 +179,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         }
         break;
     case WM_DESTROY:
-        if (state) {
-            if (state->brushBackground) DeleteObject(state->brushBackground);
-            if (state->titleFont) DeleteObject(state->titleFont);
-            if (state->textFont) DeleteObject(state->textFont);
-        }
-        delete state;
+        CleanupState(state);
         SetWindowLongPtrW(window, GWLP_USERDATA, 0);
         PostQuitMessage(0);
         return 0;
