@@ -5,15 +5,12 @@
 #include <windowsx.h>
 
 #include <algorithm>
-#include <cstdarg>
-#include <cstdio>
 
 namespace darkui {
 namespace {
 
 constexpr wchar_t kEditHostClassName[] = L"DarkUiEditHost";
 constexpr int kEditPlaceholderId = 0x61A7;
-constexpr wchar_t kEditDebugLogPath[] = L"demo\\build\\edit_layout_debug.log";
 
 int ResolveEditCornerRadius(FieldVariant variant) {
     switch (variant) {
@@ -42,20 +39,6 @@ int ResolveEditInsetAdjustment(FieldVariant variant) {
 ATOM EnsureEditHostClassRegistered(HINSTANCE instance);
 LRESULT CALLBACK EditHostWindowProcThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 
-void AppendEditDebugLog(const wchar_t* format, ...) {
-    FILE* file = nullptr;
-    if (_wfopen_s(&file, kEditDebugLogPath, L"a+, ccs=UTF-8") != 0 || !file) {
-        return;
-    }
-
-    va_list args;
-    va_start(args, format);
-    vfwprintf(file, format, args);
-    va_end(args);
-    fputws(L"\n", file);
-    fclose(file);
-}
-
 }  // namespace
 
 struct Edit::Impl {
@@ -67,6 +50,7 @@ struct Edit::Impl {
     // behavior independent from native EM_SETCUEBANNER support.
     HWND placeholderHwnd = nullptr;
     std::wstring cueBanner;
+    std::wstring lastText;
     std::wstring debugLayoutInfo;
 
     explicit Impl(Edit* edit) : owner(edit) {}
@@ -266,7 +250,6 @@ struct Edit::Impl {
                      static_cast<long>(fontMetrics.tmDescent),
                      static_cast<long>(fontMetrics.tmInternalLeading));
         debugLayoutInfo = buffer;
-        AppendEditDebugLog(L"[Layout] %ls", debugLayoutInfo.c_str());
     }
 
     bool IsFocused() const {
@@ -275,7 +258,25 @@ struct Edit::Impl {
     }
 
     bool HasText() const {
-        return owner->editHwnd_ && GetWindowTextLengthW(owner->editHwnd_) > 0;
+        if (owner->editHwnd_ && IsWindow(owner->editHwnd_)) {
+            return GetWindowTextLengthW(owner->editHwnd_) > 0;
+        }
+        return !lastText.empty();
+    }
+
+    void SyncCachedText() {
+        if (!owner->editHwnd_ || !IsWindow(owner->editHwnd_)) {
+            return;
+        }
+        const int length = GetWindowTextLengthW(owner->editHwnd_);
+        if (length <= 0) {
+            lastText.clear();
+            return;
+        }
+        std::wstring text(length + 1, L'\0');
+        GetWindowTextW(owner->editHwnd_, text.data(), length + 1);
+        text.resize(length);
+        lastText = std::move(text);
     }
 
     void UpdatePlaceholderVisibility() {
@@ -379,6 +380,7 @@ struct Edit::Impl {
             if (reinterpret_cast<HWND>(lParam) == self->owner->editHwnd_) {
                 const UINT code = HIWORD(wParam);
                 if (code == EN_CHANGE || code == EN_SETFOCUS || code == EN_KILLFOCUS || code == EN_VSCROLL || code == EN_UPDATE) {
+                    self->SyncCachedText();
                     self->UpdatePlaceholderVisibility();
                 }
                 self->ForwardEditCommand(wParam);
@@ -405,7 +407,11 @@ struct Edit::Impl {
         }
 
         LRESULT result = DefSubclassProc(window, message, wParam, lParam);
+        if (message == WM_SETTEXT || message == WM_PASTE || message == WM_CUT || message == WM_CLEAR) {
+            self->SyncCachedText();
+        }
         if (message == WM_DESTROY) {
+            self->SyncCachedText();
             RemoveWindowSubclass(window, EditSubclassProc, subclassId);
         }
         return result;
@@ -539,6 +545,7 @@ bool Edit::Create(HWND parent, int controlId, const Theme& theme, const Options&
     if (!options.cueBanner.empty()) {
         SetCueBanner(options.cueBanner);
     }
+    impl_->lastText = options.text;
     SetCornerRadius(options.cornerRadius >= 0 ? options.cornerRadius : ResolveEditCornerRadius(variant_));
     if (options.readOnly) {
         SetReadOnly(true);
@@ -551,6 +558,9 @@ bool Edit::Create(HWND parent, int controlId, const Theme& theme, const Options&
 
 void Edit::Destroy() {
     if (impl_) {
+        if (editHwnd_ && IsWindow(editHwnd_)) {
+            impl_->SyncCachedText();
+        }
         impl_->cueBanner.clear();
         impl_->placeholderHwnd = nullptr;
     }
@@ -584,6 +594,9 @@ void Edit::SetTheme(const Theme& theme) {
 }
 
 void Edit::SetText(const std::wstring& text) {
+    if (impl_) {
+        impl_->lastText = text;
+    }
     if (editHwnd_) {
         SetWindowTextW(editHwnd_, text.c_str());
     }
@@ -593,8 +606,8 @@ void Edit::SetText(const std::wstring& text) {
 }
 
 std::wstring Edit::GetText() const {
-    if (!editHwnd_) {
-        return {};
+    if (!editHwnd_ || !IsWindow(editHwnd_)) {
+        return impl_ ? impl_->lastText : std::wstring{};
     }
     const int length = GetWindowTextLengthW(editHwnd_);
     if (length <= 0) {
