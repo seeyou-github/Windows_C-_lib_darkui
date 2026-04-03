@@ -25,11 +25,9 @@ echo Building lib_darkui showcase demo...
  "%LIB_SRC_DIR%\panel.cpp" ^
  "%LIB_SRC_DIR%\progress.cpp" ^
  "%LIB_SRC_DIR%\radiobutton.cpp" ^
- "%LIB_SRC_DIR%\scrollbar.cpp" ^
  "%LIB_SRC_DIR%\slider.cpp" ^
  "%LIB_SRC_DIR%\static.cpp" ^
  "%LIB_SRC_DIR%\tab.cpp" ^
- "%LIB_SRC_DIR%\table.cpp" ^
  "%LIB_SRC_DIR%\themed_window_host.cpp" ^
  %CXXFLAGS% -o "%BUILD_DIR%\darkui_showcase_demo.exe" %LDFLAGS%
 if errorlevel 1 goto error

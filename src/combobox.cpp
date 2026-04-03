@@ -337,7 +337,7 @@ struct ComboBox::Impl {
         }
 
         POINT popupOrigin{comboRect.left, comboRect.bottom + owner->theme_.popupOffsetY};
-        const int desiredRows = std::max(1, static_cast<int>(items.size()));
+        const int desiredRows = std::clamp(static_cast<int>(items.size()), 1, 8);
         const int desiredHeight = std::max(owner->itemHeight_,
                                            desiredRows * owner->itemHeight_ + owner->theme_.popupBorder * 2);
         const int availableHeight = std::max(owner->itemHeight_,
@@ -750,7 +750,7 @@ bool ComboBox::Create(HWND parent, int controlId, const Theme& theme, const Opti
         return false;
     }
     SendMessageW(popupList_, WM_SETFONT, reinterpret_cast<WPARAM>(impl_->font), TRUE);
-    SetWindowTheme(popupList_, L"", L"");
+    SetWindowTheme(popupList_, L"DarkMode_Explorer", nullptr);
     StripClientEdge(popupList_);
     SetWindowSubclass(comboHwnd_,
                       Impl::ComboSubclassProc,

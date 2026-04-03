@@ -15,7 +15,7 @@ set "CXXFLAGS=-std=c++17 -DUNICODE -D_UNICODE -DNOMINMAX -DWIN32_LEAN_AND_MEAN -
 set "LDFLAGS=-municode -mwindows -lcomctl32 -ldwmapi -luxtheme -lgdi32"
 
 echo Building lib_darkui dialog demo...
-%CXX% "%DEMO_SRC_DIR%\demo_dialog.cpp" "%LIB_SRC_DIR%\dialog.cpp" "%LIB_SRC_DIR%\static.cpp" "%LIB_SRC_DIR%\edit.cpp" "%LIB_SRC_DIR%\scrollbar.cpp" "%LIB_SRC_DIR%\button.cpp" "%LIB_SRC_DIR%\combobox.cpp" "%LIB_SRC_DIR%\panel.cpp" "%LIB_SRC_DIR%\themed_window_host.cpp" %CXXFLAGS% -o "%BUILD_DIR%\darkui_dialog_demo.exe" %LDFLAGS%
+%CXX% "%DEMO_SRC_DIR%\demo_dialog.cpp" "%LIB_SRC_DIR%\dialog.cpp" "%LIB_SRC_DIR%\static.cpp" "%LIB_SRC_DIR%\edit.cpp" "%LIB_SRC_DIR%\button.cpp" "%LIB_SRC_DIR%\combobox.cpp" "%LIB_SRC_DIR%\panel.cpp" "%LIB_SRC_DIR%\themed_window_host.cpp" %CXXFLAGS% -o "%BUILD_DIR%\darkui_dialog_demo.exe" %LDFLAGS%
 if errorlevel 1 goto error
 
 echo Build succeeded: "%BUILD_DIR%\darkui_dialog_demo.exe"

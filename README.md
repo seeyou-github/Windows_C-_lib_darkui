@@ -11,143 +11,22 @@
 
 ## Available Custom Controls
 
-### Button
+- `Button`: dark owner-draw push button with standard click notifications. See [doc/button.md](doc/button.md)
+- `CheckBox`: dark owner-draw checkbox with native-style checked behavior. See [doc/checkbox.md](doc/checkbox.md)
+- `ComboBox`: dark combo box with custom popup host and list rendering. See [doc/combobox.md](doc/combobox.md)
+- `Dialog`: modal dark popup dialog with confirm/cancel flow. See [doc/dialog.md](doc/dialog.md)
+- `Edit`: dark host plus inner native `EDIT`, with placeholder, read-only mode, and multiline support. See [doc/edit.md](doc/edit.md)
+- `ListBox`: dark list box wrapper with native selection and scrolling behavior. See [doc/listbox.md](doc/listbox.md)
+- `ListView`: native dark `SysListView32` wrapper with dark header and restrained styling. See [doc/listview.md](doc/listview.md)
+- `Panel`: dark card/container surface for grouping controls. See [doc/panel.md](doc/panel.md)
+- `ProgressBar`: dark progress bar with custom track, fill, and text. See [doc/progress.md](doc/progress.md)
+- `RadioButton`: dark owner-draw radio button with native grouping behavior. See [doc/radiobutton.md](doc/radiobutton.md)
+- `Slider`: dark slider with custom track, thumb, ticks, and `WM_HSCROLL`. See [doc/slider.md](doc/slider.md)
+- `Static`: dark static display control for text, icons, and bitmaps. See [doc/static.md](doc/static.md)
+- `Tab`: dark tab control with attached child pages and `TCN_SELCHANGE`. See [doc/tab.md](doc/tab.md)
+- `Toolbar`: dark toolbar with buttons, separators, drop-downs, overflow, and right-aligned items. See [doc/toolbar.md](doc/toolbar.md)
 
-- Custom dark owner-draw button
-- Normal, hover, pressed, and disabled states
-- Rounded corners and host surface color support
-- Preserves `WM_COMMAND + BN_CLICKED`
-
-See: [doc/button.md](doc/button.md)
-
-### ComboBox
-
-- Custom dark combo box
-- Custom-painted button area, popup host, and list items
-- Supports normal and accent items
-- Preserves `WM_COMMAND + CBN_SELCHANGE`
-
-See: [doc/combobox.md](doc/combobox.md)
-
-### Edit
-
-- Custom dark edit control
-- Dark host window plus inner native `EDIT`
-- Keeps native input, caret, selection, and IME behavior
-- Supports placeholder text, rounded shape, read-only mode, and multiline vertical scrolling
-
-See: [doc/edit.md](doc/edit.md)
-
-### Dialog
-
-- Modal dark popup dialog
-- Custom black title bar and dark background
-- Built-in confirm/cancel buttons and custom content host
-
-See: [doc/dialog.md](doc/dialog.md)
-
-### Static
-
-- Dark static display control
-- Supports text, icon, and bitmap presentation
-- Suitable for labels, titles, badges, and small previews
-
-See: [doc/static.md](doc/static.md)
-
-### Panel
-
-- Dark card/container surface
-- Rounded background and border for grouped content
-- Child controls can inherit the panel surface automatically
-
-See: [doc/panel.md](doc/panel.md)
-
-### ListBox
-
-- Dark list box
-- Rounded host surface plus native keyboard and scroll behavior
-- Supports single-select and multi-select usage
-
-See: [doc/listbox.md](doc/listbox.md)
-
-### ListView
-
-- Native dark `ListView` wrapper
-- Dark header plus restrained dark-mode styling on top of `SysListView32`
-- Suitable when you want native column resize, scrolling, and selection behavior
-
-See: [doc/listview.md](doc/listview.md)
-
-### CheckBox
-
-- Dark owner-drawn checkbox
-- Checked, unchecked, hover, and disabled states
-- Preserves `WM_COMMAND + BN_CLICKED`
-
-See: [doc/checkbox.md](doc/checkbox.md)
-
-### RadioButton
-
-- Dark owner-drawn radio button
-- Native auto-radio grouping behavior
-- Preserves `WM_COMMAND + BN_CLICKED`
-
-See: [doc/radiobutton.md](doc/radiobutton.md)
-
-### ProgressBar
-
-- Custom dark progress bar
-- Separate outer background, inner track, fill, and percentage text
-- Supports host surface color
-- Works well inside dark cards and panels
-
-See: [doc/progress.md](doc/progress.md)
-
-### ScrollBar
-
-- Custom dark scrollbar
-- Horizontal and vertical modes
-- Drag, page-step, and keyboard support
-- Preserves `WM_HSCROLL` / `WM_VSCROLL`
-
-See: [doc/scrollbar.md](doc/scrollbar.md)
-
-### Slider
-
-- Custom dark slider
-- Custom track, fill, thumb, and tick rendering
-- Mouse and keyboard interaction
-- Preserves `WM_HSCROLL`
-
-See: [doc/slider.md](doc/slider.md)
-
-### Tab
-
-- Custom dark tab control
-- Horizontal and vertical layouts
-- Supports attached child-page windows
-- Preserves `WM_NOTIFY + TCN_SELCHANGE`
-
-See: [doc/tab.md](doc/tab.md)
-
-### Table
-
-- Custom dark table control
-- Custom header, body, grid, and selection rendering
-- Column and row data management
-- Suitable for presentation-oriented data panels
-
-See: [doc/table.md](doc/table.md)
-
-### Toolbar
-
-- Custom dark toolbar
-- Supports standard buttons, icon buttons, right-aligned items, separators, drop-downs, and overflow
-- Icon sizing uses `ToolbarItem::iconScalePercent` with a default of `80%`, preserving aspect ratio
-- Use `theme.toolbarHeight` together with `MoveWindow(..., theme.toolbarHeight + 12, ...)` for the intended button height
-- Preserves `WM_COMMAND`
-
-See: [doc/toolbar.md](doc/toolbar.md)
+Native scrollbar theme note for native controls such as `Edit`, `ListBox`, and `ListView`: [doc/native-dark-scrollbar.md](doc/native-dark-scrollbar.md)
 
 ## Main Characteristics
 
@@ -205,11 +84,9 @@ This is available for:
 - `Panel::Options`
 - `ProgressBar::Options`
 - `RadioButton::Options`
-- `ScrollBar::Options`
 - `Slider::Options`
 - `Static::Options`
 - `Tab::Options`
-- `Table::Options`
 - `Toolbar::Options`
 
 Recommended example:
@@ -352,11 +229,9 @@ Per-control includes:
 #include "darkui/progress.h"
 #include "darkui/quick.h"
 #include "darkui/radiobutton.h"
-#include "darkui/scrollbar.h"
 #include "darkui/slider.h"
 #include "darkui/static.h"
 #include "darkui/tab.h"
-#include "darkui/table.h"
 #include "darkui/toolbar.h"
 ```
 
@@ -386,11 +261,9 @@ Windows_C++_lib_darkui/
     panel.md
     progress.md
     radiobutton.md
-    scrollbar.md
     slider.md
     static.md
     tab.md
-    table.md
     toolbar.md
 ```
 
@@ -415,10 +288,8 @@ If you only need the demo build scripts, the current `demo/build_demo*.bat` file
 - [ProgressBar](doc/progress.md)
 - [Quick Helpers](doc/quick.md)
 - [RadioButton](doc/radiobutton.md)
-- [ScrollBar](doc/scrollbar.md)
 - [Slider](doc/slider.md)
 - [Static](doc/static.md)
 - [Tab](doc/tab.md)
-- [Table](doc/table.md)
 - [Toolbar](doc/toolbar.md)
 

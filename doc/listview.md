@@ -1,16 +1,18 @@
 # ListView
 
-`darkui::ListView` is a native Win32 `SysListView32` wrapper with a dark header and dark color setup. It keeps native scrolling, column resizing, selection, and keyboard behavior while applying a restrained dark-mode treatment similar to the reference Android log viewer project.
+`darkui::ListView` is a native Win32 `SysListView32` wrapper with a dark header and restrained dark report styling. It keeps native scrolling, native selection visuals, column resizing, and keyboard behavior while adding a dark header and dark grid overlay similar to the reference Android log viewer project.
 
 ## Files
 
 - `include/darkui/listview.h`
 - `src/listview.cpp`
+- `doc/native-dark-scrollbar.md`
 
 ## Good Fit
 
 - Dark log viewers, result tables, and data panes
 - Pages that want native column resize and native scrollbars
+- Pages that want native multi-select plus a lightweight copy/context-menu layer
 - Cases where a restrained dark wrapper is preferred over a fully custom control
 
 ## Characteristics
@@ -19,6 +21,10 @@
 - Dark `DarkMode_Explorer` theme setup
 - Custom-painted header
 - Native column resize, native scrollbars, native keyboard navigation
+- Native selection visuals are preserved
+- Dark grid overlay that tracks runtime header resizing
+- `Ctrl+C` support for selected rows
+- Right-click menu with `Copy` and `Select All`
 - Runtime theme updates through `SetTheme(...)` and `ThemeManager`
 
 ## Basic Example
@@ -47,4 +53,12 @@ MoveWindow(listView.hwnd(), 24, 24, 720, 320, TRUE);
 
 - `hwnd()` returns the outer host window.
 - `list_hwnd()` returns the inner native `SysListView32`.
-- Column widths are fixed pixel widths supplied to the native control.
+- `header_hwnd()` returns the native header control.
+- Column widths are initialized in pixels, but the user can still resize them at runtime.
+- The wrapper syncs live native header widths back into its dark grid overlay.
+- `SetSelection(...)` is a convenience single-row setter; the underlying control still supports multi-select.
+- Row copy uses tab-separated columns and CRLF-separated rows.
+
+## Related Guide
+
+- Native dark scrollbar guide: [native-dark-scrollbar.md](D:/Code/Windows_C++_lib_darkui/doc/native-dark-scrollbar.md)

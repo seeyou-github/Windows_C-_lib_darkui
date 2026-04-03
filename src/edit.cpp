@@ -1,5 +1,4 @@
 #include "darkui/edit.h"
-#include "darkui/scrollbar.h"
 
 #include <commctrl.h>
 #include <uxtheme.h>
@@ -14,9 +13,7 @@ namespace {
 
 constexpr wchar_t kEditHostClassName[] = L"DarkUiEditHost";
 constexpr int kEditPlaceholderId = 0x61A7;
-constexpr int kEditScrollBarId = 0x61A8;
 constexpr wchar_t kEditDebugLogPath[] = L"demo\\build\\edit_layout_debug.log";
-constexpr UINT kEditSyncScrollMessage = WM_APP + 17;
 
 int ResolveEditCornerRadius(FieldVariant variant) {
     switch (variant) {
@@ -69,10 +66,8 @@ struct Edit::Impl {
     // Separate placeholder STATIC keeps custom placeholder color and fallback
     // behavior independent from native EM_SETCUEBANNER support.
     HWND placeholderHwnd = nullptr;
-    ScrollBar verticalScrollBar;
     std::wstring cueBanner;
     std::wstring debugLayoutInfo;
-    bool useCustomVScroll = false;
 
     explicit Impl(Edit* edit) : owner(edit) {}
 
@@ -125,10 +120,6 @@ struct Edit::Impl {
         return owner->editHwnd_ && (GetWindowLongPtrW(owner->editHwnd_, GWL_STYLE) & ES_MULTILINE) != 0;
     }
 
-    int ScrollBarWidth() const {
-        return std::max(12, owner->theme_.scrollBarThickness);
-    }
-
     SIZE CurrentTextMetrics() const {
         SIZE size{0, 0};
         if (!owner->editHwnd_) {
@@ -178,17 +169,17 @@ struct Edit::Impl {
         const SIZE textMetrics = CurrentTextMetrics();
         const TEXTMETRICW fontMetrics = CurrentFontMetrics();
         const bool multiline = IsMultiline();
+        const bool nativeVScroll = multiline &&
+                                   owner->editHwnd_ &&
+                                   (GetWindowLongPtrW(owner->editHwnd_, GWL_STYLE) & WS_VSCROLL) != 0;
         const int textInsetX = textMetrics.cx > 0 ? static_cast<int>(textMetrics.cx) : 0;
         const int insetAdjust = ResolveEditInsetAdjustment(owner->variant_);
         const int insetX = std::max(8, std::max(owner->cornerRadius_ / 2 + 4 + insetAdjust, textInsetX + std::min(0, insetAdjust)));
         rect.left += insetX;
-        rect.right -= insetX;
-        if (multiline && useCustomVScroll) {
-            rect.right -= ScrollBarWidth() + 6;
-        }
+        rect.right -= nativeVScroll ? 0 : insetX;
 
         if (multiline) {
-            const int verticalInset = std::max(5, 8 + insetAdjust);
+            const int verticalInset = nativeVScroll ? 0 : std::max(5, 8 + insetAdjust);
             rect.top += verticalInset;
             rect.bottom -= verticalInset;
         } else {
@@ -254,19 +245,6 @@ struct Edit::Impl {
             MoveWindow(placeholderHwnd, rect.left, rect.top, width, placeholderHeight, FALSE);
             InvalidateRect(placeholderHwnd, nullptr, TRUE);
         }
-        if (useCustomVScroll && verticalScrollBar.hwnd()) {
-            RECT client = ClientRect(owner->hostHwnd_);
-            const int width = ScrollBarWidth();
-            const int left = std::max(client.left, client.right - width - 4);
-            MoveWindow(verticalScrollBar.hwnd(),
-                       left,
-                       client.top + 4,
-                       width,
-                       std::max(1L, client.bottom - client.top - 8),
-                       TRUE);
-            UpdateCustomScrollMetrics();
-        }
-
         const RECT client = ClientRect(owner->hostHwnd_);
         const SIZE textMetrics = CurrentTextMetrics();
         const TEXTMETRICW fontMetrics = CurrentFontMetrics();
@@ -289,45 +267,6 @@ struct Edit::Impl {
                      static_cast<long>(fontMetrics.tmInternalLeading));
         debugLayoutInfo = buffer;
         AppendEditDebugLog(L"[Layout] %ls", debugLayoutInfo.c_str());
-    }
-
-    int VisibleLineCount() const {
-        if (!owner->editHwnd_) {
-            return 1;
-        }
-        RECT rect{};
-        SendMessageW(owner->editHwnd_, EM_GETRECT, 0, reinterpret_cast<LPARAM>(&rect));
-        const int height = std::max(1L, rect.bottom - rect.top);
-        const SIZE textMetrics = CurrentTextMetrics();
-        const int lineHeight = std::max(1L, textMetrics.cy);
-        return std::max(1, height / lineHeight);
-    }
-
-    void UpdateCustomScrollMetrics() {
-        if (!useCustomVScroll || !owner->editHwnd_ || !verticalScrollBar.hwnd()) {
-            return;
-        }
-
-        const int lineCount = std::max(1, static_cast<int>(SendMessageW(owner->editHwnd_, EM_GETLINECOUNT, 0, 0)));
-        const int firstVisibleLine = std::max(0, static_cast<int>(SendMessageW(owner->editHwnd_, EM_GETFIRSTVISIBLELINE, 0, 0)));
-        const int visibleLines = VisibleLineCount();
-
-        verticalScrollBar.SetRange(0, std::max(0, lineCount - 1));
-        verticalScrollBar.SetPageSize(visibleLines);
-        verticalScrollBar.SetValue(firstVisibleLine, false);
-        ShowWindow(verticalScrollBar.hwnd(), lineCount > visibleLines ? SW_SHOW : SW_HIDE);
-    }
-
-    void ScrollEditToLine(int line) {
-        if (!owner->editHwnd_) {
-            return;
-        }
-        const int current = std::max(0, static_cast<int>(SendMessageW(owner->editHwnd_, EM_GETFIRSTVISIBLELINE, 0, 0)));
-        const int delta = line - current;
-        if (delta != 0) {
-            SendMessageW(owner->editHwnd_, EM_LINESCROLL, 0, delta);
-        }
-        UpdateCustomScrollMetrics();
     }
 
     bool IsFocused() const {
@@ -407,21 +346,12 @@ struct Edit::Impl {
             self->UpdatePlaceholderVisibility();
             RedrawWindow(window, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
             return 0;
-        case kEditSyncScrollMessage:
-            self->UpdateCustomScrollMetrics();
-            return 0;
         case WM_SETFOCUS:
         case WM_LBUTTONDOWN:
             if (self->owner->editHwnd_) {
                 SetFocus(self->owner->editHwnd_);
             }
             return 0;
-        case WM_VSCROLL:
-            if (reinterpret_cast<HWND>(lParam) == self->verticalScrollBar.hwnd()) {
-                self->ScrollEditToLine(self->verticalScrollBar.GetValue());
-                return 0;
-            }
-            break;
         case WM_CTLCOLOREDIT:
             if (reinterpret_cast<HWND>(lParam) == self->owner->editHwnd_) {
                 HDC dc = reinterpret_cast<HDC>(wParam);
@@ -450,7 +380,6 @@ struct Edit::Impl {
                 const UINT code = HIWORD(wParam);
                 if (code == EN_CHANGE || code == EN_SETFOCUS || code == EN_KILLFOCUS || code == EN_VSCROLL || code == EN_UPDATE) {
                     self->UpdatePlaceholderVisibility();
-                    self->UpdateCustomScrollMetrics();
                 }
                 self->ForwardEditCommand(wParam);
                 return 0;
@@ -475,40 +404,7 @@ struct Edit::Impl {
             return DefSubclassProc(window, message, wParam, lParam);
         }
 
-        if (message == WM_MOUSEWHEEL && self->useCustomVScroll) {
-            UINT scrollLines = 3;
-            SystemParametersInfoW(SPI_GETWHEELSCROLLLINES, 0, &scrollLines, 0);
-            int delta = GET_WHEEL_DELTA_WPARAM(wParam);
-            if (scrollLines == WHEEL_PAGESCROLL) {
-                scrollLines = static_cast<UINT>(std::max(1, self->VisibleLineCount() - 1));
-            }
-            const int step = std::max(1u, scrollLines);
-            if (delta > 0) {
-                self->ScrollEditToLine(self->verticalScrollBar.GetValue() - step);
-            } else if (delta < 0) {
-                self->ScrollEditToLine(self->verticalScrollBar.GetValue() + step);
-            }
-            return 0;
-        }
-
-        const bool shouldSyncAfter =
-            message == WM_MOUSEWHEEL ||
-            message == WM_VSCROLL ||
-            message == WM_KEYDOWN ||
-            message == WM_KEYUP ||
-            message == WM_CHAR ||
-            message == WM_LBUTTONDOWN ||
-            message == WM_LBUTTONUP ||
-            message == WM_MOUSEMOVE ||
-            message == WM_PASTE ||
-            message == WM_CUT ||
-            message == WM_SETTEXT;
-
         LRESULT result = DefSubclassProc(window, message, wParam, lParam);
-        const bool dragMove = message == WM_MOUSEMOVE && (wParam & MK_LBUTTON) == 0;
-        if (shouldSyncAfter && !dragMove && self->useCustomVScroll && self->owner->hostHwnd_) {
-            PostMessageW(self->owner->hostHwnd_, kEditSyncScrollMessage, 0, 0);
-        }
         if (message == WM_DESTROY) {
             RemoveWindowSubclass(window, EditSubclassProc, subclassId);
         }
@@ -588,10 +484,6 @@ bool Edit::Create(HWND parent, int controlId, const Theme& theme, const Options&
     DWORD editStyle = options.style | WS_CHILD | WS_VISIBLE;
     editStyle &= ~WS_BORDER;
     editStyle &= ~WS_TABSTOP;
-    impl_->useCustomVScroll = (editStyle & ES_MULTILINE) != 0 && (editStyle & WS_VSCROLL) != 0;
-    if (impl_->useCustomVScroll) {
-        editStyle &= ~WS_VSCROLL;
-    }
     if ((editStyle & ES_MULTILINE) == 0) {
         editStyle |= ES_AUTOHSCROLL;
     }
@@ -630,22 +522,14 @@ bool Edit::Create(HWND parent, int controlId, const Theme& theme, const Options&
         return false;
     }
 
-    // Disable themed borders on the native EDIT; the host surface owns all outer styling.
-    SetWindowTheme(editHwnd_, L"", L"");
+    // Disable the native border when the host owns the outer shape. For native
+    // multiline scrollbars, use the Explorer dark theme path instead.
+    SetWindowTheme(editHwnd_, (editStyle & WS_VSCROLL) != 0 ? L"DarkMode_Explorer" : L"", nullptr);
     SendMessageW(editHwnd_, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, MAKELPARAM(0, 0));
     SetWindowSubclass(editHwnd_,
                       Impl::EditSubclassProc,
                       reinterpret_cast<UINT_PTR>(this),
                       reinterpret_cast<DWORD_PTR>(impl_.get()));
-
-    if (impl_->useCustomVScroll) {
-        ScrollBar::Options scrollOptions;
-        scrollOptions.vertical = true;
-        if (!impl_->verticalScrollBar.Create(hostHwnd_, kEditScrollBarId, theme_, scrollOptions)) {
-            Destroy();
-            return false;
-        }
-    }
 
     if (!impl_->UpdateThemeResources() || !impl_->brushBackground || !impl_->font) {
         Destroy();
@@ -675,10 +559,6 @@ void Edit::Destroy() {
         DestroyWindow(editHwnd_);
         editHwnd_ = nullptr;
     }
-    if (impl_) {
-        impl_->verticalScrollBar.Destroy();
-        impl_->useCustomVScroll = false;
-    }
     if (hostHwnd_) {
         DestroyWindow(hostHwnd_);
         hostHwnd_ = nullptr;
@@ -694,9 +574,6 @@ void Edit::SetTheme(const Theme& theme) {
         theme_ = previous;
         impl_->UpdateThemeResources();
         return;
-    }
-    if (impl_ && impl_->useCustomVScroll && impl_->verticalScrollBar.hwnd()) {
-        impl_->verticalScrollBar.SetTheme(theme_);
     }
     if (hostHwnd_) {
         InvalidateRect(hostHwnd_, nullptr, TRUE);

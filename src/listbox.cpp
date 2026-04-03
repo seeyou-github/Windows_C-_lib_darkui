@@ -392,7 +392,7 @@ bool ListBox::Create(HWND parent, int controlId, const Theme& theme, const Optio
         return false;
     }
 
-    SetWindowTheme(listHwnd_, L"", L"");
+    SetWindowTheme(listHwnd_, L"DarkMode_Explorer", nullptr);
     StripClientEdge(listHwnd_);
 
     if (!impl_->UpdateThemeResources()) {
