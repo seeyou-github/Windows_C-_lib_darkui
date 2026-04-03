@@ -5,7 +5,6 @@
 #include <windowsx.h>
 
 #include <algorithm>
-#include <cstring>
 #include <sstream>
 namespace darkui {
 namespace {
@@ -143,11 +142,24 @@ struct ListView::Impl {
         owner->headerHwnd_ = ListView_GetHeader(owner->listHwnd_);
     }
 
+    void SyncColumnWidthsFromControl() {
+        if (!owner->listHwnd_) {
+            return;
+        }
+        for (std::size_t index = 0; index < columns.size(); ++index) {
+            const int width = ListView_GetColumnWidth(owner->listHwnd_, static_cast<int>(index));
+            if (width > 0) {
+                columns[index].width = width;
+            }
+        }
+    }
+
     void SyncRowsToWindow() {
         if (!owner->listHwnd_) {
             return;
         }
         std::vector<int> selected;
+        const int focused = ListView_GetNextItem(owner->listHwnd_, -1, LVNI_FOCUSED);
         for (int index = ListView_GetNextItem(owner->listHwnd_, -1, LVNI_SELECTED);
              index != -1;
              index = ListView_GetNextItem(owner->listHwnd_, index, LVNI_SELECTED)) {
@@ -175,6 +187,10 @@ struct ListView::Impl {
             if (index >= 0 && index < static_cast<int>(rows.size())) {
                 ListView_SetItemState(owner->listHwnd_, index, LVIS_SELECTED, LVIS_SELECTED);
             }
+        }
+        if (focused >= 0 && focused < static_cast<int>(rows.size())) {
+            ListView_SetItemState(owner->listHwnd_, focused, LVIS_FOCUSED, LVIS_FOCUSED);
+            ListView_EnsureVisible(owner->listHwnd_, focused, FALSE);
         }
     }
 
@@ -284,80 +300,11 @@ struct ListView::Impl {
         SelectObject(dc, oldPen);
     }
 
-    bool IsRowSelected(int rowIndex) const {
-        if (!owner->listHwnd_ || rowIndex < 0) {
-            return false;
-        }
-        return (ListView_GetItemState(owner->listHwnd_, rowIndex, LVIS_SELECTED) & LVIS_SELECTED) != 0;
-    }
-
-    RECT SubItemRect(int rowIndex, int columnIndex) const {
-        RECT rect{};
-        if (!owner->listHwnd_) {
-            return rect;
-        }
-        if (!ListView_GetSubItemRect(owner->listHwnd_, rowIndex, columnIndex, LVIR_BOUNDS, &rect)) {
-            SetRectEmpty(&rect);
-        }
-        return rect;
-    }
-
-    void DrawSelectedRow(HDC dc, int rowIndex) {
-        if (!owner->listHwnd_ || rowIndex < 0 || rowIndex >= static_cast<int>(rows.size())) {
-            return;
-        }
-
-        RECT rowRect{};
-        if (!ListView_GetItemRect(owner->listHwnd_, rowIndex, &rowRect, LVIR_BOUNDS)) {
-            return;
-        }
-
-        HBRUSH oldBrush = reinterpret_cast<HBRUSH>(SelectObject(dc, GetStockObject(DC_BRUSH)));
-        COLORREF oldBrushColor = SetDCBrushColor(dc, owner->theme_.tableSelectedBackground);
-        FillRect(dc, &rowRect, reinterpret_cast<HBRUSH>(GetStockObject(DC_BRUSH)));
-        SetDCBrushColor(dc, oldBrushColor);
-        SelectObject(dc, oldBrush);
-
-        HFONT oldFont = font ? reinterpret_cast<HFONT>(SelectObject(dc, font)) : nullptr;
-        SetBkMode(dc, TRANSPARENT);
-        const COLORREF oldTextColor = SetTextColor(dc, owner->theme_.tableSelectedText);
-
-        const ListViewRow& row = rows[static_cast<std::size_t>(rowIndex)];
-        const int columnCount = std::min(static_cast<int>(columns.size()), static_cast<int>(row.size()));
-        for (int column = 0; column < columnCount; ++column) {
-            RECT cellRect = SubItemRect(rowIndex, column);
-            if (IsRectEmpty(&cellRect)) {
-                continue;
-            }
-            cellRect.left += owner->theme_.textPadding;
-            cellRect.right -= owner->theme_.textPadding;
-
-            UINT format = DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX;
-            if ((columns[static_cast<std::size_t>(column)].format & LVCFMT_CENTER) != 0) {
-                format |= DT_CENTER;
-            } else if ((columns[static_cast<std::size_t>(column)].format & LVCFMT_RIGHT) != 0) {
-                format |= DT_RIGHT;
-            } else {
-                format |= DT_LEFT;
-            }
-            DrawTextW(dc, row[static_cast<std::size_t>(column)].c_str(), -1, &cellRect, format);
-        }
-
-        SetTextColor(dc, oldTextColor);
-        if (oldFont) {
-            SelectObject(dc, oldFont);
-        }
-    }
-
     LRESULT HandleListCustomDraw(NMLVCUSTOMDRAW* drawInfo) {
         switch (drawInfo->nmcd.dwDrawStage) {
         case CDDS_PREPAINT:
             return CDRF_NOTIFYITEMDRAW | CDRF_NOTIFYPOSTPAINT;
         case CDDS_ITEMPREPAINT:
-            if (IsRowSelected(static_cast<int>(drawInfo->nmcd.dwItemSpec))) {
-                DrawSelectedRow(drawInfo->nmcd.hdc, static_cast<int>(drawInfo->nmcd.dwItemSpec));
-                return CDRF_SKIPDEFAULT;
-            }
             return CDRF_NOTIFYSUBITEMDRAW;
         case CDDS_ITEMPREPAINT | CDDS_SUBITEM:
             drawInfo->clrText = owner->theme_.tableText;
@@ -434,7 +381,7 @@ struct ListView::Impl {
             CloseClipboard();
             return false;
         }
-        memcpy(memory, text.c_str(), bytes);
+        CopyMemory(memory, text.c_str(), bytes);
         GlobalUnlock(handle);
 
         if (!SetClipboardData(CF_UNICODETEXT, handle)) {
@@ -528,6 +475,22 @@ struct ListView::Impl {
             }
             if (hdr->hwndFrom == self->owner->listHwnd_ && hdr->code == NM_CUSTOMDRAW) {
                 return self->HandleListCustomDraw(reinterpret_cast<NMLVCUSTOMDRAW*>(lParam));
+            }
+            if (hdr->hwndFrom == self->owner->headerHwnd_) {
+                switch (hdr->code) {
+                case HDN_ENDTRACKA:
+                case HDN_ENDTRACKW:
+                case HDN_ITEMCHANGEDA:
+                case HDN_ITEMCHANGEDW:
+                    self->SyncColumnWidthsFromControl();
+                    if (self->owner->listHwnd_) {
+                        InvalidateRect(self->owner->listHwnd_, nullptr, FALSE);
+                    }
+                    InvalidateRect(self->owner->headerHwnd_, nullptr, FALSE);
+                    break;
+                default:
+                    break;
+                }
             }
             return self->ForwardNotifyToParent(wParam, lParam);
         }

@@ -21,17 +21,13 @@ enum ControlId {
     ID_EDIT_ITEM_TEXT = 8105,
     ID_EDIT_ITEM_BACKGROUND = 8106,
     ID_EDIT_GRID = 8107,
-    ID_EDIT_SELECTED_TEXT = 8108,
-    ID_EDIT_SELECTED_BACKGROUND = 8109,
-    ID_BUTTON_APPLY = 8110,
-    ID_LABEL_ROWS = 8111,
-    ID_LABEL_HEADER_TEXT = 8112,
-    ID_LABEL_HEADER_BACKGROUND = 8113,
-    ID_LABEL_ITEM_TEXT = 8114,
-    ID_LABEL_ITEM_BACKGROUND = 8115,
-    ID_LABEL_GRID = 8116,
-    ID_LABEL_SELECTED_TEXT = 8117,
-    ID_LABEL_SELECTED_BACKGROUND = 8118
+    ID_BUTTON_APPLY = 8108,
+    ID_LABEL_ROWS = 8109,
+    ID_LABEL_HEADER_TEXT = 8110,
+    ID_LABEL_HEADER_BACKGROUND = 8111,
+    ID_LABEL_ITEM_TEXT = 8112,
+    ID_LABEL_ITEM_BACKGROUND = 8113,
+    ID_LABEL_GRID = 8114
 };
 
 struct DemoState {
@@ -43,19 +39,15 @@ struct DemoState {
     darkui::Static itemTextLabel;
     darkui::Static itemBackgroundLabel;
     darkui::Static gridLabel;
-    darkui::Static selectedTextLabel;
-    darkui::Static selectedBackgroundLabel;
     darkui::Edit rowsEdit;
     darkui::Edit headerTextEdit;
     darkui::Edit headerBackgroundEdit;
     darkui::Edit itemTextEdit;
     darkui::Edit itemBackgroundEdit;
     darkui::Edit gridEdit;
-    darkui::Edit selectedTextEdit;
-    darkui::Edit selectedBackgroundEdit;
     darkui::Button applyButton;
     int rowCount = 48;
-    std::wstring status = L"Multi-select is enabled. Use Ctrl/Shift, Ctrl+C, or right-click Copy/Select All.";
+    std::wstring status = L"Native selection style is active. Use Ctrl/Shift, Ctrl+C, or right-click Copy/Select All.";
 };
 
 darkui::ListViewRow MakeRow(int index) {
@@ -205,12 +197,11 @@ void Layout(HWND window, DemoState* state) {
     UpdateListViewColumns(state, contentWidth - 2);
 
     const int fieldsWidth = contentWidth - buttonWidth - gap;
-    const int groupWidth = std::max(120, (fieldsWidth - gap * 3) / 4);
+    const int groupWidth = std::max(150, (fieldsWidth - gap * 2) / 3);
 
     const int col0 = margin;
     const int col1 = col0 + groupWidth + gap;
     const int col2 = col1 + groupWidth + gap;
-    const int col3 = col2 + groupWidth + gap;
     const int buttonLeft = margin + fieldsWidth + gap;
     const int row1LabelTop = configTop;
     const int row1EditTop = row1LabelTop + labelHeight + 6;
@@ -220,20 +211,16 @@ void Layout(HWND window, DemoState* state) {
     MoveWindow(state->rowsLabel.hwnd(), col0, row1LabelTop, groupWidth, labelHeight, TRUE);
     MoveWindow(state->headerTextLabel.hwnd(), col1, row1LabelTop, groupWidth, labelHeight, TRUE);
     MoveWindow(state->headerBackgroundLabel.hwnd(), col2, row1LabelTop, groupWidth, labelHeight, TRUE);
-    MoveWindow(state->selectedTextLabel.hwnd(), col3, row1LabelTop, groupWidth, labelHeight, TRUE);
     MoveWindow(state->rowsEdit.hwnd(), col0, row1EditTop, groupWidth, editHeight, TRUE);
     MoveWindow(state->headerTextEdit.hwnd(), col1, row1EditTop, groupWidth, editHeight, TRUE);
     MoveWindow(state->headerBackgroundEdit.hwnd(), col2, row1EditTop, groupWidth, editHeight, TRUE);
-    MoveWindow(state->selectedTextEdit.hwnd(), col3, row1EditTop, groupWidth, editHeight, TRUE);
 
     MoveWindow(state->itemTextLabel.hwnd(), col0, row2LabelTop, groupWidth, labelHeight, TRUE);
     MoveWindow(state->itemBackgroundLabel.hwnd(), col1, row2LabelTop, groupWidth, labelHeight, TRUE);
     MoveWindow(state->gridLabel.hwnd(), col2, row2LabelTop, groupWidth, labelHeight, TRUE);
-    MoveWindow(state->selectedBackgroundLabel.hwnd(), col3, row2LabelTop, groupWidth, labelHeight, TRUE);
     MoveWindow(state->itemTextEdit.hwnd(), col0, row2EditTop, groupWidth, editHeight, TRUE);
     MoveWindow(state->itemBackgroundEdit.hwnd(), col1, row2EditTop, groupWidth, editHeight, TRUE);
     MoveWindow(state->gridEdit.hwnd(), col2, row2EditTop, groupWidth, editHeight, TRUE);
-    MoveWindow(state->selectedBackgroundEdit.hwnd(), col3, row2EditTop, groupWidth, editHeight, TRUE);
 
     MoveWindow(state->applyButton.hwnd(), buttonLeft, row1EditTop, buttonWidth, editHeight * 2 + labelHeight + 20, TRUE);
 }
@@ -250,8 +237,6 @@ void SyncControlsFromTheme(DemoState* state) {
     state->itemTextEdit.SetText(ColorToHex(theme.tableText));
     state->itemBackgroundEdit.SetText(ColorToHex(theme.tableBackground));
     state->gridEdit.SetText(ColorToHex(theme.tableGrid));
-    state->selectedTextEdit.SetText(ColorToHex(theme.tableSelectedText));
-    state->selectedBackgroundEdit.SetText(ColorToHex(theme.tableSelectedBackground));
 }
 
 void ApplyConfig(HWND window, DemoState* state) {
@@ -271,15 +256,11 @@ void ApplyConfig(HWND window, DemoState* state) {
     COLORREF itemText = 0;
     COLORREF itemBackground = 0;
     COLORREF grid = 0;
-    COLORREF selectedText = 0;
-    COLORREF selectedBackground = 0;
     if (!ParseHexColor(state->headerTextEdit.GetText(), &headerText) ||
         !ParseHexColor(state->headerBackgroundEdit.GetText(), &headerBackground) ||
         !ParseHexColor(state->itemTextEdit.GetText(), &itemText) ||
         !ParseHexColor(state->itemBackgroundEdit.GetText(), &itemBackground) ||
-        !ParseHexColor(state->gridEdit.GetText(), &grid) ||
-        !ParseHexColor(state->selectedTextEdit.GetText(), &selectedText) ||
-        !ParseHexColor(state->selectedBackgroundEdit.GetText(), &selectedBackground)) {
+        !ParseHexColor(state->gridEdit.GetText(), &grid)) {
         state->status = L"Colors must use #RRGGBB format.";
         InvalidateRect(window, nullptr, FALSE);
         return;
@@ -292,8 +273,6 @@ void ApplyConfig(HWND window, DemoState* state) {
     theme.tableText = itemText;
     theme.tableBackground = itemBackground;
     theme.tableGrid = grid;
-    theme.tableSelectedText = selectedText;
-    theme.tableSelectedBackground = selectedBackground;
     theme.border = grid;
     state->host.ApplyTheme(theme);
 
@@ -303,7 +282,7 @@ void ApplyConfig(HWND window, DemoState* state) {
     GetClientRect(window, &client);
     UpdateListViewColumns(state, client.right - 48 - 2);
 
-    state->status = L"Applied " + std::to_wstring(state->rowCount) + L" rows. Multi-select, copy, and context menu stay active.";
+    state->status = L"Applied " + std::to_wstring(state->rowCount) + L" rows. Native selection style and multi-select stay active.";
     InvalidateRect(window, nullptr, FALSE);
 }
 
@@ -358,16 +337,12 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             !created->itemTextLabel.Create(window, ID_LABEL_ITEM_TEXT, theme, {.text = L"Item Text", .variant = darkui::StaticVariant::Muted}) ||
             !created->itemBackgroundLabel.Create(window, ID_LABEL_ITEM_BACKGROUND, theme, {.text = L"Item Background", .variant = darkui::StaticVariant::Muted}) ||
             !created->gridLabel.Create(window, ID_LABEL_GRID, theme, {.text = L"Grid", .variant = darkui::StaticVariant::Muted}) ||
-            !created->selectedTextLabel.Create(window, ID_LABEL_SELECTED_TEXT, theme, {.text = L"Selected Text", .variant = darkui::StaticVariant::Muted}) ||
-            !created->selectedBackgroundLabel.Create(window, ID_LABEL_SELECTED_BACKGROUND, theme, {.text = L"Selected Background", .variant = darkui::StaticVariant::Muted}) ||
             !created->rowsEdit.Create(window, ID_EDIT_ROWS, theme, editOptions) ||
             !created->headerTextEdit.Create(window, ID_EDIT_HEADER_TEXT, theme, editOptions) ||
             !created->headerBackgroundEdit.Create(window, ID_EDIT_HEADER_BACKGROUND, theme, editOptions) ||
             !created->itemTextEdit.Create(window, ID_EDIT_ITEM_TEXT, theme, editOptions) ||
             !created->itemBackgroundEdit.Create(window, ID_EDIT_ITEM_BACKGROUND, theme, editOptions) ||
             !created->gridEdit.Create(window, ID_EDIT_GRID, theme, editOptions) ||
-            !created->selectedTextEdit.Create(window, ID_EDIT_SELECTED_TEXT, theme, editOptions) ||
-            !created->selectedBackgroundEdit.Create(window, ID_EDIT_SELECTED_BACKGROUND, theme, editOptions) ||
             !created->applyButton.Create(window, ID_BUTTON_APPLY, theme, applyOptions)) {
             delete created;
             return -1;
@@ -380,16 +355,12 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
                                            created->itemTextLabel,
                                            created->itemBackgroundLabel,
                                            created->gridLabel,
-                                           created->selectedTextLabel,
-                                           created->selectedBackgroundLabel,
                                            created->rowsEdit,
                                            created->headerTextEdit,
                                            created->headerBackgroundEdit,
                                            created->itemTextEdit,
                                            created->itemBackgroundEdit,
                                            created->gridEdit,
-                                           created->selectedTextEdit,
-                                           created->selectedBackgroundEdit,
                                            created->applyButton);
         created->host.theme_manager().Apply();
         SyncControlsFromTheme(created);
@@ -410,8 +381,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             return 0;
         }
         if ((LOWORD(wParam) == ID_EDIT_ROWS || LOWORD(wParam) == ID_EDIT_HEADER_TEXT || LOWORD(wParam) == ID_EDIT_HEADER_BACKGROUND ||
-             LOWORD(wParam) == ID_EDIT_ITEM_TEXT || LOWORD(wParam) == ID_EDIT_ITEM_BACKGROUND || LOWORD(wParam) == ID_EDIT_GRID ||
-             LOWORD(wParam) == ID_EDIT_SELECTED_TEXT || LOWORD(wParam) == ID_EDIT_SELECTED_BACKGROUND) &&
+             LOWORD(wParam) == ID_EDIT_ITEM_TEXT || LOWORD(wParam) == ID_EDIT_ITEM_BACKGROUND || LOWORD(wParam) == ID_EDIT_GRID) &&
             HIWORD(wParam) == EN_CHANGE) {
             state->status = L"Pending changes. Click Apply to refresh colors and row count.";
             InvalidateRect(window, nullptr, FALSE);
@@ -440,7 +410,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
                      state->host.body_font(),
                      state->host.theme().mutedText,
                      descRect,
-                     L"Bottom controls let you rebuild rows, tune normal and selected colors, and test native multi-select, Ctrl+C, and the context menu.",
+                     L"Bottom controls let you rebuild rows, tune header/body/grid colors, and test native multi-select, Ctrl+C, and the context menu.",
                      DT_LEFT | DT_TOP | DT_WORDBREAK);
             DrawLine(dc, state->host.body_font(), state->host.theme().text, statusRect, state->status.c_str(), DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
