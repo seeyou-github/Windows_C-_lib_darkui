@@ -70,6 +70,14 @@ See: [doc/panel.md](doc/panel.md)
 
 See: [doc/listbox.md](doc/listbox.md)
 
+### ListView
+
+- Native dark `ListView` wrapper
+- Dark header plus restrained dark-mode styling on top of `SysListView32`
+- Suitable when you want native column resize, scrolling, and selection behavior
+
+See: [doc/listview.md](doc/listview.md)
+
 ### CheckBox
 
 - Dark owner-drawn checkbox
@@ -193,6 +201,7 @@ This is available for:
 - `Dialog::Options`
 - `Edit::Options`
 - `ListBox::Options`
+- `ListView::Options`
 - `Panel::Options`
 - `ProgressBar::Options`
 - `RadioButton::Options`
@@ -338,6 +347,7 @@ Per-control includes:
 #include "darkui/dialog.h"
 #include "darkui/edit.h"
 #include "darkui/listbox.h"
+#include "darkui/listview.h"
 #include "darkui/panel.h"
 #include "darkui/progress.h"
 #include "darkui/quick.h"
@@ -372,6 +382,7 @@ Windows_C++_lib_darkui/
     dialog.md
     edit.md
     listbox.md
+    listview.md
     panel.md
     progress.md
     radiobutton.md
@@ -400,6 +411,7 @@ If you only need the demo build scripts, the current `demo/build_demo*.bat` file
 - [Dialog](doc/dialog.md)
 - [Edit](doc/edit.md)
 - [ListBox](doc/listbox.md)
+- [ListView](doc/listview.md)
 - [ProgressBar](doc/progress.md)
 - [Quick Helpers](doc/quick.md)
 - [RadioButton](doc/radiobutton.md)

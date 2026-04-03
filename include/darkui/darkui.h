@@ -15,6 +15,7 @@
 #include "darkui/dialog.h"
 #include "darkui/edit.h"
 #include "darkui/listbox.h"
+#include "darkui/listview.h"
 #include "darkui/panel.h"
 #include "darkui/progress.h"
 #include "darkui/quick.h"

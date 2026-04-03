@@ -150,8 +150,10 @@ Theme ResolveTheme(const Theme& theme) {
     resolved.radioDisabledText = resolved.buttonDisabledText;
     resolved.tableBackground = theme.primaryBackground;
     resolved.tableText = theme.primaryText;
+    resolved.tableSelectedText = theme.highlightText;
     resolved.tableHeaderBackground = theme.secondaryBackground;
     resolved.tableHeaderText = theme.highlightText;
+    resolved.tableSelectedBackground = theme.accentSecondary;
     resolved.tableGrid = resolved.border;
     resolved.sliderBackground = theme.primaryBackground;
     resolved.sliderTrack = theme.secondaryBackground;

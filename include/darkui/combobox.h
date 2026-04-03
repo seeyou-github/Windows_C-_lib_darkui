@@ -203,10 +203,14 @@ struct Theme {
     COLORREF tableBackground = RGB(34, 36, 40);
     // Table body text color.
     COLORREF tableText = RGB(224, 227, 232);
+    // Selected table row text color.
+    COLORREF tableSelectedText = RGB(245, 247, 250);
     // Table header background color.
     COLORREF tableHeaderBackground = RGB(44, 47, 52);
     // Table header text color.
     COLORREF tableHeaderText = RGB(224, 227, 232);
+    // Selected table row background color.
+    COLORREF tableSelectedBackground = RGB(39, 66, 116);
     // Table grid and separator color.
     COLORREF tableGrid = RGB(61, 66, 74);
     // Slider outer background color.
