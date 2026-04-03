@@ -207,6 +207,41 @@ darkui::ShowConfirmDialog(
 
 See: [doc/quick.md](doc/quick.md)
 
+## Dialog Lifetime Note
+
+`darkui::Dialog` now uses a two-step close path for modal dialogs:
+
+- `EndDialog()` ends the modal loop and hides the popup first
+- final destruction happens later in `Destroy()` or the `Dialog` destructor
+
+This behavior is important for input dialogs. A real bug was found in production:
+
+- caller code opened a custom dialog with `Edit` controls
+- the user clicked Confirm
+- old dialog behavior destroyed the child controls immediately inside `EndDialog()`
+- caller code then tried to read the input text after `ShowModal()` returned
+- the read came back empty even though the user had typed valid text
+
+Recommended pattern:
+
+```cpp
+darkui::Dialog dialog;
+dialog.Create(hwnd, 5001, theme, options);
+
+// Create child Edit / ComboBox / other controls here.
+
+const darkui::Dialog::Result result = dialog.ShowModal();
+if (result == darkui::Dialog::Result::Confirm) {
+    // Read child control values here, before dialog goes out of scope.
+}
+// Destruction happens when dialog falls out of scope or Destroy() is called.
+```
+
+Avoid this pattern:
+
+- do not design code around child controls being destroyed inside `EndDialog()`
+- do not delay reading dialog input until after the owning wrapper object has already been destroyed
+
 ## Header Entry Points
 
 Unified include:
